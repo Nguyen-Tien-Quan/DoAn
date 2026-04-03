@@ -1,0 +1,134 @@
+@use "../abstracts";
+
+.slideshow {
+    position: relative;
+    overflow: hidden;
+
+    &__inner {
+        display: flex;
+        transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        width: 100%;
+    }
+
+    &__item {
+        position: relative;
+        flex-shrink: 0;
+        width: 100%;
+        padding-top: 34%;
+
+        @include abstracts.screen(md) {
+            padding-top: 50%;
+        }
+    }
+
+    &__img {
+        position: absolute;
+        display: block;
+        top: 0;
+        left: 0;
+
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 20px;
+    }
+
+    &__page {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        column-gap: 24px;
+        bottom: 15%;
+        left: 5.2%;
+        width: 12.8%;
+    }
+
+    &__number {
+        color: #fff;
+        font-size: 1.8rem;
+        font-weight: 500;
+        line-height: 144.444%;
+
+        @include abstracts.screen(md) {
+            font-size: 1.4rem;
+        }
+    }
+
+    &__slider {
+        position: relative;
+        width: 100%;
+        height: 4px;
+        flex-shrink: 0;
+        background: #fff;
+
+        &::before,
+        &::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            translate: 0 -50%;
+            width: 14px;
+            height: 14px;
+            border: 4px solid #fff;
+            border-radius: 50%;
+
+            @include abstracts.screen(md) {
+                border-width: 3px;
+            }
+        }
+
+        &::before {
+            left: 0;
+            translate: -98% -50%;
+        }
+
+        &::after {
+            right: 0;
+            translate: 98% -50%;
+        }
+    }
+
+    // Control buttons
+    &__control {
+        display: flex;
+        justify-content: space-between;
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        translate: 0 -50%;
+        z-index: 3;
+        padding: 0 20px;
+
+        @include abstracts.screen(lg) {
+            padding: 0 10px;
+        }
+    }
+
+    &__prev,
+    &__next {
+        color: #fff;
+        border: none;
+        font-size: 28px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 20px 60px 10px var(--header-shadow-color);
+
+        @include abstracts.screen(lg) {
+            width: 20px;
+            height: 20px;
+        }
+    }
+
+    &__prev:hover,
+    &__next:hover {
+        background: rgba(0, 0, 0, 0.1);
+        transform: scale(1.1);
+    }
+}
