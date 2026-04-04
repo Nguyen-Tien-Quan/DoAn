@@ -1,13 +1,15 @@
 <?php
 
-// BASE URL
 $base = '/DoAn/DoAnTotNghiep/public/';
 
 require_once __DIR__ . '/../app/controllers/HomeController.php';
 require_once __DIR__ . '/../app/controllers/AuthController.php';
+require_once __DIR__ . '/../app/controllers/CartController.php';
+require_once __DIR__ . '/../app/controllers/FavoritesController.php';
+
+// Lấy danh sách sản phẩm (dùng cho home)
 $products = getProducts();
 
-// Hàm view
 function view($name) {
     return __DIR__ . "/../resources/views/pages/$name.php";
 }
@@ -15,16 +17,15 @@ function view($name) {
 // Router
 $url = $_GET['url'] ?? 'home';
 
-// 👉 THÊM: mặc định layout thường
+// Layout mặc định
 $layout = __DIR__ . '/../resources/views/layouts/layout.php';
 
 switch ($url) {
 
     case 'register':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-             $error = handleRegister();
+            $error = handleRegister();
         }
-
         $view = view('register');
         $layout = __DIR__ . '/../resources/views/layouts/auth.php';
         break;
@@ -32,20 +33,16 @@ switch ($url) {
     case 'login':
         $view = view('login');
         $layout = __DIR__ . '/../resources/views/layouts/auth.php';
-        // 👉 nếu submit form thì xử lý
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = handleLogin();
         }
         break;
 
     case 'logout':
-        require_once __DIR__ . '/../app/controllers/AuthController.php';
         handleLogout();
         break;
 
-
     case 'forgot-password':
-        require_once __DIR__ . '/../app/controllers/AuthController.php';
         $view = view('forgot-password');
         $layout = __DIR__ . '/../resources/views/layouts/auth.php';
         break;
@@ -58,89 +55,91 @@ switch ($url) {
         $view = view('profile');
         break;
 
-    case 'add-favorite':
-        require_once __DIR__ . '/../app/controllers/FavoritesController.php';
+    case 'shipping':
+        $view = view('shipping');
+        break;
 
+    // ==================== FAVORITES ====================
+    case 'add-favorite':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Xử lý AJAX
             $input = json_decode(file_get_contents('php://input'), true);
             $productId = $input['product_id'] ?? 0;
 
-            if(addFavorite($productId)){
+            if (addFavorite($productId)) {
                 echo json_encode(['success' => true]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Sản phẩm đã có trong favorites']);
             }
             exit;
-        } else {
-            // Xử lý click trực tiếp (GET)
-            $productId = $_GET['id'] ?? 0;
-            addFavorite($productId);
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit;
         }
-    break;
+        // GET (fallback)
+        $productId = $_GET['id'] ?? 0;
+        addFavorite($productId);
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+        exit;
+        break;
 
     case 'remove-favorite':
-        require_once __DIR__ . '/../app/controllers/FavoritesController.php';
-        $favId = $_GET['id'] ?? 0;
-        removeFavorite($favId);
-        header("Location: " . $_SERVER['HTTP_REFERER']);
+        $productId = $_GET['id'] ?? 0;
+
+        $success = removeFavoriteByProduct($productId);
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => $success]);
+        exit;
         break;
 
     case 'favorite':
-        require_once __DIR__ . '/../app/controllers/FavoritesController.php';
         $favorites = getFavorites();
         $view = view('favorite');
         break;
 
     case 'get-favorites':
-        require_once __DIR__ . '/../app/controllers/FavoritesController.php';
-
         header('Content-Type: application/json');
-
         $favorites = getFavorites();
-
         echo json_encode([
             'items' => $favorites,
             'count' => count($favorites)
         ]);
-
         exit;
-    break;
-
-    case 'product':
-        require_once __DIR__ . '/../app/controllers/HomeController.php';
-        $product = getProductById($_GET['id']);
-        $view = view('product-detail');
         break;
 
-
+    // ==================== CART ====================
     case 'add-cart':
-        require_once __DIR__ . '/../app/controllers/CartController.php';
         addToCart();
         break;
 
     case 'update-cart':
-        require_once __DIR__ . '/../app/controllers/CartController.php';
         updateCart();
         break;
 
     case 'remove-cart':
-        require_once __DIR__ . '/../app/controllers/CartController.php';
         removeCart();
         break;
 
+    case 'get-mini-cart':
     case 'get-cart':
-        require_once __DIR__ . '/../app/controllers/CartController.php';
         getCart();
         break;
 
-    default:
-        $view = view('home');
+    // ==================== PRODUCT ====================
+    case 'product':
+        $product = getProductById($_GET['id'] ?? 0);
+        $view = view('product-detail');
         break;
-}
 
+    // ==================== DEFAULT ====================
+    case 'home':
+    default:
+        $data = pagination(); // lấy dữ liệu
+        $products = $data['products'];
+        $page = $data['page'];
+        $totalPages = $data['totalPages'];
+        $favIds = getFavoriteIds();
 
-// Load layout
+        $view = view('home'); // chỉ include view, không include controller nữa
+        break;
+    }
+
+// Load layout + view
 include $layout;

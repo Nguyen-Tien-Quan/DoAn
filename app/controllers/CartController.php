@@ -1,6 +1,6 @@
 <?php
 
-// ==================== ADD TO CART ====================
+// ==================== CART ====================
 function addToCart()
 {
     if (session_status() === PHP_SESSION_NONE) session_start();
@@ -43,13 +43,15 @@ function addToCart()
     exit;
 }
 
-// ==================== UPDATE CART (đã fix đầy đủ) ====================
 function updateCart()
 {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 
+    // Kiểm tra dữ liệu POST
     if (!isset($_POST['id']) || !isset($_POST['action'])) {
-        echo json_encode(['success' => false, 'message' => 'Missing parameters']);
+        echo json_encode(['success' => false, 'message' => 'Thiếu id hoặc action']);
         exit;
     }
 
@@ -63,27 +65,35 @@ function updateCart()
 
     if ($action === 'plus') {
         $_SESSION['cart'][$id]['quantity']++;
-    } elseif ($action === 'minus') {
+    }
+    elseif ($action === 'minus') {
         $_SESSION['cart'][$id]['quantity']--;
+
         if ($_SESSION['cart'][$id]['quantity'] <= 0) {
             unset($_SESSION['cart'][$id]);
-            echo json_encode(['success' => true, 'removed' => true]);
+            echo json_encode([
+                'success' => true,
+                'removed' => true
+            ]);
             exit;
         }
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Invalid action']);
+    }
+    else {
+        echo json_encode(['success' => false, 'message' => 'Action không hợp lệ']);
         exit;
     }
 
+    // Trả về dữ liệu sau khi cập nhật
     $item = $_SESSION['cart'][$id];
+
     echo json_encode([
         'success'   => true,
         'quantity'  => $item['quantity'],
         'itemTotal' => $item['quantity'] * $item['price']
     ]);
+
     exit;
 }
-
 
 function removeCart()
 {
@@ -97,47 +107,33 @@ function removeCart()
         unset($_SESSION['cart'][$id]);
     }
 
-    // 🔥 Nếu là AJAX → trả JSON
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-        echo json_encode([
-            'success' => true
-        ]);
-        return;
-    }
-
-    // 🔥 Nếu là link bình thường → redirect
-    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php?url=checkout'));
-    exit;
-}
-
-
-function getCart()
-{
-    if (session_status() === PHP_SESSION_NONE) session_start();
-
-    $cart = $_SESSION['cart'] ?? [];
-    $items = [];
-    $total = 0;
-
-    foreach ($cart as $item) {
-        $items[] = [
-            'id'       => $item['id'],
-            'name'     => $item['name'],
-            'price'    => $item['price'],
-            'image'    => $item['image'],
-            'quantity' => $item['quantity']
-        ];
-        $total += $item['price'] * $item['quantity'];
-    }
-
     echo json_encode([
-        'items'    => $items,
-        'subtotal' => $total,
-        'total'    => $total + 10000
+        'success' => true
     ]);
     exit;
 }
 
+function getCart($asJson = true) {
+    $data = [
+        'items' => $_SESSION['cart'] ?? [],
+        'subtotal' => 0,
+        'total' => 0
+    ];
+
+    foreach ($data['items'] as $item) {
+        $data['subtotal'] += $item['price'] * $item['quantity'];
+    }
+
+    $data['total'] = $data['subtotal'] + 10000;
+
+    if ($asJson) {
+        header('Content-Type: application/json');
+        echo json_encode($data);
+        exit;
+    }
+
+    return $data; // ✅ QUAN TRỌNG
+}
 
 function getCartItems($user_id) {
     $conn = getDB();
@@ -152,6 +148,34 @@ function getCartItems($user_id) {
     return $stmt->fetchAll();
 }
 
-function vnd($money) {
-    return number_format($money, 0, ',', '.') . 'đ';
+function saveToFavorite()
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!isset($_SESSION['user'])) {
+        echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
+        exit;
+    }
+
+    $id = $_POST['id'] ?? null;
+
+    if (!$id) {
+        echo json_encode(['success' => false]);
+        exit;
+    }
+
+    require_once __DIR__ . '/FavoritesController.php';
+
+    // 👉 thêm vào favorite
+    addFavorite($id);
+
+    // 👉 xóa khỏi cart
+    if (isset($_SESSION['cart'][$id])) {
+        unset($_SESSION['cart'][$id]);
+    }
+
+    echo json_encode([
+        'success' => true
+    ]);
+    exit;
 }

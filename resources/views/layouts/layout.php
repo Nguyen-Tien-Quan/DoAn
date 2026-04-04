@@ -47,6 +47,6 @@ if (session_status() === PHP_SESSION_NONE) {
 
 
     <?php include __DIR__ . '/../partials/footer.php'; ?>
-    <script src="<?= $base ?>assets/js/main.js"></script>
+    <script src="<?= $base ?>assets/js/main.js" ></script>
 </body>
 </html>

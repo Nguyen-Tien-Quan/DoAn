@@ -13,9 +13,16 @@ $user = $_SESSION['user'] ?? null;
 
 // Lấy danh sách yêu thích
 $favorites = [];
+
 if ($user) {
     $stmt = $conn->prepare("
-       SELECT p.id, p.name, p.base_price, p.image, pv.stock_quantity, f.id AS fav_id
+        SELECT
+            p.id,
+            p.name,
+            p.base_price,
+            p.image,
+            pv.stock_quantity,
+            f.id AS fav_id
         FROM favorites f
         JOIN products p ON f.product_id = p.id
         LEFT JOIN (
@@ -25,6 +32,7 @@ if ($user) {
         ) pv ON pv.product_id = p.id
         WHERE f.user_id = ?
     ");
+
     $stmt->execute([$user['id']]);
     $favorites = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -67,7 +75,7 @@ if ($user) {
 
                             <div class="cart-info__list">
                                 <?php foreach ($favorites as $item): ?>
-                                <article class="cart-item">
+                                <article class="cart-item" data-id="<?= $item['id'] ?>">
                                     <label class="cart-info__checkbox">
                                         <input type="checkbox" class="cart-info__checkbox-input" checked />
                                     </label>
@@ -101,9 +109,10 @@ if ($user) {
                                                     <button class="cart-item__ctrl-btn">
                                                         <img src="<?= $base ?>assets/icons/heart-2.svg" alt="" /> Save
                                                     </button>
-                                                    <a href="<?= $base ?>index.php?url=remove-favorite&id=<?= $item['fav_id'] ?>" class="cart-item__ctrl-btn">
-                                                        <img src="<?= $base ?>assets/icons/trash.svg" alt="" /> Delete
-                                                    </a>
+                                                    <button class="cart-item__ctrl-btn btn-delete-fav js-toggle" toggle-target="#delete-fav-confirm">
+                                                        <img src="./assets/icons/trash.svg" alt="" />
+                                                        Delete
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -136,7 +145,7 @@ if ($user) {
                             <!-- Khi không có item nào -->
                             <div class="favorites-empty text-center" style="padding: 50px 0;">
                                 <img src="<?= $base ?>assets/img/empty-favorites.png" alt="No Favorites" style="max-width: 200px; margin-bottom: 20px;">
-                                <p style="font-size: 18px; color: #555;">You haven't added any products to your favorites yet.</p>
+                                <p style="font-size: 18px; color: #555; margin-bottom: 20px;">Bạn ko có bất kỳ sản phẩm nào trong danh sách yêu thích.</p>
                                 <a href="<?= $base ?>" class="btn btn--primary btn--rounded mt-3">Explore Products</a>
                             </div>
                         <?php endif; ?>
@@ -144,5 +153,20 @@ if ($user) {
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div id="delete-fav-confirm" class="modal modal--small hide">
+            <div class="modal__content">
+                <p class="modal__text">Bạn có chắc muốn xóa sản phẩm khỏi yêu thích?</p>
+                <div class="modal__bottom">
+                    <button class="btn btn--small btn--outline modal__btn js-toggle" toggle-target="#delete-confirm">
+                        Cancel
+                    </button>
+                    <button class="btn btn--small btn--danger modal__btn btn--no-margin" id="confirm-delete-fav">
+                        Delete
+                    </button>
+                </div>
+            </div>
+            <div class="modal__overlay js-toggle" toggle-target="#delete-confirm"></div>
         </div>
 </main>

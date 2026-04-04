@@ -1,3 +1,51 @@
+<?php
+
+    $products = $products ?? [];
+    $page = $page ?? 1;
+    $totalPages = $totalPages ?? 1;
+    $favIds = $favIds ?? [];
+    ?>
+
+<style>
+#product-list {
+    position: relative;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* blur nhẹ khi load */
+#product-list.loading {
+    filter: blur(2px);
+}
+
+/* overlay loading */
+.ajax-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+/* spinner đẹp hơn */
+.ajax-overlay::after {
+    content: "";
+    width: 36px;
+    height: 36px;
+    border: 4px solid #ddd;
+    border-top: 4px solid #ffb700;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+
+</style>
 
 <main class="container home">
     <!-- Slideshow -->
@@ -219,9 +267,10 @@
         </div>
 
         <!-- Products -->
-        <div class="row row-cols-5 row-cols-lg-2 row-cols-sm-1 g-3">
+        <div class="row row-cols-5 row-cols-lg-2 row-cols-sm-1 g-3" id="product-list">
 
-            <?php foreach ($products as $product): ?>
+            <?php $favIds = $favIds ?? [];
+             foreach ($products as $product): ?>
                 <div class="col">
                     <article class="product-card">
                         <div class="product-card__img-wrap">
@@ -229,8 +278,7 @@
                                 <img src="<?= $base ?>assets/img/product/<?= $product['image'] ?>"
                                     class="product-card__thumb" />
                             </a>
-                            <button class="like-btn product-card__like-btn <?= in_array($product['id'], $favIds) ? 'liked' : '' ?>"
-                                data-id="<?= $product['id'] ?>">
+                            <button class="like-btn product-card__like-btn <?= in_array($product['id'], $favIds) ? 'like-btn--liked' : '' ?>" data-id="<?= $product['id'] ?>">
                                 <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
                                 <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
                             </button>
@@ -257,30 +305,125 @@
 
         </div>
     </section>
+
+    <!-- pagination -->
+    <?php if ($totalPages > 1): ?>
+        <div class="pagination" id="pagination">
+
+            <!-- PREV -->
+            <?php if ($page > 1): ?>
+                <a href="index.php?url=home&page=1">«</a>
+                <a href="index.php?url=home&page=<?= $page - 1 ?>">‹</a>
+            <?php endif; ?>
+
+            <?php
+                $start = max(1, $page - 2);
+                $end = min($totalPages, $page + 2);
+            ?>
+
+            <!-- đầu -->
+            <?php if ($start > 1): ?>
+                <a href="index.php?url=home&page=1">1</a>
+                <?php if ($start > 2): ?>
+                    <span>...</span>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- loop -->
+            <?php for ($i = $start; $i <= $end; $i++): ?>
+                <a href="index.php?url=home&page=<?= $i ?>"
+                class="<?= $i == $page ? 'active' : '' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+
+            <!-- cuối -->
+            <?php if ($end < $totalPages): ?>
+                <?php if ($end < $totalPages - 1): ?>
+                    <span>...</span>
+                <?php endif; ?>
+                <a href="index.php?url=home&page=<?= $totalPages ?>">
+                    <?= $totalPages ?>
+                </a>
+            <?php endif; ?>
+
+            <!-- NEXT -->
+            <?php if ($page < $totalPages): ?>
+                <a href="index.php?url=home&page=<?= $page + 1 ?>">›</a>
+                <a href="index.php?url=home&page=<?= $totalPages ?>">»</a>
+            <?php endif; ?>
+
+        </div>
+    <?php endif; ?>
 </main>
 <script>
     window.addEventListener("template-loaded", handleActiveMenu);
 </script>
+
+
+<!-- ======================= JS thêm (AJAX pagination) ======================= -->
 <script>
-document.querySelectorAll('.like-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const productId = this.dataset.id;
-        fetch('index.php?url=add-favorite', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ product_id: productId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                this.classList.add('liked'); // bạn có thể toggle class để show heart-red
-                console.log('Đã thêm vào favorites');
-            } else {
-                alert(data.message || 'Đã có trong favorites');
-            }
-        });
+document.addEventListener("DOMContentLoaded", function () {
+
+    const productList = document.getElementById("product-list");
+    const pagination = document.getElementById("pagination");
+
+    if (!pagination) return;
+
+    pagination.addEventListener("click", function (e) {
+        const link = e.target.closest("a");
+        if (!link) return;
+
+        e.preventDefault();
+
+        const url = link.href;
+
+        // 👉 tạo overlay loading (không xóa content)
+        let overlay = document.createElement("div");
+        overlay.className = "ajax-overlay";
+        productList.appendChild(overlay);
+
+        // 👉 hiệu ứng blur + tối nhẹ
+        productList.classList.add("loading");
+
+        fetch(url)
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+
+                const newList = doc.querySelector("#product-list");
+                const newPagination = doc.querySelector("#pagination");
+
+                // 👉 fade OUT
+                productList.style.opacity = "0";
+
+                setTimeout(() => {
+                    if (newList) {
+                        productList.innerHTML = newList.innerHTML;
+                    }
+
+                    if (newPagination) {
+                        pagination.innerHTML = newPagination.innerHTML;
+                    }
+
+                    // 👉 fade IN
+                    productList.style.opacity = "1";
+
+                    productList.classList.remove("loading");
+
+                    // remove overlay
+                    overlay.remove();
+
+                    // scroll mượt
+                    window.scrollTo({
+                        top: productList.offsetTop - 100,
+                        behavior: "smooth"
+                    });
+
+                }, 250); // thời gian fade out
+            });
     });
+
 });
 </script>
