@@ -89,6 +89,26 @@ function removeFavoriteByProduct($productId) {
     return $stmt->execute([$productId, $user['id']]);
 }
 
+function deleteAllFavorite()
+{
+    session_start();
+    $conn = getDB();
+
+    $data = json_decode(file_get_contents("php://input"), true);
+    $ids = $data['ids'] ?? [];
+
+    if (empty($ids)) {
+        echo json_encode(['success' => false]);
+        return;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $conn->prepare("DELETE FROM favorites WHERE product_id IN ($placeholders)");
+    $stmt->execute($ids);
+
+    echo json_encode(['success' => true]);
+}
+
 // Đếm số lượng favorite
 function favoriteCount() {
     global $user, $conn;

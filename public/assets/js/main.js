@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // ====================== DELETE (MODAL) ======================
+    // ====================== Cart DELETE (MODAL) ======================
     let deleteId = null;
 
     // Mở modal khi nhấn nút delete
@@ -219,7 +219,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ====================== DELETE FAVORITE (MODAL) ======================
+
     let deleteFavId = null;
+    let deleteFavIds = [];
 
     // Mở modal khi nhấn nút delete favorite
     document.querySelectorAll(".btn-delete-fav").forEach((btn) => {
@@ -293,6 +295,119 @@ document.addEventListener("DOMContentLoaded", function () {
                 deleteFavId = null;
             });
         });
+
+    // ====================== CHECK ALL ======================
+    const checkAll = document.getElementById("check-all");
+    const deleteAllBtn = document.getElementById("delete-all-btn");
+
+    // 👉 Khi click "Check all"
+    if (checkAll) {
+        checkAll.addEventListener("change", function () {
+            const checked = this.checked;
+
+            // chỉ lấy checkbox trong từng item
+            document
+                .querySelectorAll(".cart-item .cart-info__checkbox-input")
+                .forEach((cb) => {
+                    cb.checked = checked;
+                });
+
+            // show / hide nút delete all
+            if (deleteAllBtn) {
+                deleteAllBtn.classList.toggle("d-none", !checked);
+            }
+        });
+    }
+
+    // ====================== CHECK TỪNG ITEM ======================
+    document
+        .querySelectorAll(".cart-item .cart-info__checkbox-input")
+        .forEach((cb) => {
+            cb.addEventListener("change", () => {
+                const allItems = document.querySelectorAll(
+                    ".cart-item .cart-info__checkbox-input",
+                );
+                const checkedItems = document.querySelectorAll(
+                    ".cart-item .cart-info__checkbox-input:checked",
+                );
+
+                // 👉 update nút delete all
+                if (deleteAllBtn) {
+                    deleteAllBtn.classList.toggle(
+                        "d-none",
+                        checkedItems.length === 0,
+                    );
+                }
+
+                // 👉 update trạng thái check all
+                if (checkAll) {
+                    checkAll.checked = checkedItems.length === allItems.length;
+                }
+            });
+        });
+
+    // ====================== DELETE ALL ======================
+    if (deleteAllBtn) {
+        deleteAllBtn.addEventListener("click", function () {
+            const selected = [];
+
+            document.querySelectorAll(".cart-item").forEach((item) => {
+                const checkbox = item.querySelector(
+                    ".cart-info__checkbox-input",
+                );
+
+                if (checkbox && checkbox.checked) {
+                    selected.push(item.dataset.id);
+                }
+            });
+
+            if (selected.length === 0) {
+                showToast("Chưa chọn sản phẩm", "error");
+                return;
+            }
+
+            // 👉 CALL API
+            fetch("index.php?url=delete-all-favorite", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ids: selected }),
+            })
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.success) {
+                        // 👉 XÓA UI
+                        selected.forEach((id) => {
+                            const el = document.querySelector(
+                                `.cart-item[data-id="${id}"]`,
+                            );
+                            if (el) el.remove();
+                        });
+
+                        // 👉 nếu hết item → show empty
+                        if (
+                            document.querySelectorAll(".cart-item").length === 0
+                        ) {
+                            document.querySelector(".cart-info").innerHTML = `
+                            <div class="favorites-empty text-center" style="padding: 50px 0;">
+                                <img src="/DoAn/DoAnTotNghiep/public/assets/img/empty-favorites.png" style="max-width:200px;margin-bottom:20px;">
+                                <p>Không còn sản phẩm yêu thích</p>
+                                <a href="/DoAn/DoAnTotNghiep/public/" class="btn btn--primary">Explore</a>
+                            </div>
+                        `;
+                        }
+
+                        // reset
+                        if (deleteAllBtn) deleteAllBtn.classList.add("d-none");
+                        if (checkAll) checkAll.checked = false;
+
+                        showToast("Đã xóa tất cả 🗑️", "success");
+                    }
+                })
+                .catch(() => showToast("Lỗi khi xóa", "error"));
+        });
+    }
 
     // ====================== MINI CART ======================
     function loadMiniCart() {
@@ -412,8 +527,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const link = e.target.closest(".pagination-link");
 
         if (link) {
-            e.preventDefault();
-
             const url = link.getAttribute("href");
 
             // optional loading
@@ -446,6 +559,104 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         }
     });
+
+    // 🔥 Toggle mở search
+    document.querySelector(".search-toggle").onclick = function () {
+        const box = document.querySelector(".search-box");
+        box.classList.toggle("active");
+
+        const input = box.querySelector(".search-input");
+        if (box.classList.contains("active")) {
+            input.focus();
+        }
+    };
+
+    // 🔥 Realtime search
+    const input = document.querySelector(".search-input");
+    const suggestBox = document.querySelector(".search-suggest");
+
+    let debounceTimer;
+
+    input.addEventListener("input", function () {
+        const keyword = this.value.trim();
+
+        clearTimeout(debounceTimer);
+
+        debounceTimer = setTimeout(() => {
+            if (!keyword) {
+                suggestBox.style.display = "none";
+                return;
+            }
+
+            fetch(`index.php?url=search&q=${keyword}&ajax=1`)
+                .then((res) => res.json())
+                .then((data) => {
+                    suggestBox.innerHTML = "";
+
+                    if (data.length === 0) {
+                        suggestBox.innerHTML = `<div class="search-suggest-item">Không tìm thấy</div>`;
+                    } else {
+                        data.forEach((item) => {
+                            suggestBox.innerHTML += `
+                            <div class="search-suggest-item" onclick="location.href='index.php?url=product&id=${item.id}'">
+                                ${item.name}
+                            </div>
+                        `;
+                        });
+                    }
+
+                    suggestBox.style.display = "block";
+                });
+        }, 300);
+    });
+
+    // 🔥 Click ngoài thì đóng
+    document.addEventListener("click", function (e) {
+        if (!e.target.closest(".search-box")) {
+            document.querySelector(".search-box").classList.remove("active");
+            suggestBox.style.display = "none";
+        }
+    });
+
+    // ====================== Shipping Address ======================
+    document
+        .getElementById("add-address-form")
+        .addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            fetch("index.php?url=add-shipping-address", {
+                method: "POST",
+                body: formData,
+            })
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.success) {
+                        showToast(
+                            "Đã thêm địa chỉ mới thành công ✅",
+                            "success",
+                        );
+
+                        // Đóng modal
+                        document
+                            .querySelector("#add-new-address")
+                            .classList.add("hide");
+                        document
+                            .querySelector("#add-new-address")
+                            .classList.remove("show");
+
+                        // Reload trang để cập nhật danh sách địa chỉ
+                        setTimeout(() => location.reload(), 800);
+                    } else {
+                        showToast(
+                            data.message || "Thêm địa chỉ thất bại",
+                            "error",
+                        );
+                    }
+                })
+                .catch(() => showToast("Lỗi kết nối server", "error"));
+        });
 
     function showToast(message, type = "success") {
         const toast = document.createElement("div");

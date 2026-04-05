@@ -6,6 +6,7 @@ require_once __DIR__ . '/../app/controllers/HomeController.php';
 require_once __DIR__ . '/../app/controllers/AuthController.php';
 require_once __DIR__ . '/../app/controllers/CartController.php';
 require_once __DIR__ . '/../app/controllers/FavoritesController.php';
+require_once __DIR__ . '/../app/controllers/OrderController.php';
 
 // Lấy danh sách sản phẩm (dùng cho home)
 $products = getProducts();
@@ -22,6 +23,7 @@ $layout = __DIR__ . '/../resources/views/layouts/layout.php';
 
 switch ($url) {
 
+    // Login, Register, Logout, Forgot Password
     case 'register':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = handleRegister();
@@ -47,6 +49,7 @@ switch ($url) {
         $layout = __DIR__ . '/../resources/views/layouts/auth.php';
         break;
 
+    // checkout, profile, shipping
     case 'checkout':
         $view = view('checkout');
         break;
@@ -56,10 +59,60 @@ switch ($url) {
         break;
 
     case 'shipping':
+        require_once __DIR__ . '/../app/controllers/OrderController.php';
+        $addresses = [];
+        if (isset($_SESSION['user'])) {
+            $addresses = getShippingAddresses($_SESSION['user']['id']);
+        }
         $view = view('shipping');
         break;
 
+    case 'add-shipping-address':
+        require_once __DIR__ . '/../app/controllers/OrderController.php';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Bắt buộc header JSON
+            header('Content-Type: application/json; charset=utf-8');
+
+            // Bắt lỗi PDO / PHP
+            try {
+                addShippingAddress();
+            } catch (\Throwable $e) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Lỗi server: ' . $e->getMessage()
+                ]);
+            }
+            exit; // rất quan trọng, tránh output HTML layout
+        }
+        break;
+
+    case 'payment':
+        $view = view('payment');
+        break;
+
+    case 'place-order':
+        require_once __DIR__ . '/../app/controllers/OrderController.php';
+        placeOrder();
+        break;
+
     // ==================== FAVORITES ====================
+
+    case 'favorite':
+        $favorites = getFavorites();
+        $view = view('favorite');
+        break;
+
+    case 'get-favorites':
+        header('Content-Type: application/json');
+        $favorites = getFavorites();
+        echo json_encode([
+            'items' => $favorites,
+            'count' => count($favorites)
+        ]);
+        exit;
+        break;
+
     case 'add-favorite':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $input = json_decode(file_get_contents('php://input'), true);
@@ -89,20 +142,6 @@ switch ($url) {
         exit;
         break;
 
-    case 'favorite':
-        $favorites = getFavorites();
-        $view = view('favorite');
-        break;
-
-    case 'get-favorites':
-        header('Content-Type: application/json');
-        $favorites = getFavorites();
-        echo json_encode([
-            'items' => $favorites,
-            'count' => count($favorites)
-        ]);
-        exit;
-        break;
 
     // ==================== CART ====================
     case 'add-cart':
@@ -125,8 +164,31 @@ switch ($url) {
     // ==================== PRODUCT ====================
     case 'product':
         $product = getProductById($_GET['id'] ?? 0);
+        $reviews = getReviewsByProductId($product['id']);
+        $ratingData = getAverageRating($product['id']);
         $view = view('product-detail');
         break;
+
+    case 'add-review':
+        addReview();
+        break;
+
+    case 'search':
+    if (isset($_GET['ajax'])) {
+        $q = $_GET['q'] ?? '';
+
+        $stmt = $conn->prepare("
+            SELECT id, name
+            FROM products
+            WHERE name LIKE ?
+            LIMIT 5
+        ");
+        $stmt->execute(["%$q%"]);
+
+        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        exit;
+    }
+    break;
 
     // ==================== DEFAULT ====================
     case 'home':

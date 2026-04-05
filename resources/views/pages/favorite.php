@@ -67,17 +67,26 @@ if ($user) {
                         <?php if(count($favorites) > 0): ?>
                             <p class="cart-info__desc"><?= count($favorites) ?> items</p>
 
-                            <div class="cart-info__check-all">
-                                <label class="cart-info__checkbox">
-                                    <input type="checkbox" class="cart-info__checkbox-input" />
+                            <div class="cart-info__check-all d-flex ">
+                                <label class="cart-info__checkbox d-flex">
+                                    <input type="checkbox" id="check-all" class="cart-info__checkbox-input" />
+                                    <span class="cart-item__title">Check all</span>
                                 </label>
+
+                                <!-- 👉 NÚT DELETE ALL -->
+                                <button
+                                    id="delete-all-btn"
+                                    class="btn btn--danger btn--small d-none"
+                                >
+                                    Delete All
+                                </button>
                             </div>
 
                             <div class="cart-info__list">
                                 <?php foreach ($favorites as $item): ?>
                                 <article class="cart-item" data-id="<?= $item['id'] ?>">
                                     <label class="cart-info__checkbox">
-                                        <input type="checkbox" class="cart-info__checkbox-input" checked />
+                                        <input type="checkbox" class="cart-info__checkbox-input"  />
                                     </label>
                                     <a href="<?= $base ?>index.php?url=product&id=<?= $item['id'] ?>">
                                         <img src="<?= $base ?>assets/img/product/<?= htmlspecialchars($item['image'] ?? 'placeholder.png') ?>" alt="" class="cart-item__thumb" />
@@ -90,7 +99,7 @@ if ($user) {
                                                 </a>
                                             </h3>
                                             <p class="cart-item__price-wrap">
-                                                $<?= number_format($item['base_price'], 2) ?> |
+                                                $<?= vnd($item['base_price']) ?> |
                                                 <span class="cart-item__status"><?= ($item['stock_quantity'] ?? 0) > 0 ? 'In Stock' : 'Out of Stock' ?></span>
                                             </p>
                                             <div class="cart-item__ctrl-wrap">
@@ -99,16 +108,16 @@ if ($user) {
                                                         <?= htmlspecialchars($item['brand'] ?? 'Brand') ?>
                                                         <img class="icon" src="<?= $base ?>assets/icons/arrow-down-2.svg" alt="" />
                                                     </div>
-                                                    <div class="cart-item__input">
+                                                    <!-- <div class="cart-item__input">
                                                         <button class="cart-item__input-btn"><img class="icon" src="<?= $base ?>assets/icons/minus.svg" alt="" /></button>
                                                         <span>1</span>
                                                         <button class="cart-item__input-btn"><img class="icon" src="<?= $base ?>assets/icons/plus.svg" alt="" /></button>
-                                                    </div>
+                                                    </div> -->
                                                 </div>
                                                 <div class="cart-item__ctrl">
-                                                    <button class="cart-item__ctrl-btn">
+                                                    <!-- <button class="cart-item__ctrl-btn">
                                                         <img src="<?= $base ?>assets/icons/heart-2.svg" alt="" /> Save
-                                                    </button>
+                                                    </button> -->
                                                     <button class="cart-item__ctrl-btn btn-delete-fav js-toggle" toggle-target="#delete-fav-confirm">
                                                         <img src="./assets/icons/trash.svg" alt="" />
                                                         Delete
@@ -117,7 +126,7 @@ if ($user) {
                                             </div>
                                         </div>
                                         <div class="cart-item__content-right">
-                                            <p class="cart-item__total-price">$<?= number_format($item['base_price'], 2) ?></p>
+                                            <p class="cart-item__total-price">$<?=  vnd($item['base_price']) ?></p>
                                             <button class="cart-item__checkout-btn btn btn--primary btn--rounded">
                                                 Check Out
                                             </button>

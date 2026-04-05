@@ -654,13 +654,16 @@ $totalFav = count($favorites);
 
             <!-- Actions -->
             <div class="top-act">
-               <div class="top-act__group d-md-none top-act__group--single search-box">
+                <div class="top-act__group d-md-none top-act__group--single search-box">
                     <button class="top-act__btn search-toggle">
                         <img src="<?= $base ?>assets/icons/search.svg" class="icon top-act__icon" />
                     </button>
 
                     <!-- 🔥 Ô search -->
-                    <input type="text" class="search-input" placeholder="Tìm sản phẩm..." />
+                    <input type="text" class="top-act__search search-input" placeholder="Tìm sản phẩm..." />
+
+                    <!-- 🔥 Gợi ý realtime -->
+                    <div class="search-suggest"></div>
                 </div>
 
 
@@ -840,6 +843,6 @@ $totalFav = count($favorites);
         </div>
     </div>
 </header>
-    <script>
-        window.dispatchEvent(new Event("template-loaded"));
-    </script>
+<script>
+    window.dispatchEvent(new Event("template-loaded"));
+</script>
