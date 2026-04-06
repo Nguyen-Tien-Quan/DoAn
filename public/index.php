@@ -164,8 +164,14 @@ switch ($url) {
     // ==================== PRODUCT ====================
     case 'product':
         $product = getProductById($_GET['id'] ?? 0);
-        $reviews = getReviewsByProductId($product['id']);
+
+        // 🔥 THÊM DÒNG NÀY
+        $product['reviews'] = getReviewsByProductId($product['id']);
+
+        // 🔥 thêm rating luôn cho chuẩn
         $ratingData = getAverageRating($product['id']);
+        $product['avg_rating'] = $ratingData['avg_rating'] ?? 0;
+
         $view = view('product-detail');
         break;
 

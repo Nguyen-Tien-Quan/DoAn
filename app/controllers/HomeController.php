@@ -114,13 +114,11 @@ function addReview() {
     $customer = $stmt->fetch();
 
     if (!$customer) {
-        // 👉 Auto tạo nếu chưa có
         $stmt = $conn->prepare("
             INSERT INTO customers (user_id, created_at)
             VALUES (?, NOW())
         ");
         $stmt->execute([$_SESSION['user']['id']]);
-
         $customer_id = $conn->lastInsertId();
     } else {
         $customer_id = $customer['id'];
@@ -133,7 +131,6 @@ function addReview() {
 
     if (!empty($_FILES['images']['name'][0])) {
 
-        // Tạo folder nếu chưa có
         if (!is_dir("uploads/review")) {
             mkdir("uploads/review", 0777, true);
         }
@@ -144,7 +141,6 @@ function addReview() {
 
                 $ext = strtolower(pathinfo($_FILES['images']['name'][$key], PATHINFO_EXTENSION));
 
-                // 👉 Chỉ cho phép ảnh
                 $allow = ['jpg','jpeg','png','webp'];
                 if (!in_array($ext, $allow)) continue;
 
@@ -160,11 +156,11 @@ function addReview() {
     $imageString = implode(',', $images);
 
     // ================================
-    // 💾 INSERT REVIEW
+    // 💾 INSERT REVIEW (🔥 FIX Ở ĐÂY)
     // ================================
     $stmt = $conn->prepare("
-        INSERT INTO reviews (customer_id, product_id, rating, comment, images, likes, created_at)
-        VALUES (?, ?, ?, ?, ?, 0, NOW())
+        INSERT INTO reviews (customer_id, product_id, rating, comment, images, likes, status, created_at)
+        VALUES (?, ?, ?, ?, ?, 0, 1, NOW())
     ");
 
     $stmt->execute([
@@ -175,9 +171,6 @@ function addReview() {
         $imageString
     ]);
 
-    // ================================
-    // 🔄 REDIRECT
-    // ================================
     header("Location: index.php?url=product&id=" . $product_id);
     exit;
 }

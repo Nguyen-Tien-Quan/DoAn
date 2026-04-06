@@ -2,8 +2,8 @@
 
 html {
     --text-color: #1a162e;
-    --icon-color: brightness(0) saturate(100%) invert(8%) sepia(10%) saturate(4042%) hue-rotate(212deg) brightness(90%)
-        contrast(95%);
+    --icon-color: brightness(0) saturate(100%) invert(8%) sepia(10%)
+        saturate(4042%) hue-rotate(212deg) brightness(90%) contrast(95%);
 
     --body-bg: #f6f6f6;
     --header-bg-color: #eee;
@@ -122,4 +122,23 @@ html {
 
     // Separate
     --separate-color: #d2d1d6;
+
+    // Review & Tabs
+    --review-summary-bg: var(--top-act-group-bg-color);
+    --review-summary-shadow: var(--top-act-group-shadow);
+    --review-card-bg: #fafafd; // Bạn đã có biến này, mình đồng bộ lại
+    --review-card-shadow: var(--product-card-shadow);
+    --review-filter-bg: var(--cate-item-bg);
+    --review-filter-text: var(--text-color);
+    --review-bar-bg: var(--cate-item-bg);
+    --review-form-border: var(--separate-color);
+    --review-input-bg: var(--top-act-group-bg-color);
+
+    // Màu cố định (Thường không đổi theo theme hoặc đổi nhẹ)
+    --star-color: #f5a623;
+    --star-empty-color: #ccc;
+
+    @include abstracts.screen(md) {
+        --review-card-bg: #fff;
+    }
 }

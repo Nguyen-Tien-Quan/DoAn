@@ -43,281 +43,7 @@ foreach($reviews as $r){
 
 ?>
 <style>
-.tab-btn.active{
-    color:red;
-}
 
-.prod-tab__content{
-    display:none;
-}
-.prod-tab__content.active{
-    display:block;
-}
-
-/* FILTER */
-.review-filter a{
-    margin-right:10px;
-}
-
-/* REVIEW */
-.review-item{
-    border-bottom:1px solid #ddd;
-    padding:10px 0;
-}
-
-/* PAGINATION */
-.pagination a{
-    margin:5px;
-    padding:5px 10px;
-    border:1px solid #ddd;
-}
-.pagination a.active{
-    background:red;
-    color:#fff;
-}.prod-tab__content {
-    display: none;
-}
-
-.prod-tab__content--current {
-    display: block;
-}
-
-/* STAR */
-.review-card__stars{
-    color:#ccc;
-    font-size:14px;
-}
-
-.review-card__stars .active{
-    color:#f5a623;
-}
-
-/* STAR INPUT */
-
-
-/* ===== REVIEW FILTER ===== */
-.review-filter{
-    margin-bottom:15px;
-}
-.review-filter a{
-    padding:6px 12px;
-    border-radius:20px;
-    background:#f5f5f5;
-    text-decoration:none;
-    color:#333;
-    margin-right:8px;
-    font-size:13px;
-    transition:0.2s;
-}
-.review-filter a:hover{
-    background:#ffe0b2;
-}
-.review-filter a.active{
-    background:#f5a623;
-    color:#fff;
-}
-
-/* ===== REVIEW SUMMARY ===== */
-.review-summary{
-    display:flex;
-    gap:40px;
-    background:#fff;
-    padding:20px;
-    border-radius:16px;
-    margin:20px 0;
-    box-shadow:0 4px 15px rgba(0,0,0,0.05);
-}
-
-.review-summary__left{
-    min-width:120px;
-    text-align:center;
-}
-
-.review-summary__left .avg{
-    font-size:40px;
-    font-weight:bold;
-    color:#f5a623;
-}
-
-.review-summary__left .stars span{
-    font-size:18px;
-    color:#ccc;
-}
-.review-summary__left .stars .active{
-    color:#f5a623;
-}
-
-.review-summary__left .total{
-    font-size:13px;
-    color:#777;
-}
-
-/* RIGHT BAR */
-.review-summary__right{
-    flex:1;
-}
-
-.review-summary__right .row{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    margin:6px 0;
-    font-size:13px;
-}
-
-.review-summary__right .bar{
-    flex:1;
-    height:8px;
-    background:#eee;
-    border-radius:10px;
-    overflow:hidden;
-}
-
-.review-summary__right .bar div{
-    height:100%;
-    background:linear-gradient(90deg,#f5a623,#ffcc80);
-}
-
-/* ===== REVIEW FORM ===== */
-.review-form{
-    background:#fff;
-    padding:15px;
-    border-radius:12px;
-    box-shadow:0 2px 10px rgba(0,0,0,0.05);
-}
-
-.review-form textarea{
-    width:100%;
-    border:1px solid #ddd;
-    border-radius:10px;
-    padding:10px;
-    margin-top:10px;
-    resize:none;
-    font-size:14px;
-}
-
-.review-form button{
-    margin-top:10px;
-}
-
-/* ===== STAR INPUT ===== */
-.star-input{
-    direction: rtl;
-    display:inline-flex;
-}
-.star-input input{display:none}
-
-.star-input label{
-    font-size:28px;
-    color:#ccc;
-    cursor:pointer;
-    transition:0.2s;
-}
-
-.star-input input:checked ~ label,
-.star-input label:hover,
-.star-input label:hover ~ label{
-    color:#f5a623;
-}
-
-/* ===== REVIEW CARD ===== */
-.review-list{
-    margin-top:20px;
-}
-
-.review-card{
-    background:#fff;
-    border-radius:16px;
-    padding:16px;
-    margin-bottom:15px;
-    box-shadow:0 3px 12px rgba(0,0,0,0.05);
-    transition:0.25s;
-}
-
-.review-card:hover{
-    transform:translateY(-3px);
-    box-shadow:0 6px 18px rgba(0,0,0,0.08);
-}
-
-/* TOP */
-.review-card__top{
-    display:flex;
-    gap:12px;
-    align-items:center;
-}
-
-.review-card__avatar{
-    width:45px;
-    height:45px;
-    border-radius:50%;
-    object-fit:cover;
-}
-
-.review-card__info{
-    flex:1;
-}
-
-.review-card__name{
-    font-weight:600;
-    font-size:14px;
-}
-
-.review-card__time{
-    font-size:12px;
-    color:#999;
-}
-
-/* STAR */
-.review-card__stars{
-    margin-top:3px;
-}
-.review-card__stars .star{
-    color:#ccc;
-}
-.review-card__stars .active{
-    color:#f5a623;
-}
-
-/* CONTENT */
-.review-card__content{
-    margin-top:10px;
-    font-size:14px;
-    line-height:1.6;
-    color:#444;
-}
-
-/* ===== IMAGE REVIEW ===== */
-.review-images{
-    margin-top:10px;
-    display:flex;
-    gap:10px;
-}
-.review-images img{
-    width:70px;
-    height:70px;
-    object-fit:cover;
-    border-radius:8px;
-}
-
-/* ===== LIKE ===== */
-.review-like{
-    margin-top:10px;
-    font-size:13px;
-    color:#777;
-    cursor:pointer;
-}
-.review-like.active{
-    color:#f5a623;
-}
-
-
-/* EMPTY */
-.review-empty{
-    text-align:center;
-    padding:40px;
-    color:#aaa;
-    font-size:14px;
-}
 </style>
 
 <main class="product-page">
@@ -444,11 +170,90 @@ foreach($reviews as $r){
 
                 <div class="prod-tab__contents">
 
-                    <!-- Description -->
+                   <?php
+                        $productName = $product['name'] ?? 'Sản phẩm';
+                        $category = mb_strtolower($product['category_name'] ?? '');
+                        $descImage = $product['images'][0] ?? $product['image'] ?? 'default.png';
+
+                        $isBurger = stripos($category, 'burger') !== false;
+                        $isChicken = stripos($category, 'gà') !== false
+                                || stripos($category, 'ga') !== false
+                                || stripos($category, 'chicken') !== false;
+
+                        if ($isBurger) {
+                            $descBlocks = [
+                                [
+                                    'h' => 'Tinh hoa trong từng lớp bánh',
+                                    'p' => $productName . ' không chỉ là một chiếc burger thông thường, mà là sự kết hợp hoàn hảo giữa lớp bánh mì mềm mịn, phần thịt bò đậm vị được nướng chín tới và lớp sốt đặc trưng lan tỏa hương thơm quyến rũ. Mỗi lần cắn là một lần cảm nhận rõ rệt sự hòa quyện giữa các tầng hương vị.'
+                                ],
+                                [
+                                    'h' => 'Trải nghiệm vị giác bùng nổ',
+                                    'p' => 'Lớp thịt bò juicy giữ trọn độ ngọt tự nhiên, kết hợp cùng rau tươi giòn và sốt béo nhẹ tạo nên một tổng thể cân bằng. Không quá ngấy, không quá khô – tất cả đều được tính toán để mang lại trải nghiệm ăn uống trọn vẹn nhất.'
+                                ],
+                                [
+                                    'h' => 'Dành cho mọi khoảnh khắc',
+                                    'p' => 'Dù là bữa trưa nhanh gọn, bữa tối tiện lợi hay một buổi tụ tập bạn bè, ' . $productName . ' luôn là lựa chọn hoàn hảo. Thưởng thức ngon hơn khi dùng kèm khoai tây chiên giòn và một ly nước mát lạnh.'
+                                ],
+                                [
+                                    'h' => 'Chất lượng tạo nên sự khác biệt',
+                                    'p' => 'Nguyên liệu được chọn lọc kỹ lưỡng, quy trình chế biến đảm bảo vệ sinh và giữ trọn hương vị. Đây không chỉ là một món ăn, mà là trải nghiệm fast food đúng nghĩa.'
+                                ],
+                            ];
+                        } elseif ($isChicken) {
+                            $descBlocks = [
+                                [
+                                    'h' => 'Giòn rụm ngay từ miếng đầu tiên',
+                                    'p' => $productName . ' mang đến cảm giác giòn tan đầy kích thích với lớp vỏ vàng óng được chiên chuẩn nhiệt độ. Ngay khi cắn vào, bạn sẽ nghe thấy âm thanh "rộp rộp" đặc trưng – dấu hiệu của một món gà hoàn hảo.'
+                                ],
+                                [
+                                    'h' => 'Mềm mọng bên trong',
+                                    'p' => 'Ẩn sau lớp vỏ giòn là phần thịt gà mềm, mọng nước và đậm đà gia vị. Từng thớ thịt giữ được độ ẩm tự nhiên, không bị khô, mang lại cảm giác ăn cực kỳ đã.'
+                                ],
+                                [
+                                    'h' => 'Đậm vị – dễ nghiện',
+                                    'p' => 'Gia vị được tẩm ướp kỹ càng, tạo nên hương vị đặc trưng khó quên. Càng ăn càng cuốn, càng ăn càng ghiền – đúng chuẩn món ăn "comfort food".'
+                                ],
+                                [
+                                    'h' => 'Kết hợp hoàn hảo',
+                                    'p' => 'Ngon hơn khi ăn nóng cùng tương ớt, sốt mayonnaise hoặc dùng kèm cơm, khoai tây chiên. Phù hợp cho cả ăn một mình lẫn chia sẻ cùng bạn bè.'
+                                ],
+                            ];
+                        } else {
+                            $descBlocks = [
+                                [
+                                    'h' => 'Mô tả sản phẩm',
+                                    'p' => $product['description'] ?? 'No description'
+                                ],
+                            ];
+                        }
+                    ?>
+
                     <div class="prod-tab__content prod-tab__content--current" id="tab-desc">
-                        <div class="text-content">
-                            <h2>Product Description</h2>
-                            <p><?= $product['description'] ?? 'No description' ?></p>
+                        <div class="row">
+                            <div class="col-8 col-xl-10 col-lg-12">
+                                <div class="text-content prod-tab__text-content">
+                                    <h2><?= htmlspecialchars($productName) ?></h2>
+
+                                    <p>
+                                        <?= htmlspecialchars($descBlocks[0]['p']) ?>
+                                    </p>
+
+                                    <p>
+                                        <img src="<?= $base ?>assets/img/product/<?= htmlspecialchars($descImage) ?>"
+                                            alt="<?= htmlspecialchars($productName) ?>" />
+                                        <em>Hình ảnh thực tế của <?= htmlspecialchars($productName) ?></em>
+                                    </p>
+
+                                    <?php for ($i = 0; $i < count($descBlocks); $i++): ?>
+                                        <?php if ($i > 0): ?>
+                                            <hr />
+                                        <?php endif; ?>
+
+                                        <h3><?= htmlspecialchars($descBlocks[$i]['h']) ?></h3>
+                                        <p><?= htmlspecialchars($descBlocks[$i]['p']) ?></p>
+                                    <?php endfor; ?>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -578,7 +383,7 @@ foreach($reviews as $r){
                                     </div>
                                 </div>
 
-                                
+
                                 <div class="review-card__content">
                                     <?= nl2br(htmlspecialchars($rev['comment'])) ?>
                                 </div>
