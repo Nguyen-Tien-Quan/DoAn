@@ -83,6 +83,23 @@ document.addEventListener("DOMContentLoaded", function () {
         updateCounter();
     }
 
+    // ====================== MODAL HELPER ======================
+    function openModal(id) {
+        const modal = document.querySelector(id);
+        if (!modal) return;
+
+        modal.classList.remove("hide", "show");
+        modal.classList.add("show");
+    }
+
+    function closeModal(id) {
+        const modal = document.querySelector(id);
+        if (!modal) return;
+
+        modal.classList.remove("hide", "show");
+        modal.classList.add("hide");
+    }
+
     // ====================== FORMAT MONEY ======================
     function formatVND(money) {
         return money.toLocaleString("vi-VN") + "đ";
@@ -161,11 +178,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".btn-delete").forEach((btn) => {
         btn.addEventListener("click", function () {
             deleteId = this.dataset.id;
-            const modal = document.getElementById("delete-confirm");
-            if (modal) {
-                modal.classList.remove("hide");
-                modal.classList.add("show"); // thêm class show
-            }
+
+            openModal("#delete-confirm"); // 🔥 dùng hàm chung
         });
     });
 
@@ -204,9 +218,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         `;
                         }
 
-                        const modal = document.getElementById("delete-confirm");
-                        modal.classList.remove("show");
-                        modal.classList.add("hide");
+                        closeModal("#delete-confirm");
 
                         updateCartSummary();
                         showToast("Đã xóa 🗑️", "success");
@@ -227,11 +239,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".btn-delete-fav").forEach((btn) => {
         btn.addEventListener("click", function () {
             deleteFavId = this.closest(".cart-item")?.dataset.id;
-            const modal = document.getElementById("delete-fav-confirm");
-            if (modal) {
-                modal.classList.remove("hide");
-                modal.classList.add("show"); // thêm class show
-            }
+
+            openModal("#delete-fav-confirm"); // 🔥 dùng chung
         });
     });
 
@@ -271,10 +280,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             }
                         }
 
-                        const modal =
-                            document.getElementById("delete-fav-confirm");
-                        modal.classList.remove("show");
-                        modal.classList.add("hide");
+                        closeModal("#delete-fav-confirm");
 
                         showToast("Đã xóa khỏi yêu thích 🗑️", "success");
                         deleteFavId = null;
@@ -441,6 +447,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (miniTotalEl) miniTotalEl.innerText = formatVND(data.total);
             });
     }
+
     document
         .querySelector(".top-act__btn-wrap")
         ?.addEventListener("mouseenter", loadMiniCart);
@@ -474,6 +481,15 @@ document.addEventListener("DOMContentLoaded", function () {
             const target = this.getAttribute("toggle-target");
             const el = document.querySelector(target);
             if (el) el.classList.toggle("hide");
+        });
+    });
+
+    document.querySelectorAll(".modal").forEach((modal) => {
+        modal.addEventListener("click", function (e) {
+            if (e.target === modal) {
+                modal.classList.remove("show");
+                modal.classList.add("hide");
+            }
         });
     });
 
@@ -571,57 +587,68 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
-    // 🔥 Realtime search
+    // 🔥 Realtime search (SAFE VERSION)
     const input = document.querySelector(".search-input");
     const suggestBox = document.querySelector(".search-suggest");
+    const searchBox = document.querySelector(".search-box");
 
     let debounceTimer;
 
-    input.addEventListener("input", function () {
-        const keyword = this.value.trim();
+    // ✅ CHỈ chạy khi tồn tại đủ element
+    if (input && suggestBox) {
+        input.addEventListener("input", function () {
+            const keyword = this.value.trim();
 
-        clearTimeout(debounceTimer);
+            clearTimeout(debounceTimer);
 
-        debounceTimer = setTimeout(() => {
-            if (!keyword) {
+            debounceTimer = setTimeout(() => {
+                if (!keyword) {
+                    suggestBox.style.display = "none";
+                    return;
+                }
+
+                fetch(`index.php?url=search&q=${keyword}&ajax=1`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        suggestBox.innerHTML = "";
+
+                        if (data.length === 0) {
+                            suggestBox.innerHTML = `
+                            <div class="search-suggest-item">
+                                Không tìm thấy
+                            </div>`;
+                        } else {
+                            data.forEach((item) => {
+                                suggestBox.innerHTML += `
+                                <div class="search-suggest-item"
+                                     onclick="location.href='index.php?url=product&id=${item.id}'">
+                                    ${item.name}
+                                </div>`;
+                            });
+                        }
+
+                        suggestBox.style.display = "block";
+                    })
+                    .catch(() => {
+                        suggestBox.style.display = "none";
+                    });
+            }, 300);
+        });
+
+        // 🔥 Click ngoài để đóng
+        document.addEventListener("click", function (e) {
+            if (!e.target.closest(".search-box")) {
+                if (searchBox) searchBox.classList.remove("active");
                 suggestBox.style.display = "none";
-                return;
             }
+        });
+    }
 
-            fetch(`index.php?url=search&q=${keyword}&ajax=1`)
-                .then((res) => res.json())
-                .then((data) => {
-                    suggestBox.innerHTML = "";
+    // ====================== Shipping Address (SAFE VERSION) ======================
+    const addressForm = document.getElementById("add-address-form");
 
-                    if (data.length === 0) {
-                        suggestBox.innerHTML = `<div class="search-suggest-item">Không tìm thấy</div>`;
-                    } else {
-                        data.forEach((item) => {
-                            suggestBox.innerHTML += `
-                            <div class="search-suggest-item" onclick="location.href='index.php?url=product&id=${item.id}'">
-                                ${item.name}
-                            </div>
-                        `;
-                        });
-                    }
-
-                    suggestBox.style.display = "block";
-                });
-        }, 300);
-    });
-
-    // 🔥 Click ngoài thì đóng
-    document.addEventListener("click", function (e) {
-        if (!e.target.closest(".search-box")) {
-            document.querySelector(".search-box").classList.remove("active");
-            suggestBox.style.display = "none";
-        }
-    });
-
-    // ====================== Shipping Address ======================
-    document
-        .getElementById("add-address-form")
-        .addEventListener("submit", function (e) {
+    if (addressForm) {
+        addressForm.addEventListener("submit", function (e) {
             e.preventDefault();
 
             const formData = new FormData(this);
@@ -638,15 +665,15 @@ document.addEventListener("DOMContentLoaded", function () {
                             "success",
                         );
 
-                        // Đóng modal
-                        document
-                            .querySelector("#add-new-address")
-                            .classList.add("hide");
-                        document
-                            .querySelector("#add-new-address")
-                            .classList.remove("show");
+                        // Đóng modal an toàn
+                        const modal =
+                            document.querySelector("#add-new-address");
+                        if (modal) {
+                            modal.classList.remove("show");
+                            modal.classList.add("hide");
+                        }
 
-                        // Reload trang để cập nhật danh sách địa chỉ
+                        // Reload trang
                         setTimeout(() => location.reload(), 800);
                     } else {
                         showToast(
@@ -655,8 +682,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         );
                     }
                 })
-                .catch(() => showToast("Lỗi kết nối server", "error"));
+                .catch(() => {
+                    showToast("Lỗi kết nối server", "error");
+                });
         });
+    }
 
     function showToast(message, type = "success") {
         const toast = document.createElement("div");

@@ -141,4 +141,22 @@ html {
     @include abstracts.screen(md) {
         --review-card-bg: #fff;
     }
+
+    // ===== PRODUCT OPTION (SIZE / TOPPING) =====
+    --option-border: var(--separate-color);
+    --option-bg: var(--top-act-group-bg-color);
+    --option-hover-bg: var(--form-tag-bg);
+
+    --option-active-border: #ff4d4f;
+    --option-active-bg: rgba(255, 77, 79, 0.1);
+
+    --option-disabled-opacity: 0.5;
+
+    // Quantity
+    --qty-bg: var(--top-act-group-bg-color);
+    --qty-border: var(--separate-color);
+    --qty-hover-bg: var(--form-tag-bg);
+
+    // Floating price
+    --float-bg: #ff4d4f;
 }

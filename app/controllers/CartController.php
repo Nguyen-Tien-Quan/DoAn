@@ -6,13 +6,15 @@ function addToCart()
     if (session_status() === PHP_SESSION_NONE) session_start();
 
     if (!isset($_SESSION['user'])) {
-        $_SESSION['error'] = "Bạn chưa đăng nhập, không thể thêm vào giỏ hàng!";
+        $_SESSION['error'] = "Bạn chưa đăng nhập!";
         header("Location: index.php?url=login");
         exit;
     }
 
-    $id       = $_GET['id'] ?? null;
-    $quantity = (int)($_POST['quantity'] ?? 1);
+    $id         = $_GET['id'] ?? null;
+    $quantity   = (int)($_POST['quantity'] ?? 1);
+    $variantId  = $_POST['variant_id'] ?? null;
+    $toppingIds = $_POST['toppings'] ?? [];
 
     if (!$id) {
         header("Location: index.php");
@@ -27,22 +29,72 @@ function addToCart()
 
     if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
 
-    if (isset($_SESSION['cart'][$id])) {
-        $_SESSION['cart'][$id]['quantity'] += $quantity;
+    /* ===== GIÁ ===== */
+    $basePrice    = $product['base_price'];
+    $variantPrice = 0;
+    $variantName  = null;
+
+    /* ===== SIZE ===== */
+    if ($variantId) {
+        $variant = getVariantById($variantId);
+
+        // 🔥 DEBUG nếu cần
+        // var_dump($variant); die;
+
+        if ($variant) {
+            $variantPrice = $variant['price']; // 👉 giá size riêng
+            $variantName  = $variant['name'];
+        }
+    }
+
+    /* ===== TOPPING ===== */
+    $toppingTotal = 0;
+    $toppingList  = [];
+
+    if (!empty($toppingIds)) {
+        foreach ($toppingIds as $tid) {
+            $t = getToppingById($tid);
+            if ($t) {
+                $toppingTotal += $t['price'];
+
+                $toppingList[] = [
+                    'id' => $t['id'],
+                    'name' => $t['name'],
+                    'price' => $t['price']
+                ];
+            }
+        }
+    }
+
+    /* ===== FINAL ===== */
+    $finalPrice = $basePrice + $variantPrice + $toppingTotal;
+
+    /* ===== KEY ===== */
+    $key = $id . '_' . ($variantId ?? 0) . '_' . implode('-', $toppingIds);
+
+    if (isset($_SESSION['cart'][$key])) {
+        $_SESSION['cart'][$key]['quantity'] += $quantity;
     } else {
-        $_SESSION['cart'][$id] = [
+        $_SESSION['cart'][$key] = [
             'id'       => $product['id'],
             'name'     => $product['name'],
-            'price'    => $product['base_price'],
             'image'    => $product['image'],
-            'quantity' => $quantity
+            'price'    => $finalPrice,
+            'quantity' => $quantity,
+
+            'variant' => $variantName ? [
+                'id'    => $variantId,
+                'name'  => $variantName,
+                'price' => $variantPrice // 👉 CHỈ giá size
+            ] : null,
+
+            'toppings' => $toppingList
         ];
     }
 
     header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
     exit;
 }
-
 function updateCart()
 {
     if (session_status() === PHP_SESSION_NONE) {

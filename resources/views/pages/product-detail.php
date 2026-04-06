@@ -44,6 +44,177 @@ foreach($reviews as $r){
 ?>
 <style>
 
+/* =========================
+   VARIANT (SIZE)
+========================= */
+.variant-list {
+
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.variant-item input {
+    display: none;
+}
+
+.variant-box {
+    border: 2px solid var(--separate-color);
+    background: var(--product-detail-tag-bg);
+    padding: 12px 18px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.variant-item:hover .variant-box {
+    transform: translateY(-3px);
+}
+
+.variant-item input:checked + .variant-box {
+    border-color: var(--primary-color, #ff4d4f);
+    background: rgba(255, 77, 79, 0.1);
+    box-shadow: 0 6px 18px rgba(255, 77, 79, 0.25);
+}
+
+.variant-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.variant-price {
+    font-size: 13px;
+    color: var(--filter-btn-color);
+}
+
+.variant-item.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.sold-out {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ff4d4f;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+/* =========================
+   TOPPING
+========================= */
+.topping-list {
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.topping-item input {
+    display: none;
+}
+
+.topping-box {
+    border: 1px solid var(--separate-color);
+    background: var(--product-detail-tag-bg);
+    padding: 10px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.25s;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: var(--text-color);
+}
+
+.topping-box .price {
+    font-size: 12px;
+    color: var(--filter-btn-color);
+}
+
+.topping-item:hover .topping-box {
+    transform: translateY(-2px);
+}
+
+.topping-item input:checked + .topping-box {
+    background: var(--primary-color, #1890ff);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.25);
+}
+
+/* =========================
+   QUANTITY (APP STYLE)
+========================= */
+.qty {
+    display: inline-flex;
+    align-items: center;
+    background: var(--product-detail-tag-bg);
+    border: 1px solid var(--separate-color);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 12px;
+    margin-bottom: 20px;
+}
+
+.qty-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 20px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.qty-btn:hover {
+    background: var(--form-option-hover-bg);
+}
+
+.qty-btn:active {
+    transform: scale(0.9);
+}
+
+.qty-input {
+    width: 50px;
+    height: 42px;
+    border: none;
+    text-align: center;
+    font-weight: 600;
+    background: transparent;
+    color: var(--text-color);
+    pointer-events: none;
+}
+
+/* =========================
+   FLOAT PRICE
+========================= */
+.float-price {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    background: var(--primary-color, #ff4d4f);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 20px;
+    animation: floatUp 0.5s ease;
+    z-index: 999;
+}
+
+@keyframes floatUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
 </style>
 
 <main class="product-page">
@@ -90,69 +261,97 @@ foreach($reviews as $r){
                 <div class="col-7 col-xl-6 col-lg-12">
                     <form class="form add-cart-form" action="<?= $base ?>index.php?url=add-cart&id=<?= $product['id'] ?>" method="POST">
                         <section class="prod-info">
+                            <div class="row">
+                                <!-- NAME -->
+                                <div class="col-5 col-xxl-6 col-xl-12">
+                                    <h1 class="prod-info__heading"><?= $product['name'] ?></h1>
+                                    <div class="prod-prop">
+                                        <img src="<?= $base ?>assets/icons/star.svg" class="prod-prop__icon"/>
+                                        <span class="prod-prop__title">(<?= $product['avg_rating'] ?? 0 ?>) <?= count($reviews) ?> reviews</span>
+                                    </div>
 
-                            <!-- NAME -->
-                            <h1 class="prod-info__heading"><?= $product['name'] ?></h1>
-                            <div class="prod-prop">
-                                <img src="<?= $base ?>assets/icons/star.svg" class="prod-prop__icon"/>
-                                <span class="prod-prop__title">(<?= $product['avg_rating'] ?? 0 ?>) <?= count($reviews) ?> reviews</span>
-                            </div>
+                                    <!-- VARIANTS -->
+                                    <?php if (!empty($variants)): ?>
+                                        <label class="form__label prod-info__label">Chọn size</label>
 
-                            <!-- VARIANTS -->
-                            <?php if (!empty($variants)): ?>
-                                <label class="form__label">Size / Variant</label>
-                                <div class="filter__form-group">
-                                    <div class="form__tags">
-                                        <?php foreach ($variants as $v): ?>
-                                            <button type="button" class="form__tag prod-info__tag variant-btn" data-price="<?= $v['price'] ?>" data-id="<?= $v['id'] ?>">
-                                                <?= $v['variant_name'] ?> - <?= number_format($v['price']) ?>đ
+                                        <div class="variant-list">
+                                            <?php foreach ($variants as $v): ?>
+                                                <label class="variant-item <?= $v['stock_quantity'] <= 0 ? 'disabled' : '' ?>">
+                                                    <input type="radio"
+                                                        name="variant_id"
+                                                        value="<?= $v['id'] ?>"
+                                                        data-price="<?= $v['price'] ?>"
+                                                        <?= $v['stock_quantity'] <= 0 ? 'disabled' : '' ?>>
+
+                                                    <div class="variant-box">
+                                                        <span class="variant-name"><?= $v['variant_name'] ?></span>
+                                                        <span class="variant-price"><?= number_format($v['price']) ?>đ</span>
+
+                                                        <?php if($v['stock_quantity'] <= 0): ?>
+                                                            <span class="sold-out">Hết hàng</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($toppings)): ?>
+                                        <label class="form__label prod-info__label">
+                                            Topping <span id="topping-count">(0)</span>
+                                        </label>
+
+                                        <div class="topping-list">
+                                            <?php foreach ($toppings as $t): ?>
+                                                <label class="topping-item">
+                                                    <input type="checkbox"
+                                                        name="toppings[]"
+                                                        value="<?= $t['id'] ?>"
+                                                        data-price="<?= $t['price'] ?>">
+
+                                                    <div class="topping-box">
+                                                        <span><?= $t['name'] ?></span>
+                                                        <span class="price">+<?= number_format($t['price']) ?>đ</span>
+                                                    </div>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                </div>
+
+                                <div class="col-7 col-xxl-6 col-xl-12">
+                                    <!-- PRICE -->
+                                    <div class="prod-info__card">
+                                        <div class="prod-info__row">
+                                            <span class="prod-info__price" id="prod-price"><?= number_format($product['base_price']) ?>đ</span>
+                                            <span class="prod-info__tax">- 10%</span>
+                                        </div>
+                                        <p class="prod-info__total-price" id="prod-total-price"><?= number_format($product['base_price'] * 1.1) ?>đ</p>
+                                        <div class="qty">
+                                            <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
+                                            <input type="number" class="qty-input" name="quantity" value="1" min="1">
+                                            <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                                        </div>
+                                        <!-- ADD TO CART / LIKE -->
+                                        <div class="prod-info__row">
+                                            <button type="submit" onclick="addCart()" class="btn btn--primary prod-info__add-to-cart">Add to cart</button>
+                                            <button type="button" class="like-btn prod-info__like-btn">
+                                                <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
+                                                <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
                                             </button>
-                                        <?php endforeach; ?>
+                                        </div>
                                     </div>
-                                    <input type="hidden" name="variant_id" value="<?= $variants[0]['id'] ?? '' ?>" />
-                                </div>
-                            <?php endif; ?>
 
-                            <!-- TOPPINGS -->
-                            <?php if (!empty($toppings)): ?>
-                                <label class="form__label">Toppings</label>
-                                <div class="filter__form-group">
-                                    <div class="form__tags">
-                                        <?php foreach ($toppings as $t): ?>
-                                            <label class="form__tag">
-                                                <input type="checkbox" name="toppings[]" value="<?= $t['id'] ?>" data-price="<?= $t['price'] ?>" />
-                                                <?= $t['name'] ?> (+<?= number_format($t['price']) ?>đ)
-                                            </label>
-                                        <?php endforeach; ?>
+                                </div>
+
+                                 <!-- DESCRIPTION -->
+                                    <div class="text-content">
+                                        <h2>Mô tả sản phẩm</h2>
+                                        <p><?= $product['description'] ?? 'No description' ?></p>
                                     </div>
-                                </div>
-                            <?php endif; ?>
 
-                            <!-- PRICE -->
-                            <div class="prod-info__card">
-                                <div class="prod-info__row">
-                                    <span class="prod-info__price" id="prod-price"><?= number_format($product['base_price']) ?>đ</span>
-                                    <span class="prod-info__tax">10%</span>
-                                </div>
-                                <p class="prod-info__total-price" id="prod-total-price"><?= number_format($product['base_price'] * 1.1) ?>đ</p>
-
-                                <!-- ADD TO CART / LIKE -->
-                                <div class="prod-info__row">
-                                    <button type="submit" onclick="addCart()" class="btn btn--primary prod-info__add-to-cart">Add to cart</button>
-                                    <button type="button" class="like-btn prod-info__like-btn">
-                                        <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
-                                        <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
-                                    </button>
-                                </div>
                             </div>
-
-                            <!-- DESCRIPTION -->
-
-                                <div class="text-content">
-                                    <h2>Mô tả sản phẩm</h2>
-                                    <p><?= $product['description'] ?? 'No description' ?></p>
-                                </div>
-
                         </section>
                     </form>
                 </div>
@@ -446,28 +645,104 @@ foreach($reviews as $r){
 </main>
 
 <script>
-function addCart() {
-    const isLogin = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
-    if (!isLogin) {
-        alert("Chưa đăng nhập!");
-        window.location.href = "index.php?url=login";
-        return;
+    // add to cart
+    function addCart() {
+        const isLogin = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
+        if (!isLogin) {
+            alert("Chưa đăng nhập!");
+            window.location.href = "index.php?url=login";
+            return;
+        }
+        document.querySelector(".add-cart-form").submit();
     }
-    document.querySelector(".add-cart-form").submit();
-}
 
-// Variant selection update price
-document.querySelectorAll('.variant-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelector('[name="variant_id"]').value = btn.dataset.id;
-        document.getElementById('prod-price').innerText = Number(btn.dataset.price).toLocaleString() + 'đ';
-        const totalPrice = Number(btn.dataset.price) * 1.1; // add tax 10%
-        document.getElementById('prod-total-price').innerText = totalPrice.toLocaleString() + 'đ';
+    let holdInterval;
+
+    function changeQty(n){
+        const input = document.querySelector('.qty-input');
+        let val = Number(input.value);
+        val += n;
+        if(val < 1) val = 1;
+
+        input.value = val;
+
+        // animation nhẹ
+        input.style.transform = "scale(1.2)";
+        setTimeout(() => input.style.transform = "scale(1)", 150);
+    }
+
+    // giữ nút để tăng nhanh
+    document.querySelectorAll('.qty-btn').forEach(btn => {
+        btn.addEventListener('mousedown', () => {
+            holdInterval = setInterval(() => {
+                btn.click();
+            }, 120);
+        });
+
+        document.addEventListener('mouseup', () => {
+            clearInterval(holdInterval);
+        });
     });
-});
 
+    // chọn size
+    document.querySelectorAll('input[name="variant_id"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const price = Number(this.dataset.price);
+
+            document.getElementById('prod-price').innerText =
+                price.toLocaleString() + 'đ';
+
+            updateTotal();
+        });
+    });
+
+
+
+    function updateTotal() {
+        // Nếu chọn variant, dùng giá variant, không cộng base
+        const variant = document.querySelector('input[name="variant_id"]:checked');
+        const basePrice = variant ? Number(variant.dataset.price) : <?= $product['base_price'] ?>;
+
+        let toppingTotal = 0;
+        let toppingCount = 0;
+        document.querySelectorAll('input[name="toppings[]"]:checked').forEach(cb => {
+            toppingTotal += Number(cb.dataset.price);
+            toppingCount++;
+        });
+
+        document.getElementById('topping-count').innerText = "(" + toppingCount + ")";
+
+        const qty = Number(document.querySelector('.qty-input').value) || 1;
+
+        const finalPrice = (basePrice + toppingTotal) * qty;
+
+        // Hiển thị giá
+        document.getElementById('prod-price').innerText = basePrice.toLocaleString() + 'đ';
+        document.getElementById('prod-total-price').innerText = finalPrice.toLocaleString() + 'đ';
+    }
+
+    // change variant
+    document.querySelectorAll('input[name="variant_id"]').forEach(radio => {
+        radio.addEventListener('change', updateTotal);
+    });
+
+    // change topping
+    document.querySelectorAll('input[name="toppings[]"]').forEach(cb => {
+        cb.addEventListener('change', updateTotal);
+    });
+
+// hiệu ứng tiền bay
+    function showFloat(text){
+        const el = document.createElement("div");
+        el.className = "float-price";
+        el.innerText = text;
+
+        document.body.appendChild(el);
+
+        setTimeout(() => el.remove(), 600);
+    }
+
+    // tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
 
@@ -486,7 +761,8 @@ document.querySelectorAll('.variant-btn').forEach(btn => {
         });
     });
 
-   function likeReview(id, el){
+    // like review
+    function likeReview(id, el){
         fetch("index.php?url=like-review&id=" + id)
         .then(res => res.text())
         .then(data => {

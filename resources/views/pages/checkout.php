@@ -1,4 +1,5 @@
 <?php
+
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 $base = '/DoAn/DoAnTotNghiep/public/';
@@ -6,7 +7,10 @@ $base = '/DoAn/DoAnTotNghiep/public/';
 $cart = $_SESSION['cart'] ?? [];
 
 $subtotal = 0;
-$itemCount = count($cart);
+$itemCount = 0;
+foreach ($cart as $item) {
+    $itemCount += $item['quantity'];
+}
 
 foreach ($cart as $item) {
     $subtotal += $item['price'] * $item['quantity'];
@@ -50,8 +54,8 @@ $total = $subtotal + $shipping;
                         <div class="cart-info__list">
 
                             <?php if (!empty($cart)): ?>
-                                <?php foreach ($cart as $item): ?>
-                                    <article class="cart-item" id="item-<?= $item['id'] ?>">
+                                <?php foreach ($cart as $key => $item): ?>
+                                    <article class="cart-item" id="item-<?= $key ?>">
                                         <a href="<?= $base ?>index.php?url=product&id=<?= $item['id'] ?>">
                                             <img src="<?= $base ?>assets/img/product/<?= $item['image'] ?>"
                                                 class="cart-item__thumb" />
@@ -65,6 +69,19 @@ $total = $subtotal + $shipping;
                                                     </a>
                                                 </h3>
 
+                                                <!-- ✅ VARIANT -->
+                                                <?php if (!empty($item['variant']) && !empty($item['variant']['name'])): ?>
+                                                    <p>Size: <?= $item['variant']['name'] ?></p>
+                                                <?php endif; ?>
+
+                                                <!-- ✅ TOPPING -->
+                                                <?php if (!empty($item['toppings'])): ?>
+                                                    <p>
+                                                        Topping:
+                                                        <?= implode(', ', array_column($item['toppings'], 'name')) ?>
+                                                    </p>
+                                                <?php endif; ?>
+
                                                 <p class="cart-item__price-wrap">
                                                     <?= vnd($item['price']) ?> |
                                                     <span class="cart-item__status">In Stock</span>
@@ -73,13 +90,13 @@ $total = $subtotal + $shipping;
                                                 <div class="cart-item__ctrl cart-item__ctrl--md-block">
                                                     <div class="cart-item__input">
 
-                                                        <button type="button" class="cart-item__input-btn minus" data-id="<?= $item['id'] ?>">
+                                                        <button type="button" class="cart-item__input-btn minus" data-id="<?= $key ?>">
                                                             <img class="icon" src="<?= $base ?>assets/icons/minus.svg" />
                                                         </button>
 
-                                                        <span id="qty-<?= $item['id'] ?>"><?= $item['quantity'] ?></span>
+                                                        <span id="qty-<?= $key ?>"><?= $item['quantity'] ?></span>
 
-                                                        <button type="button" class="cart-item__input-btn plus" data-id="<?= $item['id'] ?>">
+                                                        <button type="button" class="cart-item__input-btn plus" data-id="<?= $key ?>">
                                                             <img class="icon" src="<?= $base ?>assets/icons/plus.svg" />
                                                         </button>
 
@@ -88,21 +105,20 @@ $total = $subtotal + $shipping;
                                             </div>
 
                                             <div class="cart-item__content-right">
-                                                <p class="cart-item__total-price" id="total-<?= $item['id'] ?>">
+                                                <p class="cart-item__total-price" id="total-<?= $key ?>">
                                                     <?= vnd($item['price'] * $item['quantity']) ?>
                                                 </p>
 
                                                 <div class="cart-item__ctrl">
-                                                    <button class="cart-item__ctrl-btn btn-save" data-id="<?= $item['id'] ?>">
+                                                    <button class="cart-item__ctrl-btn btn-save" data-id="<?= $key ?>">
                                                         <img src="<?= $base ?>assets/icons/heart-2.svg" />
                                                         Save
                                                     </button>
 
-                                                    <!-- ✅ FIX Ở ĐÂY -->
                                                     <button
                                                         type="button"
                                                         class="cart-item__ctrl-btn btn-delete js-toggle"
-                                                        data-id="<?= $item['id'] ?>"
+                                                        data-id="<?= $key ?>"
                                                         toggle-target="#delete-confirm"
                                                     >
                                                         <img src="<?= $base ?>assets/icons/trash.svg" />
@@ -163,7 +179,7 @@ $total = $subtotal + $shipping;
     <!-- MODAL -->
     <div id="delete-confirm" class="modal modal--small hide">
         <div class="modal__content">
-            <p class="modal__text">Do you want to remove this item from shopping cart?</p>
+            <p class="modal__text">Bạn có muốn xóa sản phẩm này khỏi giỏ hàng không?</p>
             <div class="modal__bottom">
                 <button class="btn btn--small btn--outline modal__btn js-toggle" toggle-target="#delete-confirm">
                     Cancel

@@ -51,7 +51,15 @@ function getProductById($id) {
         WHERE p.id = ?
     ");
     $stmt->execute([$id]);
-    return $stmt->fetch(PDO::FETCH_ASSOC);
+    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$product) return null;
+
+    // 🔥 THÊM DÒNG NÀY
+    $product['variants'] = getVariantsByProductId($id);
+    $product['toppings'] = getToppingsByProductId($id);
+
+    return $product;
 }
 
 function getReviewsByProductId($productId) {
@@ -80,6 +88,63 @@ function getAverageRating($productId) {
         WHERE product_id = ? AND status = 1
     ");
     $stmt->execute([$productId]);
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function getVariantsByProductId($productId) {
+    $conn = getDB();
+
+    $stmt = $conn->prepare("
+        SELECT * FROM product_variants
+        WHERE product_id = ? AND status = 1
+    ");
+    $stmt->execute([$productId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getToppingsByProductId($productId) {
+    $conn = getDB();
+
+    $stmt = $conn->prepare("
+        SELECT t.*
+        FROM toppings t
+        JOIN product_toppings pt ON t.id = pt.topping_id
+        WHERE pt.product_id = ? AND t.status = 1
+    ");
+    $stmt->execute([$productId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getVariantById($id) {
+    $conn = getDB();
+
+    $stmt = $conn->prepare("
+        SELECT id, variant_name, price
+        FROM product_variants
+        WHERE id = ?
+    ");
+    $stmt->execute([$id]);
+
+    $variant = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($variant) {
+        // 👉 map lại cho code cũ dùng
+        $variant['name'] = $variant['variant_name'];
+    }
+
+    return $variant;
+}
+function getToppingById($id) {
+    $conn = getDB();
+
+    $stmt = $conn->prepare("
+        SELECT * FROM toppings
+        WHERE id = ? AND status = 1
+    ");
+    $stmt->execute([$id]);
 
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
@@ -173,4 +238,10 @@ function addReview() {
 
     header("Location: index.php?url=product&id=" . $product_id);
     exit;
+}
+
+function getCategories() {
+    $conn = getDB();
+    $stmt = $conn->query("SELECT * FROM categories ORDER BY id ASC");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }

@@ -1562,6 +1562,18 @@ html {
     --review-card-bg: #fff;
   }
 }
+html {
+  --option-border: var(--separate-color);
+  --option-bg: var(--top-act-group-bg-color);
+  --option-hover-bg: var(--form-tag-bg);
+  --option-active-border: #ff4d4f;
+  --option-active-bg: rgba(255, 77, 79, 0.1);
+  --option-disabled-opacity: 0.5;
+  --qty-bg: var(--top-act-group-bg-color);
+  --qty-border: var(--separate-color);
+  --qty-hover-bg: var(--form-tag-bg);
+  --float-bg: #ff4d4f;
+}
 
 .top-act__btn, .top-act__group, .top-act, .navbar__link, .navbar__list, .top-bar {
   display: flex;
@@ -4036,20 +4048,18 @@ html {
   gap: 8px;
   margin-top: 30px;
 }
-
 .pagination a {
-  padding: 8px 14px;
-  border-radius: 6px;
-  background: #f1f1f1;
-  text-decoration: none;
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
   color: #333;
+  text-decoration: none;
+  border-radius: 4px;
 }
-
 .pagination a.active {
   background: #ff5722;
   color: #fff;
 }
-
 .pagination a:hover {
   background: #ddd;
 }
@@ -4340,7 +4350,7 @@ html {
   line-height: 138.462%;
 }
 .prod-info__label {
-  margin-top: 30px;
+  margin-top: 16px;
 }
 .prod-info__tag {
   background: var(--product-detail-tag-bg);

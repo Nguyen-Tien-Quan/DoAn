@@ -7,6 +7,7 @@ require_once __DIR__ . '/../app/controllers/AuthController.php';
 require_once __DIR__ . '/../app/controllers/CartController.php';
 require_once __DIR__ . '/../app/controllers/FavoritesController.php';
 require_once __DIR__ . '/../app/controllers/OrderController.php';
+ require_once __DIR__ . '/../app/controllers/PaymentController.php';
 
 // Lấy danh sách sản phẩm (dùng cho home)
 $products = getProducts();
@@ -88,8 +89,97 @@ switch ($url) {
         break;
 
     case 'payment':
-        $view = view('payment');
-        break;
+
+    // Nếu có action (AJAX)
+    if (isset($_GET['action'])) {
+        $action = $_GET['action'];
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            switch ($action) {
+
+                // Lấy danh sách tất cả payments
+                case 'list':
+                    $payments = getPayments($conn);
+                    echo json_encode($payments);
+                    break;
+
+                // Lấy payment theo order_id
+                case 'detail':
+                    $order_id = $_GET['order_id'] ?? 0;
+                    $payment = getPaymentByOrder($conn, $order_id);
+                    echo json_encode($payment);
+                    break;
+
+                // Tạo payment mới
+                case 'create':
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    $id = createPayment(
+                        $conn,
+                        $data['order_id'],
+                        $data['method'],
+                        $data['amount'],
+                        $data['transaction_code'] ?? null
+                    );
+                    echo json_encode(['payment_id' => $id]);
+                    break;
+
+                // Cập nhật trạng thái payment
+                case 'update':
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    $count = updatePaymentStatus(
+                        $conn,
+                        $data['payment_id'],
+                        $data['status'],
+                        $data['paid_at'] ?? null
+                    );
+                    echo json_encode(['updated_rows' => $count]);
+                    break;
+
+                // Xóa payment
+                case 'delete':
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    $count = deletePayment($conn, $data['payment_id']);
+                    echo json_encode(['deleted_rows' => $count]);
+                    break;
+
+                // Hoàn tất payment (mark paid + transaction code)
+                case 'complete':
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    $count = completePayment(
+                        $conn,
+                        $data['payment_id'],
+                        $data['transaction_code'] ?? null
+                    );
+                    echo json_encode(['completed_rows' => $count]);
+                    break;
+
+                // Cập nhật tất cả field payment (nếu cần)
+                case 'full-update':
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    $payment_id = $data['payment_id'];
+                    unset($data['payment_id']); // loại bỏ id
+                    $count = updatePayment($conn, $payment_id, $data);
+                    echo json_encode(['updated_rows' => $count]);
+                    break;
+
+                default:
+                    echo json_encode(['message' => 'Invalid action']);
+                    break;
+            }
+        } catch (\Throwable $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi server: ' . $e->getMessage()
+            ]);
+        }
+        exit; // quan trọng: dừng load layout HTML
+    }
+
+    // Nếu không có action, load view payment bình thường
+    $view = view('payment');
+    break;
 
     case 'place-order':
         require_once __DIR__ . '/../app/controllers/OrderController.php';
@@ -204,6 +294,7 @@ switch ($url) {
         $page = $data['page'];
         $totalPages = $data['totalPages'];
         $favIds = getFavoriteIds();
+        $categories = getCategories();
 
         $view = view('home'); // chỉ include view, không include controller nữa
         break;
