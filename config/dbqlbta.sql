@@ -2,6 +2,7 @@
 USE QlBANTHUCAN;
 
 SET FOREIGN_KEY_CHECKS=0;
+SET time_zone = '+07:00';
 
 -- =========================================
 -- 1. ROLES
@@ -79,6 +80,26 @@ CREATE TABLE products (
     updated_at TIMESTAMP NULL,
     FOREIGN KEY (category_id) REFERENCES categories(id)
 );
+
+
+-- 1. Thêm cột stock_quantity vào bảng products (nếu chưa có)
+ALTER TABLE products ADD COLUMN stock_quantity INT DEFAULT 0 AFTER image;
+
+USE QlBANTHUCAN;
+SET SQL_SAFE_UPDATES = 0;
+UPDATE products SET stock_quantity = 999;
+
+-- 3. Tạo bảng order_statuses (lịch sử trạng thái đơn hàng)
+CREATE TABLE IF NOT EXISTS order_statuses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL COMMENT 'Mã đơn hàng',
+    status ENUM('pending','confirmed','preparing','delivering','completed','cancelled') NOT NULL COMMENT 'Trạng thái',
+    note TEXT COMMENT 'Ghi chú',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian thay đổi',
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET SQL_SAFE_UPDATES = 1;
 
 -- =========================================
 -- 6. PRODUCT_VARIANTS (FIX)
@@ -418,6 +439,12 @@ INSERT INTO categories (id, name, slug, description, status) VALUES
 (2, 'Gà rán', 'ga-ran', 'Gà rán giòn', 1),
 (3, 'Đồ uống', 'do-uong', 'Nước giải khát', 1),
 (4, 'Combo', 'combo', 'Combo tiết kiệm', 1);
+
+USE QlBANTHUCAN;
+UPDATE categories SET image = 'burger.png' WHERE id = 1;
+UPDATE categories SET image = 'ga-ran.png' WHERE id = 2;
+UPDATE categories SET image = 'drink.png' WHERE id = 3;
+UPDATE categories SET image = 'combo.png' WHERE id = 4;
 
 -- =============================
 -- PRODUCTS

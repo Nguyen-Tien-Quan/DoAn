@@ -213,8 +213,7 @@ function getCategories() {
 }
 
 /**
- * Lấy sản phẩm có lọc, phân trang – SỬA LỖI MIXED PARAMETERS
- * Chỉ dùng named parameters (:`ten`)
+ * Lấy sản phẩm có lọc, phân trang (đã hỗ trợ lọc category)
  */
 function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
     $conn = getDB();
@@ -228,7 +227,6 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
             WHERE p.status = 1";
     $params = [];
 
-    // Xây dựng điều kiện với named parameters
     if (!empty($filters['min_price'])) {
         $sql .= " AND p.base_price >= :min_price";
         $params[':min_price'] = (float)$filters['min_price'];
@@ -240,6 +238,10 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
     if (!empty($filters['size'])) {
         $sql .= " AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.variant_name = :size)";
         $params[':size'] = $filters['size'];
+    }
+    if (!empty($filters['category'])) {
+        $sql .= " AND p.category_id = :category";
+        $params[':category'] = (int)$filters['category'];
     }
     if (!empty($filters['keyword'])) {
         $sql .= " AND p.name LIKE :keyword";
@@ -264,11 +266,9 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
     $sql .= " LIMIT :limit OFFSET :offset";
 
     $stmt = $conn->prepare($sql);
-    // Bind các tham số lọc (named)
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
     }
-    // Bind limit, offset (kiểu INT)
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
@@ -276,8 +276,7 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
 }
 
 /**
- * Đếm tổng sản phẩm thỏa mãn bộ lọc – dùng positional (?) hoặc named, ở đây giữ nguyên positional
- * (Không bị lỗi vì không trộn với named)
+ * Đếm tổng sản phẩm thỏa mãn bộ lọc (đã hỗ trợ category)
  */
 function countFilteredProducts($filters = []) {
     $conn = getDB();
@@ -298,6 +297,10 @@ function countFilteredProducts($filters = []) {
         $sql .= " AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.variant_name = ?)";
         $params[] = $filters['size'];
     }
+    if (!empty($filters['category'])) {
+        $sql .= " AND p.category_id = ?";
+        $params[] = (int)$filters['category'];
+    }
     if (!empty($filters['keyword'])) {
         $sql .= " AND p.name LIKE ?";
         $params[] = '%' . $filters['keyword'] . '%';
@@ -314,3 +317,4 @@ function getAllVariants() {
     $stmt = $conn->query("SELECT DISTINCT variant_name FROM product_variants ORDER BY variant_name");
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
+?>

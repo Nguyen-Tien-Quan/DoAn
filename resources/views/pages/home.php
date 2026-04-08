@@ -3,7 +3,7 @@ $products = $products ?? [];
 $page = $page ?? 1;
 $totalPages = $totalPages ?? 1;
 $favIds = $favIds ?? [];
-$categories = $categories ?? []; // danh mục từ DB
+$categories = $categories ?? [];
 $variants = $variants ?? [];
 ?>
 
@@ -40,7 +40,7 @@ $variants = $variants ?? [];
         </div>
     </div>
 
-    <!-- ========== PHẦN HIỂN THỊ MÃ GIẢM GIÁ (VOUCHER) ========== -->
+    <!-- VOUCHER SECTION -->
     <div class="home__container voucher-home-section">
         <div class="voucher-header">
             <h2 class="home__heading">🎉 Mã giảm giá đang có</h2>
@@ -51,12 +51,12 @@ $variants = $variants ?? [];
         </div>
     </div>
 
-    <!-- Browse Categories -->
+    <!-- Browse Categories (đã sửa link thành javascript) -->
     <section class="home__container">
         <div class="home__cate row row-cols-4 row-cols-md-1 cate-slider">
             <?php foreach ($categories as $cat): ?>
                 <div class="col">
-                    <a href="index.php?url=home&category=<?= $cat['id'] ?>">
+                    <a href="javascript:void(0)" class="category-link" data-cat-id="<?= $cat['id'] ?>">
                         <article class="cate-item">
                             <img src="<?= $base ?>assets/img/category-item/<?= $cat['image'] ?>" class="cate-item__thumb" />
                             <div class="cate-item__info">
@@ -84,30 +84,25 @@ $variants = $variants ?? [];
                     <img src="./assets/icons/arrow-up.png" alt="" class="filter__arrow" />
                     <h3 class="filter__heading">
                         Filter
-                        <img
-                            src="./assets/icons/close.svg"
-                            alt=""
-                            class="d-none d-sm-block filter__btn-icon icon js-toggle"
-                            toggle-target="#home-filter"
-                        />
+                        <img src="./assets/icons/close.svg" alt="" class="d-none d-sm-block filter__btn-icon icon js-toggle" toggle-target="#home-filter" />
                     </h3>
                     <form action="" class="filter__form form" id="filter-form">
                         <div class="filter__row filter__content">
-                            <!-- Cột 1: Price -->
+                            <!-- Price -->
                             <div class="filter__col">
-                                <label for="" class="form__label">Price</label>
+                                <label class="form__label">Price</label>
                                 <div class="filter__form-group">
                                     <div class="filter__form-slider" style="--min-value: 0%; --max-value: 70%"></div>
                                 </div>
                                 <div class="filter__form-group filter__form-group--inline">
                                     <div>
-                                        <label for="" class="form__label form__label--small"> Minimum </label>
+                                        <label class="form__label form__label--small">Minimum</label>
                                         <div class="filter__form-text-input filter__form-text-input--small">
                                             <input type="text" id="min_price" class="filter__form-input" value="0" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label for="" class="form__label form__label--small"> Maximum </label>
+                                        <label class="form__label form__label--small">Maximum</label>
                                         <div class="filter__form-text-input filter__form-text-input--small">
                                             <input type="text" id="max_price" class="filter__form-input" value="200000" />
                                         </div>
@@ -117,9 +112,9 @@ $variants = $variants ?? [];
 
                             <div class="filter__separate"></div>
 
-                            <!-- Cột 2: Size -->
+                            <!-- Size -->
                             <div class="filter__col">
-                                <label for="" class="form__label">Size</label>
+                                <label class="form__label">Size</label>
                                 <div class="filter__form-group">
                                     <div class="form__tags">
                                         <button type="button" class="form__tag size-option" data-size="S">Small</button>
@@ -133,9 +128,9 @@ $variants = $variants ?? [];
 
                             <div class="filter__separate"></div>
 
-                            <!-- Cột 3: Danh mục -->
+                            <!-- Category -->
                             <div class="filter__col">
-                                <label for="" class="form__label">Danh mục</label>
+                                <label class="form__label">Danh mục</label>
                                 <div class="filter__form-group">
                                     <div class="form__tags">
                                         <?php foreach ($categories as $cat): ?>
@@ -145,13 +140,14 @@ $variants = $variants ?? [];
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
+                                <input type="hidden" id="category-input" name="category" value="">
                             </div>
 
                             <div class="filter__separate"></div>
 
-                            <!-- Cột 4: Sắp xếp (mới thêm) -->
+                            <!-- Sort -->
                             <div class="filter__col">
-                                <label for="" class="form__label">Sắp xếp</label>
+                                <label class="form__label">Sắp xếp</label>
                                 <div class="filter__form-group">
                                     <select id="sort-select" class="form__select" name="sort">
                                         <option value="">Mặc định</option>
@@ -165,9 +161,7 @@ $variants = $variants ?? [];
                         </div>
 
                         <div class="filter__row filter__footer">
-                            <button type="button" class="btn btn--text filter__cancel js-toggle" toggle-target="#home-filter">
-                                Cancel
-                            </button>
+                            <button type="button" class="btn btn--text filter__cancel js-toggle" toggle-target="#home-filter">Cancel</button>
                             <button type="submit" class="btn btn--primary filter__submit">Show Result</button>
                         </div>
                     </form>
@@ -190,9 +184,7 @@ $variants = $variants ?? [];
                             </button>
                         </div>
                         <h3 class="product-card__title">
-                            <a href="index.php?url=product&id=<?= $product['id'] ?>">
-                                <?= htmlspecialchars($product['name']) ?>
-                            </a>
+                            <a href="index.php?url=product&id=<?= $product['id'] ?>"><?= htmlspecialchars($product['name']) ?></a>
                         </h3>
                         <p class="product-card__brand"><?= htmlspecialchars($product['brand'] ?? 'Brand') ?></p>
                         <div class="product-card__row">
@@ -213,7 +205,6 @@ $variants = $variants ?? [];
                 <a href="index.php?url=home&page=1">«</a>
                 <a href="index.php?url=home&page=<?= $page - 1 ?>">‹</a>
             <?php endif; ?>
-
             <?php
             $start = max(1, $page - 2);
             $end = min($totalPages, $page + 2);
@@ -231,7 +222,7 @@ $variants = $variants ?? [];
 </main>
 
 <style>
-    /* ===== VOUCHER SECTION STYLES ===== */
+    /* Voucher styles (giữ nguyên) */
     .voucher-home-section {
         margin: 30px 0;
         background: linear-gradient(135deg, #fff9e6 0%, #fff0d4 100%);
@@ -239,90 +230,43 @@ $variants = $variants ?? [];
         padding: 20px 24px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
-    .voucher-header {
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .voucher-header .home__heading {
-        font-size: 1.8rem;
-        margin-bottom: 6px;
-        color: #d32f2f;
-    }
-    .voucher-sub {
-        font-size: 0.9rem;
-        color: #666;
-    }
-    .voucher-list {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 16px;
-    }
+    .voucher-header { text-align: center; margin-bottom: 20px; }
+    .voucher-header .home__heading { font-size: 1.8rem; margin-bottom: 6px; color: #d32f2f; }
+    .voucher-sub { font-size: 0.9rem; color: #666; }
+    .voucher-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
     .voucher-card {
-        background: white;
-        border-radius: 60px;
-        padding: 8px 20px 8px 24px;
-        display: inline-flex;
-        align-items: center;
-        gap: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        border: 1px solid #ffcd94;
+        background: white; border-radius: 60px; padding: 8px 20px 8px 24px;
+        display: inline-flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; border: 1px solid #ffcd94;
     }
-    .voucher-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-        background: #fff5e8;
-    }
-    .voucher-code {
-        font-weight: bold;
-        font-size: 1.2rem;
-        background: #ff6b6b;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 40px;
-        letter-spacing: 1px;
-    }
-    .voucher-info {
-        font-size: 0.9rem;
-        color: #333;
-    }
-    .voucher-info strong {
-        color: #d32f2f;
-    }
+    .voucher-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); background: #fff5e8; }
+    .voucher-code { font-weight: bold; font-size: 1.2rem; background: #ff6b6b; color: white; padding: 6px 12px; border-radius: 40px; letter-spacing: 1px; }
+    .voucher-info { font-size: 0.9rem; color: #333; }
+    .voucher-info strong { color: #d32f2f; }
     .copy-toast {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #333;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 40px;
-        font-size: 0.85rem;
-        z-index: 1000;
-        animation: fadeOut 2s forwards;
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background: #333; color: white; padding: 8px 16px; border-radius: 40px;
+        font-size: 0.85rem; z-index: 1000; animation: fadeOut 2s forwards;
     }
     @keyframes fadeOut {
         0% { opacity: 1; }
         70% { opacity: 1; }
         100% { opacity: 0; visibility: hidden; }
     }
-    .loading-spinner {
-        text-align: center;
-        color: #ff6b6b;
-        font-style: italic;
-        padding: 10px;
+    .loading-spinner { text-align: center; color: #ff6b6b; font-style: italic; padding: 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ajax-overlay {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255,255,255,0.8); z-index: 100;
+        display: flex; align-items: center; justify-content: center; border-radius: 12px;
     }
 </style>
 
 <script>
-    // ========== LOAD VOUCHERS FOR HOME PAGE ==========
+    // ========== VOUCHER ==========
     function loadHomeVouchers() {
         const container = document.getElementById('voucher-list-container');
         if (!container) return;
-
         fetch('index.php?url=getActiveCoupons')
             .then(res => res.json())
             .then(data => {
@@ -341,16 +285,13 @@ $variants = $variants ?? [];
                         html += `
                             <div class="voucher-card" data-code="${coupon.code}">
                                 <span class="voucher-code">${coupon.code}</span>
-                                <div class="voucher-info">
-                                    <strong>${discountText}</strong>
-                                </div>
+                                <div class="voucher-info"><strong>${discountText}</strong></div>
                             </div>
                         `;
                     });
                     container.innerHTML = html;
-                    // Gắn sự kiện click để copy mã
                     document.querySelectorAll('.voucher-card').forEach(card => {
-                        card.addEventListener('click', function(e) {
+                        card.addEventListener('click', function() {
                             const code = this.getAttribute('data-code');
                             copyToClipboard(code);
                             showToast(`Đã sao chép mã: ${code}`);
@@ -360,12 +301,10 @@ $variants = $variants ?? [];
                     container.innerHTML = '<div class="loading-spinner">✨ Hiện chưa có mã khuyến mãi, hãy quay lại sau!</div>';
                 }
             })
-            .catch(err => {
-                console.error(err);
+            .catch(() => {
                 container.innerHTML = '<div class="loading-spinner">Không thể tải mã khuyến mãi, vui lòng thử lại sau.</div>';
             });
     }
-
     function copyToClipboard(text) {
         const textarea = document.createElement('textarea');
         textarea.value = text;
@@ -374,7 +313,6 @@ $variants = $variants ?? [];
         document.execCommand('copy');
         document.body.removeChild(textarea);
     }
-
     function showToast(message) {
         let toast = document.querySelector('.copy-toast');
         if (toast) toast.remove();
@@ -385,15 +323,13 @@ $variants = $variants ?? [];
         setTimeout(() => toast.remove(), 2000);
     }
 
-    // ========== ACTIVE MENU ==========
-    window.addEventListener("template-loaded", handleActiveMenu);
-
-    // ========== HELPER: GET CURRENT FILTER PARAMS ==========
+    // ========== FILTER & CATEGORY ==========
     function getCurrentFilterParams() {
         return {
             min_price: document.getElementById('min_price')?.value.trim() || '',
             max_price: document.getElementById('max_price')?.value.trim() || '',
             size: document.getElementById('size-input')?.value || '',
+            category: document.getElementById('category-input')?.value || '',
             sort: document.getElementById('sort-select')?.value || '',
             keyword: document.querySelector('input[name="keyword"]')?.value.trim() || ''
         };
@@ -407,7 +343,7 @@ $variants = $variants ?? [];
         return new URLSearchParams(params).toString();
     }
 
-    // ========== LIKE BUTTONS ==========
+    // Like buttons
     function attachLikeButtons() {
         document.querySelectorAll('.like-btn').forEach(btn => {
             const newBtn = btn.cloneNode(true);
@@ -426,7 +362,7 @@ $variants = $variants ?? [];
         });
     }
 
-    // ========== AJAX LOAD PRODUCTS & PAGINATION ==========
+    // AJAX load products
     let currentRequest = null;
     function loadProducts(url, updateHistory = true) {
         const productList = document.getElementById("product-list");
@@ -435,7 +371,6 @@ $variants = $variants ?? [];
 
         let overlay = document.createElement("div");
         overlay.className = "ajax-overlay";
-        overlay.style.cssText = "position:absolute; background:rgba(255,255,255,0.8); inset:0; z-index:10; display:flex; align-items:center; justify-content:center;";
         overlay.innerHTML = '<div style="width:40px;height:40px;border:4px solid #ccc; border-top-color:#333; border-radius:50%; animation:spin 0.6s linear infinite;"></div>';
         const container = productList.parentElement;
         container.style.position = "relative";
@@ -452,13 +387,10 @@ $variants = $variants ?? [];
                 const doc = parser.parseFromString(html, "text/html");
                 const newList = doc.getElementById("product-list");
                 const newPagination = doc.getElementById("pagination");
-
                 if (newList) productList.innerHTML = newList.innerHTML;
                 if (newPagination && paginationDiv) paginationDiv.innerHTML = newPagination.innerHTML;
-
                 productList.style.opacity = "1";
                 attachLikeButtons();
-
                 if (updateHistory) {
                     const newUrl = url.replace(/&?ajax=1/, '');
                     window.history.pushState({}, '', newUrl);
@@ -509,11 +441,12 @@ $variants = $variants ?? [];
         const cancelBtn = document.getElementById('filter-cancel-btn');
         const keywordInput = document.querySelector('input[name="keyword"]');
         const sortSelect = document.getElementById('sort-select');
+        const categoryInput = document.getElementById('category-input');
+        const categoryOptions = document.querySelectorAll('.category-option');
 
         function removePriceActiveClass() {
             pricePresetBtns.forEach(btn => btn.classList.remove('active'));
         }
-
         function syncPriceActiveFromInputs() {
             let minVal = minPriceInput.value === '' ? null : parseInt(minPriceInput.value, 10);
             let maxVal = maxPriceInput.value === '' ? null : parseInt(maxPriceInput.value, 10);
@@ -536,7 +469,6 @@ $variants = $variants ?? [];
             });
             if (!matched) removePriceActiveClass();
         }
-
         function syncSizeActiveFromInput() {
             const currentSize = sizeHidden.value;
             sizeOptions.forEach(btn => {
@@ -545,7 +477,18 @@ $variants = $variants ?? [];
                 else btn.classList.remove('active');
             });
         }
+        function syncCategoryActiveFromInput() {
+            const currentCat = categoryInput.value;
+            categoryOptions.forEach(btn => {
+                if (currentCat && btn.getAttribute('data-id') === currentCat) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
 
+        // Price presets
         pricePresetBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -556,7 +499,7 @@ $variants = $variants ?? [];
                 form.dispatchEvent(new Event('submit'));
             });
         });
-
+        // Size options
         sizeOptions.forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -573,7 +516,35 @@ $variants = $variants ?? [];
                 form.dispatchEvent(new Event('submit'));
             });
         });
+        // Category options (trong filter)
+        categoryOptions.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const catId = this.getAttribute('data-id');
+                if (categoryInput.value === catId) {
+                    categoryInput.value = '';
+                    this.classList.remove('active');
+                } else {
+                    categoryOptions.forEach(opt => opt.classList.remove('active'));
+                    categoryInput.value = catId;
+                    this.classList.add('active');
+                }
+                form.dispatchEvent(new Event('submit'));
+            });
+        });
+        // Category links from browse categories
+        document.querySelectorAll('.category-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const catId = this.getAttribute('data-cat-id');
+                categoryInput.value = catId;
+                syncCategoryActiveFromInput();
+                form.dispatchEvent(new Event('submit'));
+                document.querySelector('.home__container').scrollIntoView({ behavior: 'smooth' });
+            });
+        });
 
+        // Price input debounce
         let priceTimeout;
         [minPriceInput, maxPriceInput].forEach(inp => {
             inp.addEventListener('input', () => {
@@ -584,7 +555,7 @@ $variants = $variants ?? [];
                 }, 500);
             });
         });
-
+        // Keyword debounce
         let keywordTimeout;
         if (keywordInput) {
             keywordInput.addEventListener('input', () => {
@@ -594,31 +565,32 @@ $variants = $variants ?? [];
                 }, 400);
             });
         }
-
+        // Sort change
         if (sortSelect) {
             sortSelect.addEventListener('change', () => form.dispatchEvent(new Event('submit')));
         }
-
+        // Reset filters
         function resetFiltersAndSubmit() {
             minPriceInput.value = '';
             maxPriceInput.value = '';
             sizeHidden.value = '';
+            categoryInput.value = '';
             if (sortSelect) sortSelect.value = '';
             if (keywordInput) keywordInput.value = '';
             removePriceActiveClass();
             sizeOptions.forEach(btn => btn.classList.remove('active'));
+            categoryOptions.forEach(btn => btn.classList.remove('active'));
             syncPriceActiveFromInputs();
             syncSizeActiveFromInput();
             form.dispatchEvent(new Event('submit'));
         }
-
         if (cancelBtn) {
             cancelBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 resetFiltersAndSubmit();
             });
         }
-
+        // Submit filter
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             let minVal = minPriceInput.value.trim() === '' ? null : parseInt(minPriceInput.value, 10);
@@ -636,6 +608,13 @@ $variants = $variants ?? [];
             }
         });
 
+        // Khởi tạo active từ URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCat = urlParams.get('category');
+        if (urlCat && categoryInput) {
+            categoryInput.value = urlCat;
+            syncCategoryActiveFromInput();
+        }
         syncSizeActiveFromInput();
         syncPriceActiveFromInputs();
     })();
@@ -643,29 +622,10 @@ $variants = $variants ?? [];
     function init() {
         attachLikeButtons();
         bindPaginationEvents();
-        loadHomeVouchers(); // <-- Tải danh sách voucher
+        loadHomeVouchers();
         const observer = new MutationObserver(() => bindPaginationEvents());
         const paginationDiv = document.getElementById('pagination');
         if (paginationDiv) observer.observe(paginationDiv, { childList: true, subtree: true });
     }
-
     document.addEventListener("DOMContentLoaded", init);
 </script>
-<style>
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    .ajax-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255,255,255,0.8);
-        z-index: 100;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-    }
-</style>

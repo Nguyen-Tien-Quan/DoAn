@@ -24,9 +24,6 @@ $shipping = 10000;
 $miniSubtotal = $total;
 $miniTotal    = $miniSubtotal + $shipping;
 
-function vnd($money) {
-    return number_format($money, 0, ',', '.') . 'đ';
-}
 
 // Lấy favorites từ session
 $favorites = $user ? getFavorites() : [];

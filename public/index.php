@@ -1,6 +1,11 @@
 <?php
 session_start();
 date_default_timezone_set('Asia/Ho_Chi_Minh');
+if (!function_exists('vnd')) {
+    function vnd($number) {
+        return number_format($number, 0, ',', '.') . 'đ';
+    }
+}
 
 $base = '/DoAn/DoAnTotNghiep/public/';
 
@@ -314,6 +319,20 @@ switch ($url) {
         exit;
         break;
 
+    // ==================== ORDERS ====================
+    case 'create-order':
+        createOrderAPI();
+        break;
+    case 'orders':
+        listOrders();
+        break;
+    case 'order-detail':
+        orderDetail();
+        break;
+    case 'cancel-order':
+        cancelOrder();
+        break;
+
     // ==================== PRODUCT ====================
     case 'product':
         $product = getProductById($_GET['id'] ?? 0);
@@ -360,6 +379,7 @@ switch ($url) {
         $page = $_GET['page'] ?? 1;
         $limit = 10; // số sản phẩm mỗi trang
         $filters = [
+            'category'  => $_GET['category'] ?? '',
             'min_price' => $_GET['min_price'] ?? '',
             'max_price' => $_GET['max_price'] ?? '',
             'size'      => $_GET['size'] ?? '',

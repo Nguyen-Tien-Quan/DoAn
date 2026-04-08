@@ -1,4 +1,58 @@
-<?php global $base; ?>
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+
+if (!isset($_SESSION['user'])) {
+    header("Location: index.php?url=login");
+    exit;
+}
+
+$user_id = $_SESSION['user']['id'];
+$conn = getDB();
+
+// Lấy giỏ hàng từ session
+$cart = $_SESSION['cart'] ?? [];
+$subtotal = 0;
+$itemCount = 0;
+foreach ($cart as $item) {
+    $itemCount += $item['quantity'];
+    $subtotal += $item['price'] * $item['quantity'];
+}
+
+// Lấy mã giảm giá đã lưu
+$discount = $_SESSION['discount'] ?? 0;
+$couponCode = $_SESSION['coupon_code'] ?? '';
+
+// Lấy địa chỉ giao hàng mặc định
+$defaultAddress = null;
+$stmt = $conn->prepare("SELECT * FROM shipping_addresses WHERE user_id = ? AND is_default = 1 LIMIT 1");
+$stmt->execute([$user_id]);
+$defaultAddress = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$defaultAddress) {
+    // Nếu không có địa chỉ mặc định, lấy địa chỉ mới nhất
+    $stmt = $conn->prepare("SELECT * FROM shipping_addresses WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+    $stmt->execute([$user_id]);
+    $defaultAddress = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+if (!$defaultAddress) {
+    // Chưa có địa chỉ nào, chuyển về trang thêm địa chỉ
+    header("Location: index.php?url=shipping");
+    exit;
+}
+
+$shipping_fee = 10000; // mặc định Fedex Free? Sẽ tính sau
+$total = $subtotal - $discount + $shipping_fee;
+if ($total < 0) $total = 0;
+
+// Hàm định dạng tiền nếu chưa có
+if (!function_exists('vnd')) {
+    function vnd($number) {
+        return number_format($number, 0, ',', '.') . 'đ';
+    }
+}
+?>
 <main class="checkout-page">
     <div class="container">
         <!-- Search bar -->
@@ -6,7 +60,7 @@
             <div class="search-bar d-none d-md-flex">
                 <input type="text" placeholder="Search for item" class="search-bar__input" />
                 <button class="search-bar__submit">
-                    <img src="./assets/icons/search.svg" alt="" class="search-bar__icon icon" />
+                    <img src="<?= $base ?>assets/icons/search.svg" alt="" class="search-bar__icon icon" />
                 </button>
             </div>
         </div>
@@ -16,17 +70,17 @@
             <ul class="breadcrumbs checkout-page__breadcrumbs">
                 <li>
                     <a href="./" class="breadcrumbs__link">
-                        Home <img src="./assets/icons/arrow-right.svg" alt="" />
+                        Home <img src="<?= $base ?>assets/icons/arrow-right.svg" alt="" />
                     </a>
                 </li>
                 <li>
-                    <a href="./checkout.html" class="breadcrumbs__link">
-                        Checkout <img src="./assets/icons/arrow-right.svg" alt="" />
+                    <a href="index.php?url=checkout" class="breadcrumbs__link">
+                        Checkout <img src="<?= $base ?>assets/icons/arrow-right.svg" alt="" />
                     </a>
                 </li>
                 <li>
-                    <a href="./shipping.html" class="breadcrumbs__link">
-                        Shipping <img src="./assets/icons/arrow-right.svg" alt="" />
+                    <a href="index.php?url=shipping" class="breadcrumbs__link">
+                        Shipping <img src="<?= $base ?>assets/icons/arrow-right.svg" alt="" />
                     </a>
                 </li>
                 <li>
@@ -43,19 +97,21 @@
                     <div class="cart-info cart-info--shadow">
                         <div class="cart-info__top">
                             <h2 class="cart-info__heading cart-info__heading--lv2">
-                                1. Shipping, arrives between Mon, May 16—Tue, May 24
+                                1. Shipping, arrives between <?= date('l, M d', strtotime('+3 days')) ?>—<?= date('l, M d', strtotime('+8 days')) ?>
                             </h2>
-                            <a class="cart-info__edit-btn" href="./shipping.html">
-                                <img class="icon" src="./assets/icons/edit.svg" alt="" /> Edit
+                            <a class="cart-info__edit-btn" href="index.php?url=shipping">
+                                <img class="icon" src="<?= $base ?>assets/icons/edit.svg" alt="" /> Edit
                             </a>
                         </div>
 
                         <!-- Shipping Address -->
                         <article class="payment-item payment-item--card">
                             <div class="payment-item__info">
-                                <h3 class="payment-item__title">Imran Khan</h3>
-                                <p class="payment-item__desc">Museum of Rajas, Sylhet Sadar, Sylhet 3100.</p>
-                                <span class="payment-item__badge">Default</span>
+                                <h3 class="payment-item__title"><?= htmlspecialchars($defaultAddress['full_name'] ?? '') ?></h3>
+                                <p class="payment-item__desc"><?= htmlspecialchars($defaultAddress['address'] ?? '') ?>, <?= htmlspecialchars($defaultAddress['city'] ?? '') ?></p>
+                                <?php if ($defaultAddress['is_default'] ?? 0): ?>
+                                    <span class="payment-item__badge">Default</span>
+                                <?php endif; ?>
                             </div>
                         </article>
 
@@ -63,9 +119,9 @@
                         <article class="payment-item payment-item--card">
                             <div class="payment-item__info">
                                 <h3 class="payment-item__title">Items details</h3>
-                                <p class="payment-item__desc">2 items</p>
+                                <p class="payment-item__desc"><?= $itemCount ?> item(s)</p>
                             </div>
-                            <a href="./shipping.html" class="payment-item__detail">View details</a>
+                            <a href="index.php?url=checkout" class="payment-item__detail">View details</a>
                         </article>
                     </div>
 
@@ -78,15 +134,15 @@
                         <div id="shipping-methods">
                             <label>
                                 <article class="payment-item payment-item--pointer payment-item--highlight">
-                                    <img src="./assets/img/payment/delivery-1.png" alt="" class="payment-item__thumb" />
+                                    <img src="<?= $base ?>assets/img/payment/delivery-1.png" alt="" class="payment-item__thumb" />
                                     <div class="payment-item__content">
                                         <div class="payment-item__info">
                                             <h3 class="payment-item__title">Fedex Delivery</h3>
                                             <p class="payment-item__desc payment-item__desc--low">Delivery: 2-3 days work</p>
-                                            <small class="payment-item__note">Free shipping for orders over $100</small>
+                                            <small class="payment-item__note">Free shipping for orders over <?= vnd(100000) ?></small>
                                         </div>
                                         <span class="cart-info__checkbox payment-item__checkbox">
-                                            <input type="radio" name="delivery-method" value="Fedex" checked class="cart-info__checkbox-input payment-item__checkbox-input" />
+                                            <input type="radio" name="delivery-method" value="fedex" data-fee="0" checked class="cart-info__checkbox-input payment-item__checkbox-input" />
                                             <span class="payment-item__cost">Free</span>
                                         </span>
                                     </div>
@@ -95,16 +151,16 @@
 
                             <label>
                                 <article class="payment-item payment-item--pointer">
-                                    <img src="./assets/img/payment/delivery-2.png" alt="" class="payment-item__thumb" />
+                                    <img src="<?= $base ?>assets/img/payment/delivery-2.png" alt="" class="payment-item__thumb" />
                                     <div class="payment-item__content">
                                         <div class="payment-item__info">
                                             <h3 class="payment-item__title">DHL Delivery</h3>
-                                            <p class="payment-item__desc payment-item__desc--low">Delivery: 2-3 days work</p>
-                                            <small class="payment-item__note">Standard shipping</small>
+                                            <p class="payment-item__desc payment-item__desc--low">Delivery: 1-2 days work</p>
+                                            <small class="payment-item__note">Express shipping</small>
                                         </div>
                                         <span class="cart-info__checkbox payment-item__checkbox">
-                                            <input type="radio" name="delivery-method" value="DHL" class="cart-info__checkbox-input payment-item__checkbox-input" />
-                                            <span class="payment-item__cost">$12.00</span>
+                                            <input type="radio" name="delivery-method" value="dhl" data-fee="12000" class="cart-info__checkbox-input payment-item__checkbox-input" />
+                                            <span class="payment-item__cost"><?= vnd(12000) ?></span>
                                         </span>
                                     </div>
                                 </article>
@@ -123,8 +179,7 @@
                             <div class="form__group">
                                 <label for="email" class="form__label form__label--medium">Email Address</label>
                                 <div class="form__text-input">
-                                    <input type="email" name="email" id="email" placeholder="Email" class="form__input" required />
-                                    <img src="./assets/icons/form-error.svg" alt="" class="form__input-icon-error" />
+                                    <input type="email" name="email" id="email" value="<?= htmlspecialchars($_SESSION['user']['email'] ?? '') ?>" class="form__input" required />
                                 </div>
                             </div>
 
@@ -138,7 +193,7 @@
                             <div class="form__group">
                                 <label for="card-details" class="form__label form__label--medium">Card Details</label>
                                 <div class="form__text-input">
-                                    <input type="text" name="card-details" id="card-details" placeholder="Card Details" class="form__input" required />
+                                    <input type="text" name="card-details" id="card-details" placeholder="Card Number" class="form__input" required />
                                 </div>
                             </div>
 
@@ -152,27 +207,29 @@
 
                         <div class="cart-info__summary">
                             <div class="cart-info__row">
-                                <span>Subtotal <span class="cart-info__sub-label">(items)</span></span>
-                                <span id="subtotal">3</span>
+                                <span>Subtotal <span class="cart-info__sub-label">(<?= $itemCount ?> items)</span></span>
+                                <span id="subtotal"><?= vnd($subtotal) ?></span>
                             </div>
+                            <?php if ($discount > 0): ?>
                             <div class="cart-info__row">
-                                <span>Price <span class="cart-info__sub-label">(Total)</span></span>
-                                <span id="total-price">$191.65</span>
+                                <span>Discount (<?= htmlspecialchars($couponCode) ?>)</span>
+                                <span id="discount">-<?= vnd($discount) ?></span>
                             </div>
+                            <?php endif; ?>
                             <div class="cart-info__row">
                                 <span>Shipping</span>
-                                <span id="shipping-cost">$10.00</span>
+                                <span id="shipping-cost"><?= vnd($shipping_fee) ?></span>
                             </div>
                             <div class="cart-info__separate"></div>
                             <div class="cart-info__row cart-info__row--highlight">
                                 <span>Estimated Total</span>
-                                <span id="estimated-total">$201.65</span>
+                                <span id="estimated-total"><?= vnd($total) ?></span>
                             </div>
                         </div>
 
-                        <a href="#!" id="pay-btn" class="cart-info__next-btn btn btn--primary btn--rounded">
-                            Pay $201.65
-                        </a>
+                        <button type="button" id="pay-btn" class="cart-info__next-btn btn btn--primary btn--rounded">
+                            Pay <?= vnd($total) ?>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -180,101 +237,112 @@
     </div>
 </main>
 
-<!-- Modal: confirm remove shopping cart item -->
-<div id="delete-confirm" class="modal modal--small hide">
-    <div class="modal__content">
-        <p class="modal__text">Do you want to remove this item from shopping cart?</p>
-        <div class="modal__bottom">
-            <button class="btn btn--small btn--outline modal__btn js-toggle" toggle-target="#delete-confirm">
-                Cancel
-            </button>
-            <button class="btn btn--small btn--danger btn--primary modal__btn btn--no-margin js-toggle" toggle-target="#delete-confirm">
-                Delete
-            </button>
-        </div>
-    </div>
-    <div class="modal__overlay js-toggle" toggle-target="#delete-confirm"></div>
-</div>
-
-<!-- Modal: add new shipping address -->
-<div id="add-new-address" class="modal hide" style="--content-width: 650px">
-    <div class="modal__content">
-        <form action="" class="form">
-            <h2 class="modal__heading">Add new shipping address</h2>
-            <div class="modal__body">
-                <div class="form__row">
-                    <div class="form__group form__group--half">
-                        <label for="name" class="form__label form__label--small">Name</label>
-                        <input type="text" name="name" id="name" placeholder="Name" class="form__input" required minlength="2" />
-                    </div>
-                    <div class="form__group form__group--half">
-                        <label for="phone" class="form__label form__label--small">Phone</label>
-                        <input type="tel" name="phone" id="phone" placeholder="Phone" class="form__input" required minlength="10" />
-                    </div>
-                </div>
-                <div class="form__group">
-                    <label for="address" class="form__label form__label--small">Address</label>
-                    <textarea name="address" id="address" placeholder="Address (Area and street)" class="form__text-area-input" required></textarea>
-                </div>
-                <div class="form__group">
-                    <label for="city" class="form__label form__label--small">City/District/Town</label>
-                    <input type="text" id="city" placeholder="City/District/Town" class="form__input js-toggle" toggle-target="#city-dialog" />
-                    <div id="city-dialog" class="form__select-dialog hide">
-                        <h2 class="form__dialog-heading d-none d-sm-block">City/District/Town</h2>
-                        <button class="form__close-dialog d-none d-sm-block js-toggle" toggle-target="#city-dialog">&times</button>
-                        <div class="form__search">
-                            <input type="text" placeholder="Search" class="form__search-input" />
-                            <img src="./assets/icons/search.svg" alt="" class="form__search-icon icon" />
-                        </div>
-                        <ul class="form__options-list">
-                            <li class="form__option form__option--current">Ho Chi Minh</li>
-                            <li class="form__option">Ha Noi</li>
-                            <li class="form__option">Da Nang</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="form__group form__group--inline">
-                    <label class="form__checkbox">
-                        <input type="checkbox" class="form__checkbox-input d-none" />
-                        <span class="form__checkbox-label">Set as default address</span>
-                    </label>
-                </div>
-            </div>
-            <div class="modal__bottom">
-                <button class="btn btn--small btn--text modal__btn js-toggle" toggle-target="#add-new-address">Cancel</button>
-                <button class="btn btn--small btn--primary modal__btn btn--no-margin">Create</button>
-            </div>
-        </form>
-    </div>
-    <div class="modal__overlay"></div>
-</div>
-
 <script>
+// Cập nhật phí ship và tổng tiền khi chọn phương thức
+document.querySelectorAll('input[name="delivery-method"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const fee = parseInt(this.getAttribute('data-fee')) || 0;
+        const subtotalRaw = <?= $subtotal ?>;
+        const discountRaw = <?= $discount ?>;
+        const newTotal = subtotalRaw - discountRaw + fee;
+        document.getElementById('shipping-cost').innerText = formatVND(fee);
+        document.getElementById('estimated-total').innerText = formatVND(newTotal);
+        // Cập nhật nút pay
+        document.getElementById('pay-btn').innerText = 'Pay ' + formatVND(newTotal);
+    });
+});
+
+function formatVND(amount) {
+    return amount.toLocaleString('vi-VN') + 'đ';
+}
+
 document.getElementById('pay-btn').addEventListener('click', async function(e) {
     e.preventDefault();
+
+    // Lấy thông tin từ form
     const email = document.getElementById('email').value;
     const cardHolder = document.getElementById('card-holder').value;
     const cardDetails = document.getElementById('card-details').value;
     const expire = document.getElementById('card-expire').value;
     const cvc = document.getElementById('card-cvc').value;
-    const deliveryMethod = document.querySelector('input[name="delivery-method"]:checked').value;
-    const amount = parseFloat(document.getElementById('estimated-total').innerText.replace('$',''));
 
-    const res = await fetch('index.php?url=payment&action=create', {
-        method: 'POST',
-        body: JSON.stringify({
-            order_id: 123,
-            method: deliveryMethod,
-            amount: amount,
-            transaction_code: cardDetails
-        }),
-        headers: { 'Content-Type': 'application/json' }
-    });
-    const data = await res.json();
-    if (data.payment_id) {
-        alert('Payment created successfully! Payment ID: ' + data.payment_id);
-    } else {
-        alert('Payment failed!');
+    if (!email || !cardHolder || !cardDetails || !expire || !cvc) {
+        alert('Vui lòng điền đầy đủ thông tin thẻ');
+        return;
+    }
+
+    // Lấy phương thức vận chuyển
+    const selectedMethod = document.querySelector('input[name="delivery-method"]:checked');
+    const shippingMethod = selectedMethod ? selectedMethod.value : 'fedex';
+    const shippingFee = parseInt(selectedMethod.getAttribute('data-fee')) || 0;
+
+    // Gửi request tạo order và thanh toán
+    const payBtn = this;
+    payBtn.disabled = true;
+    payBtn.innerText = 'Processing...';
+
+    try {
+        // Bước 1: Tạo order
+        const orderRes = await fetch('index.php?url=create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                shipping_address_id: <?= $defaultAddress['id'] ?? 0 ?>,
+                shipping_method: shippingMethod,
+                shipping_fee: shippingFee,
+                payment_method: 'card'
+            })
+        });
+        const orderData = await orderRes.json();
+        if (!orderData.success) {
+            alert(orderData.message || 'Không thể tạo đơn hàng');
+            payBtn.disabled = false;
+            payBtn.innerText = 'Pay <?= vnd($total) ?>';
+            return;
+        }
+        const orderId = orderData.order_id;
+
+        // Bước 2: Tạo payment (giả lập, vì thực tế cần cổng thanh toán)
+        const paymentRes = await fetch('index.php?url=payment&action=create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                order_id: orderId,
+                method: 'card',
+                amount: <?= $total ?>,
+                transaction_code: cardDetails.slice(-4) // lấy 4 số cuối
+            })
+        });
+        const paymentData = await paymentRes.json();
+        if (paymentData.payment_id) {
+            // Cập nhật trạng thái payment thành paid
+            await fetch('index.php?url=payment&action=complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payment_id: paymentData.payment_id,
+                    transaction_code: cardDetails.slice(-4)
+                })
+            });
+            // Xóa giỏ hàng và discount session
+            await fetch('index.php?url=clearCoupon', { method: 'POST' });
+            await fetch('index.php?url=remove-all-cart');
+            alert('Thanh toán thành công! Cảm ơn bạn đã mua hàng.');
+            window.location.href = 'index.php?url=orders';
+        } else {
+            alert('Thanh toán thất bại, vui lòng thử lại');
+            payBtn.disabled = false;
+            payBtn.innerText = 'Pay <?= vnd($total) ?>';
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Có lỗi xảy ra, vui lòng thử lại sau');
+        payBtn.disabled = false;
+        payBtn.innerText = 'Pay <?= vnd($total) ?>';
     }
 });
 </script>
+
+<!-- Các modal (giữ nguyên của bạn, có thể bỏ qua nếu không cần) -->
+<div id="delete-confirm" class="modal modal--small hide">...</div>
+<div id="add-new-address" class="modal hide" style="--content-width: 650px">...</div>
