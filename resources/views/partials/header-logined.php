@@ -666,8 +666,39 @@ $totalFav = count($favorites);
                     <div class="search-suggest"></div>
                 </div>
 
+                 <!-- Thông báo (chung cho mọi thiết bị) -->
+                <div class="top-act__group  d-md-none top-act__group--bell">
+                    <div class="top-act__btn-wrap">
+                        <button class="top-act__btn js-toggle" toggle-target="#noti-dropdown">
+                            <img src="<?= $base ?>assets/icons/bell.svg" class="icon top-act__icon" />
+                            <span class="top-act__title" id="noti-count">0</span>
+                        </button>
+
+                        <div id="noti-dropdown" class="act-dropdown hide">
+                            <div class="act-dropdown__inner">
+                                <img src="./assets/icons/arrow-up.png" alt="" class="act-dropdown__arrow" />
+                                <div class="act-dropdown__top">
+                                    <h2 class="act-dropdown__title">Thông báo</h2>
+                                    <a href="#" class="act-dropdown__view-all" id="mark-all-read">Đánh dấu đã đọc</a>
+                                </div>
+                                <div class="noti-list" id="noti-list">
+                                    <!-- JS sẽ load danh sách thông báo -->
+                                    <div class="noti-item">Đang tải...</div>
+                                </div>
+                                <div class="act-dropdown__separate"></div>
+                                <div class="act-dropdown__checkout">
+                                    <a href="<?= $base ?>index.php?url=notifications"
+                                    class="btn btn--primary btn--rounded act-dropdown__checkout-btn">
+                                        Check Out All
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="top-act__group d-md-none">
+
                     <div class="top-act__btn-wrap">
                         <a class="top-act__btn" href="<?= $base ?>index.php?url=favorite">
                             <img src="<?= $base ?>assets/icons/heart.svg" alt="" class="icon top-act__icon" />
@@ -794,7 +825,7 @@ $totalFav = count($favorites);
 
                     <?php if ($user): ?>
 
-                        <img src="<?= $base ?>assets/img/avatar.jpg" alt="" class="top-act__avatar" />
+                        <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($_SESSION['user']['avatar'] ?? 'default.png') ?>" alt="Avatar" class="top-act__avatar" />
 
                         <!-- Dropdown -->
                         <div class="act-dropdown top-act__dropdown">
@@ -806,7 +837,7 @@ $totalFav = count($favorites);
                                 />
 
                                 <div class="user-menu__top">
-                                    <img src="<?= $base ?>assets/img/avatar.jpg" alt="" class="user-menu__avatar" />
+                                    <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($_SESSION['user']['avatar'] ?? 'default.png') ?>" alt="Avatar" class="user-menu__avatar" />
                                     <div>
                                         <p class="user-menu__name"><?= $user['name'] ?? 'User' ?></p>
                                         <p>@<?= explode('@', $user['email'])[0] ?? 'No email' ?></p>
@@ -827,7 +858,7 @@ $totalFav = count($favorites);
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="#!" class="user-menu__link">Settings</a>
+                                        <a href="<?= $base ?>index.php?url=settings" class="user-menu__link">Settings</a>
                                     </li>
                                     <li class="user-menu__separate">
                                         <a href="<?= $base ?>index.php?url=logout" class="user-menu__link">Logout</a>

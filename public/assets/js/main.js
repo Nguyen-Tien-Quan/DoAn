@@ -688,6 +688,142 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // ... các hàm hiện có (handleActiveMenu, AJAX pagination) giữ nguyên ...
+
+    // ====================== FILTER ======================
+
+    // Chọn size
+    document.querySelectorAll(".size-option").forEach((btn) => {
+        btn.addEventListener("click", function () {
+            document
+                .querySelectorAll(".size-option")
+                .forEach((b) => b.classList.remove("active"));
+            this.classList.add("active");
+            document.getElementById("size-input").value = this.dataset.size;
+        });
+    });
+
+    // Submit filter (AJAX)
+    const filterForm = document.getElementById("filter-form");
+    if (filterForm) {
+        filterForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const params = new URLSearchParams(formData).toString();
+            const url = `index.php?url=home&ajax=1&${params}`;
+
+            const productList = document.getElementById("product-list");
+            let overlay = document.createElement("div");
+            overlay.className = "ajax-overlay";
+            productList.appendChild(overlay);
+            productList.classList.add("loading");
+
+            fetch(url)
+                .then((res) => res.text())
+                .then((html) => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    const newList = doc.querySelector("#product-list");
+                    const newPagination = doc.querySelector("#pagination");
+                    if (newList) productList.innerHTML = newList.innerHTML;
+                    if (newPagination)
+                        document.getElementById("pagination").innerHTML =
+                            newPagination.innerHTML;
+
+                    productList.classList.remove("loading");
+                    overlay.remove();
+                    // Cập nhật URL params (tùy chọn)
+                    const newUrl = new URL(window.location.href);
+                    newUrl.search = params;
+                    window.history.pushState({}, "", newUrl);
+                });
+        });
+    }
+
+    // ====================== NOTIFICATIONS ======================
+    function loadNotifications() {
+        const notiList = document.getElementById("noti-list");
+        const badge = document.getElementById("noti-count");
+        if (!notiList) return;
+
+        // Sử dụng baseUrl đã được định nghĩa trong PHP (xem hướng dẫn bên dưới)
+        const url =
+            (typeof baseUrl !== "undefined" ? baseUrl : "") +
+            "index.php?url=api/notifications";
+
+        fetch(url)
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.error) {
+                    notiList.innerHTML =
+                        '<div class="noti-item">Vui lòng đăng nhập</div>';
+                    if (badge) badge.innerText = "0";
+                    return;
+                }
+                const items = data.items || [];
+                const unread = data.unread || 0;
+                if (items.length === 0) {
+                    notiList.innerHTML =
+                        '<div class="noti-item">Chưa có thông báo nào</div>';
+                    if (badge) badge.innerText = "0";
+                    return;
+                }
+                let html = "";
+                items.slice(0, 5).forEach((noti) => {
+                    html += `
+                    <div class="noti-item ${!noti.is_read ? "unread" : ""}" data-id="${noti.id}">
+                        <div class="noti-title">${escapeHtml(noti.title)}</div>
+                        <div class="noti-text">${escapeHtml(noti.content)}</div>
+                        <div class="noti-time">${formatTime(noti.created_at)}</div>
+                    </div>
+                `;
+                });
+                notiList.innerHTML = html;
+                if (badge) badge.innerText = unread > 99 ? "99+" : unread;
+            })
+            .catch((err) => console.error("Lỗi tải thông báo:", err));
+    }
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(/[&<>]/g, function (m) {
+            if (m === "&") return "&amp;";
+            if (m === "<") return "&lt;";
+            if (m === ">") return "&gt;";
+            return m;
+        });
+    }
+
+    function formatTime(timestamp) {
+        if (!timestamp) return "";
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000);
+        if (diff < 60) return "Vừa xong";
+        if (diff < 3600) return Math.floor(diff / 60) + " phút trước";
+        if (diff < 86400) return Math.floor(diff / 3600) + " giờ trước";
+        return date.toLocaleDateString("vi-VN");
+    }
+
+    // Đánh dấu tất cả đã đọc
+    const markAllReadBtn = document.getElementById("mark-all-read");
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            const url =
+                (typeof baseUrl !== "undefined" ? baseUrl : "") +
+                "index.php?url=api/notifications&action=mark-all-read";
+            fetch(url, { method: "POST" }).then(() => loadNotifications());
+        });
+    }
+
+    // Tải thông báo lần đầu và định kỳ
+    if (document.getElementById("noti-list")) {
+        loadNotifications();
+        setInterval(loadNotifications, 30000);
+    }
+
     function showToast(message, type = "success") {
         const toast = document.createElement("div");
         toast.innerText = message;

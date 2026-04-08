@@ -135,3 +135,147 @@ function placeOrder() {
         exit;
     }
 }
+
+// ==================== ORDER LISTING ====================
+
+function listOrders() {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!isset($_SESSION['user'])) {
+        header("Location: index.php?url=login");
+        exit;
+    }
+    $user_id = $_SESSION['user']['id'];
+    $conn = getDB();
+
+    // Phân trang
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
+
+    // Đếm tổng số đơn hàng
+    $countStmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ?");
+    $countStmt->execute([$user_id]);
+    $totalOrders = $countStmt->fetchColumn();
+    $totalPages = ceil($totalOrders / $limit);
+
+    // Lấy danh sách đơn hàng
+    $stmt = $conn->prepare("
+        SELECT id, order_code, created_at, total_amount, discount_amount, shipping_fee, final_amount, status
+        FROM orders
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+    ");
+    $stmt->execute([$user_id, $limit, $offset]);
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Lưu vào biến để dùng trong view
+    $GLOBALS['orders'] = $orders;
+    $GLOBALS['page'] = $page;
+    $GLOBALS['totalPages'] = $totalPages;
+
+    // Load view
+    $view = __DIR__ . '/../resources/views/pages/orders.php';
+    $layout = __DIR__ . '/../resources/views/layouts/layout.php';
+    include $layout;
+}
+
+function orderDetail() {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!isset($_SESSION['user'])) {
+        header("Location: index.php?url=login");
+        exit;
+    }
+    $user_id = $_SESSION['user']['id'];
+    $order_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if (!$order_id) {
+        header("Location: index.php?url=orders");
+        exit;
+    }
+
+    $conn = getDB();
+
+    // Lấy thông tin đơn hàng
+    $stmt = $conn->prepare("
+        SELECT o.*, sa.full_name as receiver_name, sa.phone as receiver_phone, sa.address as delivery_address, sa.city
+        FROM orders o
+        LEFT JOIN shipping_addresses sa ON sa.id = o.shipping_address_id
+        WHERE o.id = ? AND o.user_id = ?
+    ");
+    $stmt->execute([$order_id, $user_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$order) {
+        header("Location: index.php?url=orders");
+        exit;
+    }
+
+    // Lấy danh sách sản phẩm trong đơn hàng
+    $stmt = $conn->prepare("
+        SELECT oi.*, p.name as product_name, p.image
+        FROM order_items oi
+        JOIN products p ON p.id = oi.product_id
+        WHERE oi.order_id = ?
+    ");
+    $stmt->execute([$order_id]);
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Lấy lịch sử trạng thái (nếu có bảng order_statuses)
+    $statusHistory = [];
+    try {
+        $stmt = $conn->prepare("SELECT * FROM order_statuses WHERE order_id = ? ORDER BY created_at ASC");
+        $stmt->execute([$order_id]);
+        $statusHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // Nếu chưa có bảng thì bỏ qua
+    }
+
+    $GLOBALS['order'] = $order;
+    $GLOBALS['items'] = $items;
+    $GLOBALS['statusHistory'] = $statusHistory;
+
+    $view = __DIR__ . '/../resources/views/pages/order-detail.php';
+    $layout = __DIR__ . '/../resources/views/layouts/layout.php';
+    include $layout;
+}
+
+function cancelOrder() {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!isset($_SESSION['user'])) {
+        echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
+        exit;
+    }
+    $user_id = $_SESSION['user']['id'];
+    $order_id = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
+    if (!$order_id) {
+        echo json_encode(['success' => false, 'message' => 'Thiếu mã đơn hàng']);
+        exit;
+    }
+
+    $conn = getDB();
+    // Kiểm tra đơn hàng thuộc user và trạng thái có thể hủy (pending hoặc confirmed)
+    $stmt = $conn->prepare("SELECT status FROM orders WHERE id = ? AND user_id = ?");
+    $stmt->execute([$order_id, $user_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) {
+        echo json_encode(['success' => false, 'message' => 'Đơn hàng không tồn tại']);
+        exit;
+    }
+    if (!in_array($order['status'], ['pending', 'confirmed'])) {
+        echo json_encode(['success' => false, 'message' => 'Không thể hủy đơn hàng ở trạng thái hiện tại']);
+        exit;
+    }
+
+    // Cập nhật trạng thái thành cancelled
+    $update = $conn->prepare("UPDATE orders SET status = 'cancelled', cancelled_at = NOW() WHERE id = ?");
+    $update->execute([$order_id]);
+
+    // Ghi log lịch sử nếu có bảng
+    try {
+        $log = $conn->prepare("INSERT INTO order_statuses (order_id, status, note) VALUES (?, 'cancelled', ?)");
+        $log->execute([$order_id, 'Người dùng hủy đơn hàng']);
+    } catch (Exception $e) {}
+
+    echo json_encode(['success' => true, 'message' => 'Đã hủy đơn hàng']);
+    exit;
+}

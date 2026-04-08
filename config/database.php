@@ -7,7 +7,7 @@ function getDB() {
     if ($conn === null) {
 
         $host = 'localhost';
-        $dbname = 'qlbtan';
+        $dbname = 'QLBANTHUCAN';
         $username = 'root';
         $password = '110805';
 

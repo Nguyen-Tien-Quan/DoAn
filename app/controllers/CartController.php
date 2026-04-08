@@ -38,12 +38,9 @@ function addToCart()
     if ($variantId) {
         $variant = getVariantById($variantId);
 
-        // 🔥 DEBUG nếu cần
-        // var_dump($variant); die;
-
         if ($variant) {
-            $variantPrice = $variant['price']; // 👉 giá size riêng
-            $variantName  = $variant['name'];
+            $variantPrice = $variant['price']; // 👉 GIÁ CỘNG THÊM
+            $variantName  = $variant['variant_name']; // ⚠️ sửa key cho đúng DB
         }
     }
 
@@ -58,15 +55,15 @@ function addToCart()
                 $toppingTotal += $t['price'];
 
                 $toppingList[] = [
-                    'id' => $t['id'],
-                    'name' => $t['name'],
+                    'id'    => $t['id'],
+                    'name'  => $t['name'],
                     'price' => $t['price']
                 ];
             }
         }
     }
 
-    /* ===== FINAL ===== */
+    /* ===== FINAL (FIX CHUẨN) ===== */
     $finalPrice = $basePrice + $variantPrice + $toppingTotal;
 
     /* ===== KEY ===== */
@@ -85,7 +82,7 @@ function addToCart()
             'variant' => $variantName ? [
                 'id'    => $variantId,
                 'name'  => $variantName,
-                'price' => $variantPrice // 👉 CHỈ giá size
+                'price' => $variantPrice // 👉 chỉ phần cộng thêm
             ] : null,
 
             'toppings' => $toppingList
@@ -165,6 +162,20 @@ function removeCart()
     exit;
 }
 
+function removeAllCart()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $_SESSION['cart'] = [];
+
+    echo json_encode([
+        'success' => true
+    ]);
+    exit;
+}
+
 function getCart($asJson = true) {
     $data = [
         'items' => $_SESSION['cart'] ?? [],
@@ -229,5 +240,110 @@ function saveToFavorite()
     echo json_encode([
         'success' => true
     ]);
+    exit;
+}
+
+// ==================== COUPON (VOUCHER) ====================
+
+function getActiveCoupons() {
+    header('Content-Type: application/json');
+    $conn = getDB();
+    $now = date('Y-m-d H:i:s');
+    $sql = "SELECT code, discount_type as type, discount_value as value,
+                   max_discount_amount as max_discount, min_order_amount as min_order
+            FROM vouchers
+            WHERE status = 1
+              AND start_date <= '$now'
+              AND end_date > '$now'
+              AND (used_count < usage_limit OR usage_limit = 0)
+            ORDER BY discount_value DESC";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute();
+    $coupons = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['success' => true, 'coupons' => $coupons]);
+    exit;
+}
+
+function applyCoupon() {
+    header('Content-Type: application/json');
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        exit;
+    }
+    $code = trim($_POST['code'] ?? '');
+    $subtotal = floatval($_POST['subtotal'] ?? 0);
+    if (empty($code)) {
+        echo json_encode(['success' => false, 'message' => 'Vui lòng nhập mã']);
+        exit;
+    }
+    $conn = getDB();
+    $now = date('Y-m-d H:i:s');
+    // Lấy thông tin voucher
+    $stmt = $conn->prepare("SELECT * FROM vouchers WHERE code = ? LIMIT 1");
+    $stmt->execute([$code]);
+    $voucher = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Kiểm tra voucher tồn tại và còn hiệu lực
+    if (!$voucher) {
+        echo json_encode(['success' => false, 'message' => 'Mã không tồn tại']);
+        exit;
+    }
+    if ($voucher['status'] != 1) {
+        echo json_encode(['success' => false, 'message' => 'Mã đã bị vô hiệu hóa']);
+        exit;
+    }
+    if ($voucher['start_date'] > $now) {
+        echo json_encode(['success' => false, 'message' => 'Mã chưa đến ngày bắt đầu']);
+        exit;
+    }
+    if ($voucher['end_date'] <= $now) {
+        echo json_encode(['success' => false, 'message' => 'Mã đã hết hạn']);
+        exit;
+    }
+    if ($voucher['usage_limit'] > 0 && $voucher['used_count'] >= $voucher['usage_limit']) {
+        echo json_encode(['success' => false, 'message' => 'Mã đã hết lượt sử dụng']);
+        exit;
+    }
+    if ($voucher['min_order_amount'] > 0 && $subtotal < $voucher['min_order_amount']) {
+        echo json_encode(['success' => false, 'message' => 'Đơn hàng tối thiểu ' . number_format($voucher['min_order_amount']) . 'đ để dùng mã này']);
+        exit;
+    }
+
+    // Tính giảm giá
+    if ($voucher['discount_type'] == 'percent') {
+        $discount = $subtotal * $voucher['discount_value'] / 100;
+        if ($voucher['max_discount_amount'] > 0 && $discount > $voucher['max_discount_amount']) {
+            $discount = $voucher['max_discount_amount'];
+        }
+    } else { // fixed
+        $discount = $voucher['discount_value'];
+    }
+    if ($discount > $subtotal) $discount = $subtotal;
+
+    // Lưu vào session
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $_SESSION['discount'] = $discount;
+    $_SESSION['coupon_code'] = $code;
+    $_SESSION['coupon_data'] = $voucher;
+
+    $shipping = 10000;
+    $total = $subtotal + $shipping;
+    $newTotal = $total - $discount;
+    if ($newTotal < 0) $newTotal = 0;
+
+    echo json_encode([
+        'success' => true,
+        'discount' => $discount,
+        'formatted_discount' => number_format($discount, 0, ',', '.') . 'đ',
+        'new_total' => $newTotal,
+        'formatted_new_total' => number_format($newTotal, 0, ',', '.') . 'đ'
+    ]);
+    exit;
+}
+
+function clearCoupon() {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    unset($_SESSION['discount'], $_SESSION['coupon_code'], $_SESSION['coupon_data']);
+    echo json_encode(['success' => true]);
     exit;
 }

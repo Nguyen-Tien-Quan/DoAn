@@ -4,83 +4,8 @@ $page = $page ?? 1;
 $totalPages = $totalPages ?? 1;
 $favIds = $favIds ?? [];
 $categories = $categories ?? []; // danh mục từ DB
-$categories = $categories ?? [];
 $variants = $variants ?? [];
 ?>
-
-<style>
-#product-list {
-    position: relative;
-    transition: opacity 0.25s ease, transform 0.25s ease;
-}
-#product-list.loading {
-    filter: blur(2px);
-}
-.ajax-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.6);
-    backdrop-filter: blur(3px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-}
-.ajax-overlay::after {
-    content: "";
-    width: 36px;
-    height: 36px;
-    border: 4px solid #ddd;
-    border-top: 4px solid #ffb700;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Vuốt ngang đẹp hơn */
-.cate-slider {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 20px;
-    padding-bottom: 10px;
-
-    scroll-behavior: smooth;
-    scroll-snap-type: x mandatory; /* snap ngang */
-}
-
-/* Ẩn scrollbar trên PC */
-.cate-slider::-webkit-scrollbar {
-    display: none;
-}
-.cate-slider {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
-/* Snap cho từng item */
-.cate-slider > .col {
-    flex: 0 0 calc(33.333% - 20px);
-    max-width: calc(33.333% - 20px);
-    scroll-snap-align: start;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-
-@media (max-width: 992px) {
-    .cate-slider > .col {
-        flex: 0 0 50%;
-        max-width: 50%;
-    }
-}
-
-@media (max-width: 576px) {
-    .cate-slider > .col {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
-}
-</style>
 
 <main class="container home">
 
@@ -115,6 +40,17 @@ $variants = $variants ?? [];
         </div>
     </div>
 
+    <!-- ========== PHẦN HIỂN THỊ MÃ GIẢM GIÁ (VOUCHER) ========== -->
+    <div class="home__container voucher-home-section">
+        <div class="voucher-header">
+            <h2 class="home__heading">🎉 Mã giảm giá đang có</h2>
+            <p class="voucher-sub">Nhấp vào mã để sao chép và sử dụng khi thanh toán</p>
+        </div>
+        <div id="voucher-list-container" class="voucher-list">
+            <div class="loading-spinner">Đang tải mã khuyến mãi...</div>
+        </div>
+    </div>
+
     <!-- Browse Categories -->
     <section class="home__container">
         <div class="home__cate row row-cols-4 row-cols-md-1 cate-slider">
@@ -137,106 +73,109 @@ $variants = $variants ?? [];
     <!-- Browse Products -->
     <section class="home__container">
         <div class="home__row">
-            <h2 class="home__heading">Total Products</h2>
+            <h2 class="home__heading">Total LavAzza 1320</h2>
             <div class="filter-wrap">
                 <button class="filter-btn js-toggle" toggle-target="#home-filter">
                     Filter
-                    <img src="<?= $base ?>assets/icons/filter.svg" alt="" class="filter-btn__icon icon" />
+                    <img src="./assets/icons/filter.svg" alt="" class="filter-btn__icon icon" />
                 </button>
 
                 <div id="home-filter" class="filter hide">
-                    <!-- <img src="<?= $base ?>assets/icons/arrow-up.png" alt="" class="filter__arrow" /> -->
-                        <h3 class="filter__heading">
-                            Filter
-                            <img
-                                src="<?= $base ?>assets/icons/close.svg"
-                                alt=""
-                                class="d-none d-sm-block filter__btn-icon icon js-toggle"
-                                toggle-target="#home-filter"
-                                />
-                        </h3>
-
-                        <form action="" class="filter__form form">
-                            <div class="filter__row filter__content">
-
-                                <!-- PRICE -->
-                                <div class="filter__col">
-                                    <label class="form__label">Price</label>
-
-                                    <div class="filter__form-group filter__form-group--inline">
-                                        <div>
-                                            <label class="form__label form__label--small">Minimum</label>
-                                            <div class="filter__form-text-input filter__form-text-input--small">
-                                                <input type="number" name="min_price" class="filter__form-input" placeholder="0">
-                                            </div>
+                    <img src="./assets/icons/arrow-up.png" alt="" class="filter__arrow" />
+                    <h3 class="filter__heading">
+                        Filter
+                        <img
+                            src="./assets/icons/close.svg"
+                            alt=""
+                            class="d-none d-sm-block filter__btn-icon icon js-toggle"
+                            toggle-target="#home-filter"
+                        />
+                    </h3>
+                    <form action="" class="filter__form form" id="filter-form">
+                        <div class="filter__row filter__content">
+                            <!-- Cột 1: Price -->
+                            <div class="filter__col">
+                                <label for="" class="form__label">Price</label>
+                                <div class="filter__form-group">
+                                    <div class="filter__form-slider" style="--min-value: 0%; --max-value: 70%"></div>
+                                </div>
+                                <div class="filter__form-group filter__form-group--inline">
+                                    <div>
+                                        <label for="" class="form__label form__label--small"> Minimum </label>
+                                        <div class="filter__form-text-input filter__form-text-input--small">
+                                            <input type="text" id="min_price" class="filter__form-input" value="0" />
                                         </div>
-
-                                        <div>
-                                            <label class="form__label form__label--small">Maximum</label>
-                                            <div class="filter__form-text-input filter__form-text-input--small">
-                                                <input type="number" name="max_price" class="filter__form-input" placeholder="100000">
-                                            </div>
+                                    </div>
+                                    <div>
+                                        <label for="" class="form__label form__label--small"> Maximum </label>
+                                        <div class="filter__form-text-input filter__form-text-input--small">
+                                            <input type="text" id="max_price" class="filter__form-input" value="200000" />
                                         </div>
                                     </div>
                                 </div>
-
-                                <div class="filter__separate"></div>
-
-                                <!-- SIZE -->
-                                <div class="filter__col">
-                                    <label class="form__label">Size</label>
-
-                                    <div class="filter__form-group">
-                                        <div class="form__tags">
-                                            <?php foreach ($variants as $v): ?>
-                                                <button
-                                                    type="button"
-                                                    class="form__tag size-option"
-                                                    data-size="<?= $v ?>"
-                                                >
-                                                    <?= htmlspecialchars($v) ?>
-                                                </button>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-
-                                    <input type="hidden" name="size" id="size-input" />
-                                </div>
-
-                                <div class="filter__separate"></div>
-
-                                <!-- SEARCH -->
-                                <div class="filter__col">
-                                    <label class="form__label">Search</label>
-
-                                    <div class="filter__form-group">
-                                        <div class="filter__form-text-input">
-                                            <input
-                                                type="text"
-                                                name="keyword"
-                                                placeholder="Search product..."
-                                                class="filter__form-input"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
                             </div>
 
-                            <div class="filter__row filter__footer">
-                                <button type="button" class="btn btn--text filter__cancel js-toggle" toggle-target="#home-filter">
-                                    Cancel
-                                </button>
-                                <button type="submit" class="btn btn--primary filter__submit">
-                                    Apply
-                                </button>
+                            <div class="filter__separate"></div>
+
+                            <!-- Cột 2: Size -->
+                            <div class="filter__col">
+                                <label for="" class="form__label">Size</label>
+                                <div class="filter__form-group">
+                                    <div class="form__tags">
+                                        <button type="button" class="form__tag size-option" data-size="S">Small</button>
+                                        <button type="button" class="form__tag size-option" data-size="M">Medium</button>
+                                        <button type="button" class="form__tag size-option" data-size="L">Large</button>
+                                        <button type="button" class="form__tag size-option" data-size="XL">XL</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="size-input" name="size" value="">
                             </div>
-                        </form>
-                    </div>
+
+                            <div class="filter__separate"></div>
+
+                            <!-- Cột 3: Danh mục -->
+                            <div class="filter__col">
+                                <label for="" class="form__label">Danh mục</label>
+                                <div class="filter__form-group">
+                                    <div class="form__tags">
+                                        <?php foreach ($categories as $cat): ?>
+                                            <button type="button" class="form__tag category-option" data-id="<?= $cat['id'] ?>">
+                                                <?= htmlspecialchars($cat['name']) ?>
+                                            </button>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="filter__separate"></div>
+
+                            <!-- Cột 4: Sắp xếp (mới thêm) -->
+                            <div class="filter__col">
+                                <label for="" class="form__label">Sắp xếp</label>
+                                <div class="filter__form-group">
+                                    <select id="sort-select" class="form__select" name="sort">
+                                        <option value="">Mặc định</option>
+                                        <option value="price_asc">Giá thấp → cao</option>
+                                        <option value="price_desc">Giá cao → thấp</option>
+                                        <option value="name_asc">Tên A → Z</option>
+                                        <option value="name_desc">Tên Z → A</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="filter__row filter__footer">
+                            <button type="button" class="btn btn--text filter__cancel js-toggle" toggle-target="#home-filter">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn--primary filter__submit">Show Result</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <!-- Products -->
+        <!-- Products Grid -->
         <div class="row row-cols-5 row-cols-lg-2 row-cols-sm-1 g-3" id="product-list">
             <?php foreach ($products as $product): ?>
                 <div class="col">
@@ -250,15 +189,12 @@ $variants = $variants ?? [];
                                 <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
                             </button>
                         </div>
-
                         <h3 class="product-card__title">
                             <a href="index.php?url=product&id=<?= $product['id'] ?>">
                                 <?= htmlspecialchars($product['name']) ?>
                             </a>
                         </h3>
-
                         <p class="product-card__brand"><?= htmlspecialchars($product['brand'] ?? 'Brand') ?></p>
-
                         <div class="product-card__row">
                             <span class="product-card__price"><?= number_format($product['base_price'] ?? 0) ?>đ</span>
                             <img src="<?= $base ?>assets/icons/star.svg" class="product-card__star" />
@@ -294,91 +230,442 @@ $variants = $variants ?? [];
     <?php endif; ?>
 </main>
 
+<style>
+    /* ===== VOUCHER SECTION STYLES ===== */
+    .voucher-home-section {
+        margin: 30px 0;
+        background: linear-gradient(135deg, #fff9e6 0%, #fff0d4 100%);
+        border-radius: 24px;
+        padding: 20px 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .voucher-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .voucher-header .home__heading {
+        font-size: 1.8rem;
+        margin-bottom: 6px;
+        color: #d32f2f;
+    }
+    .voucher-sub {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    .voucher-list {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+    }
+    .voucher-card {
+        background: white;
+        border-radius: 60px;
+        padding: 8px 20px 8px 24px;
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        border: 1px solid #ffcd94;
+    }
+    .voucher-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        background: #fff5e8;
+    }
+    .voucher-code {
+        font-weight: bold;
+        font-size: 1.2rem;
+        background: #ff6b6b;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 40px;
+        letter-spacing: 1px;
+    }
+    .voucher-info {
+        font-size: 0.9rem;
+        color: #333;
+    }
+    .voucher-info strong {
+        color: #d32f2f;
+    }
+    .copy-toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 40px;
+        font-size: 0.85rem;
+        z-index: 1000;
+        animation: fadeOut 2s forwards;
+    }
+    @keyframes fadeOut {
+        0% { opacity: 1; }
+        70% { opacity: 1; }
+        100% { opacity: 0; visibility: hidden; }
+    }
+    .loading-spinner {
+        text-align: center;
+        color: #ff6b6b;
+        font-style: italic;
+        padding: 10px;
+    }
+</style>
+
 <script>
+    // ========== LOAD VOUCHERS FOR HOME PAGE ==========
+    function loadHomeVouchers() {
+        const container = document.getElementById('voucher-list-container');
+        if (!container) return;
+
+        fetch('index.php?url=getActiveCoupons')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.coupons.length > 0) {
+                    let html = '';
+                    data.coupons.forEach(coupon => {
+                        let discountText = coupon.type === 'percent'
+                            ? `Giảm ${coupon.value}%`
+                            : `Giảm ${Number(coupon.value).toLocaleString()}đ`;
+                        if (coupon.max_discount && coupon.max_discount > 0) {
+                            discountText += ` (tối đa ${Number(coupon.max_discount).toLocaleString()}đ)`;
+                        }
+                        if (coupon.min_order && coupon.min_order > 0) {
+                            discountText += ` · Đơn tối thiểu ${Number(coupon.min_order).toLocaleString()}đ`;
+                        }
+                        html += `
+                            <div class="voucher-card" data-code="${coupon.code}">
+                                <span class="voucher-code">${coupon.code}</span>
+                                <div class="voucher-info">
+                                    <strong>${discountText}</strong>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                    // Gắn sự kiện click để copy mã
+                    document.querySelectorAll('.voucher-card').forEach(card => {
+                        card.addEventListener('click', function(e) {
+                            const code = this.getAttribute('data-code');
+                            copyToClipboard(code);
+                            showToast(`Đã sao chép mã: ${code}`);
+                        });
+                    });
+                } else {
+                    container.innerHTML = '<div class="loading-spinner">✨ Hiện chưa có mã khuyến mãi, hãy quay lại sau!</div>';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = '<div class="loading-spinner">Không thể tải mã khuyến mãi, vui lòng thử lại sau.</div>';
+            });
+    }
+
+    function copyToClipboard(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+    }
+
+    function showToast(message) {
+        let toast = document.querySelector('.copy-toast');
+        if (toast) toast.remove();
+        toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.innerText = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    }
+
+    // ========== ACTIVE MENU ==========
     window.addEventListener("template-loaded", handleActiveMenu);
 
-    // AJAX Pagination
-    document.addEventListener("DOMContentLoaded", function () {
-    const productList = document.getElementById("product-list");
-    const pagination = document.getElementById("pagination");
-    if (!pagination) return;
+    // ========== HELPER: GET CURRENT FILTER PARAMS ==========
+    function getCurrentFilterParams() {
+        return {
+            min_price: document.getElementById('min_price')?.value.trim() || '',
+            max_price: document.getElementById('max_price')?.value.trim() || '',
+            size: document.getElementById('size-input')?.value || '',
+            sort: document.getElementById('sort-select')?.value || '',
+            keyword: document.querySelector('input[name="keyword"]')?.value.trim() || ''
+        };
+    }
 
-    pagination.addEventListener("click", function (e) {
-        const link = e.target.closest("a");
-        if (!link) return;
-        e.preventDefault();
+    function buildFilterQueryString(extraParams = {}) {
+        let params = { ...getCurrentFilterParams(), ...extraParams };
+        Object.keys(params).forEach(key => {
+            if (params[key] === '') delete params[key];
+        });
+        return new URLSearchParams(params).toString();
+    }
 
-        const url = link.href;
+    // ========== LIKE BUTTONS ==========
+    function attachLikeButtons() {
+        document.querySelectorAll('.like-btn').forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const productId = this.dataset.id;
+                fetch(`index.php?url=like&id=${productId}`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'liked') this.classList.add('like-btn--liked');
+                        else this.classList.remove('like-btn--liked');
+                    })
+                    .catch(console.error);
+            });
+        });
+    }
+
+    // ========== AJAX LOAD PRODUCTS & PAGINATION ==========
+    let currentRequest = null;
+    function loadProducts(url, updateHistory = true) {
+        const productList = document.getElementById("product-list");
+        const paginationDiv = document.getElementById("pagination");
+        if (!productList) return;
 
         let overlay = document.createElement("div");
         overlay.className = "ajax-overlay";
-        productList.appendChild(overlay);
-        productList.classList.add("loading");
+        overlay.style.cssText = "position:absolute; background:rgba(255,255,255,0.8); inset:0; z-index:10; display:flex; align-items:center; justify-content:center;";
+        overlay.innerHTML = '<div style="width:40px;height:40px;border:4px solid #ccc; border-top-color:#333; border-radius:50%; animation:spin 0.6s linear infinite;"></div>';
+        const container = productList.parentElement;
+        container.style.position = "relative";
+        container.appendChild(overlay);
+        productList.style.opacity = "0.6";
 
-        fetch(url)
+        if (currentRequest) currentRequest.abort();
+        currentRequest = new AbortController();
+
+        fetch(url, { signal: currentRequest.signal })
             .then(res => res.text())
             .then(html => {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, "text/html");
-                const newList = doc.querySelector("#product-list");
-                const newPagination = doc.querySelector("#pagination");
+                const newList = doc.getElementById("product-list");
+                const newPagination = doc.getElementById("pagination");
 
-                productList.style.opacity = "0";
-                setTimeout(() => {
-                    if (newList) productList.innerHTML = newList.innerHTML;
-                    if (newPagination) pagination.innerHTML = newPagination.innerHTML;
+                if (newList) productList.innerHTML = newList.innerHTML;
+                if (newPagination && paginationDiv) paginationDiv.innerHTML = newPagination.innerHTML;
 
-                    productList.style.opacity = "1";
-                    productList.classList.remove("loading");
-                    overlay.remove();
-                    window.scrollTo({ top: productList.offsetTop - 100, behavior: "smooth" });
-                }, 250);
+                productList.style.opacity = "1";
+                attachLikeButtons();
+
+                if (updateHistory) {
+                    const newUrl = url.replace(/&?ajax=1/, '');
+                    window.history.pushState({}, '', newUrl);
+                }
+            })
+            .catch(err => {
+                if (err.name === 'AbortError') return;
+                console.error(err);
+                alert("Không thể tải dữ liệu, vui lòng thử lại.");
+            })
+            .finally(() => {
+                productList.style.opacity = "";
+                overlay.remove();
+                container.style.position = "";
+                currentRequest = null;
+            });
+    }
+
+    function bindPaginationEvents() {
+        const pagination = document.getElementById("pagination");
+        if (!pagination) return;
+        pagination.addEventListener("click", function(e) {
+            const link = e.target.closest("a");
+            if (!link) return;
+            e.preventDefault();
+            const href = link.getAttribute("href");
+            const urlParams = new URLSearchParams(href.split('?')[1] || '');
+            let page = urlParams.get('page') || 1;
+            const filterParams = getCurrentFilterParams();
+            filterParams.page = page;
+            const queryString = new URLSearchParams(filterParams).toString();
+            const newUrl = `index.php?url=home&${queryString}`;
+            loadProducts(newUrl, true);
+            window.scrollTo({ top: document.querySelector('.home__container').offsetTop - 80, behavior: 'smooth' });
+        });
+    }
+
+    // ========== FILTER LOGIC ==========
+    (function() {
+        const form = document.getElementById('filter-form');
+        if (!form) return;
+
+        const minPriceInput = document.getElementById('min_price');
+        const maxPriceInput = document.getElementById('max_price');
+        const pricePresetBtns = document.querySelectorAll('.price-preset');
+        const sizeOptions = document.querySelectorAll('.size-option');
+        const sizeHidden = document.getElementById('size-input');
+        const cancelBtn = document.getElementById('filter-cancel-btn');
+        const keywordInput = document.querySelector('input[name="keyword"]');
+        const sortSelect = document.getElementById('sort-select');
+
+        function removePriceActiveClass() {
+            pricePresetBtns.forEach(btn => btn.classList.remove('active'));
+        }
+
+        function syncPriceActiveFromInputs() {
+            let minVal = minPriceInput.value === '' ? null : parseInt(minPriceInput.value, 10);
+            let maxVal = maxPriceInput.value === '' ? null : parseInt(maxPriceInput.value, 10);
+            if ((minVal === null || isNaN(minVal)) && (maxVal === null || isNaN(maxVal))) {
+                removePriceActiveClass();
+                return;
+            }
+            minVal = (minVal !== null && !isNaN(minVal)) ? minVal : 0;
+            maxVal = (maxVal !== null && !isNaN(maxVal)) ? maxVal : Infinity;
+            let matched = false;
+            pricePresetBtns.forEach(btn => {
+                const minPreset = parseInt(btn.getAttribute('data-min'), 10);
+                const maxPreset = parseInt(btn.getAttribute('data-max'), 10);
+                if (minVal === minPreset && maxVal === maxPreset) {
+                    btn.classList.add('active');
+                    matched = true;
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            if (!matched) removePriceActiveClass();
+        }
+
+        function syncSizeActiveFromInput() {
+            const currentSize = sizeHidden.value;
+            sizeOptions.forEach(btn => {
+                const sizeValue = btn.getAttribute('data-size');
+                if (currentSize && sizeValue === currentSize) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+
+        pricePresetBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                minPriceInput.value = this.getAttribute('data-min');
+                maxPriceInput.value = this.getAttribute('data-max');
+                removePriceActiveClass();
+                this.classList.add('active');
+                form.dispatchEvent(new Event('submit'));
             });
         });
-    });
 
-    // ====================== FILTER ======================
-
-    // chọn size
-    document.querySelectorAll(".size-option").forEach(btn => {
-        btn.addEventListener("click", function () {
-            document.querySelectorAll(".size-option").forEach(b => b.classList.remove("active"));
-            this.classList.add("active");
-
-            document.getElementById("size-input").value = this.dataset.size;
+        sizeOptions.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const selectedSize = this.getAttribute('data-size');
+                if (sizeHidden.value === selectedSize) {
+                    sizeHidden.value = '';
+                    this.classList.remove('active');
+                } else {
+                    sizeHidden.value = selectedSize;
+                    sizeOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                }
+                syncSizeActiveFromInput();
+                form.dispatchEvent(new Event('submit'));
+            });
         });
-    });
 
-    // submit filter (AJAX)
-    document.querySelector(".filter__form").addEventListener("submit", function (e) {
-    e.preventDefault();
+        let priceTimeout;
+        [minPriceInput, maxPriceInput].forEach(inp => {
+            inp.addEventListener('input', () => {
+                clearTimeout(priceTimeout);
+                priceTimeout = setTimeout(() => {
+                    syncPriceActiveFromInputs();
+                    form.dispatchEvent(new Event('submit'));
+                }, 500);
+            });
+        });
 
-    const formData = new FormData(this);
-    const params = new URLSearchParams(formData).toString();
+        let keywordTimeout;
+        if (keywordInput) {
+            keywordInput.addEventListener('input', () => {
+                clearTimeout(keywordTimeout);
+                keywordTimeout = setTimeout(() => {
+                    form.dispatchEvent(new Event('submit'));
+                }, 400);
+            });
+        }
 
-    const url = `index.php?url=home&ajax=1&${params}`;
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => form.dispatchEvent(new Event('submit')));
+        }
 
-    const productList = document.getElementById("product-list");
+        function resetFiltersAndSubmit() {
+            minPriceInput.value = '';
+            maxPriceInput.value = '';
+            sizeHidden.value = '';
+            if (sortSelect) sortSelect.value = '';
+            if (keywordInput) keywordInput.value = '';
+            removePriceActiveClass();
+            sizeOptions.forEach(btn => btn.classList.remove('active'));
+            syncPriceActiveFromInputs();
+            syncSizeActiveFromInput();
+            form.dispatchEvent(new Event('submit'));
+        }
 
-    let overlay = document.createElement("div");
-    overlay.className = "ajax-overlay";
-    productList.appendChild(overlay);
-    productList.classList.add("loading");
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                resetFiltersAndSubmit();
+            });
+        }
 
-    fetch(url)
-        .then(res => res.text())
-        .then(html => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, "text/html");
-
-            const newList = doc.querySelector("#product-list");
-
-            if (newList) {
-                productList.innerHTML = newList.innerHTML;
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            let minVal = minPriceInput.value.trim() === '' ? null : parseInt(minPriceInput.value, 10);
+            let maxVal = maxPriceInput.value.trim() === '' ? null : parseInt(maxPriceInput.value, 10);
+            if (minVal !== null && maxVal !== null && !isNaN(minVal) && !isNaN(maxVal) && minVal > maxVal) {
+                alert('⚠️ Giá tối thiểu không thể lớn hơn giá tối đa.');
+                return;
             }
-
-            productList.classList.remove("loading");
-            overlay.remove();
+            const queryString = buildFilterQueryString();
+            const url = `index.php?url=home&ajax=1&${queryString}`;
+            loadProducts(url, true);
+            const filterDiv = document.getElementById('home-filter');
+            if (filterDiv && filterDiv.classList.contains('show')) {
+                filterDiv.classList.remove('show');
+            }
         });
-});
+
+        syncSizeActiveFromInput();
+        syncPriceActiveFromInputs();
+    })();
+
+    function init() {
+        attachLikeButtons();
+        bindPaginationEvents();
+        loadHomeVouchers(); // <-- Tải danh sách voucher
+        const observer = new MutationObserver(() => bindPaginationEvents());
+        const paginationDiv = document.getElementById('pagination');
+        if (paginationDiv) observer.observe(paginationDiv, { childList: true, subtree: true });
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
 </script>
+<style>
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .ajax-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.8);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+    }
+</style>

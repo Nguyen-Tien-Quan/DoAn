@@ -73,9 +73,9 @@ foreach($reviews as $r){
 }
 
 .variant-item input:checked + .variant-box {
-    border-color: var(--primary-color, #ff4d4f);
-    background: rgba(255, 77, 79, 0.1);
-    box-shadow: 0 6px 18px rgba(255, 77, 79, 0.25);
+    border-color: #ff4d4f;
+    background: linear-gradient(135deg, #fff0f0, #ffe5e5);
+    transform: scale(1.05);
 }
 
 .variant-name {
@@ -205,6 +205,17 @@ foreach($reviews as $r){
     z-index: 999;
 }
 
+.prod-info__add-to-cart {
+    border: none;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.prod-info__add-to-cart:hover {
+    transform: translateY(-2px);
+    /* box-shadow: 0 6px 20px ; */
+}
+
 @keyframes floatUp {
     from {
         opacity: 0;
@@ -327,7 +338,7 @@ foreach($reviews as $r){
                                             <span class="prod-info__price" id="prod-price"><?= number_format($product['base_price']) ?>đ</span>
                                             <span class="prod-info__tax">- 10%</span>
                                         </div>
-                                        <p class="prod-info__total-price" id="prod-total-price"><?= number_format($product['base_price'] * 1.1) ?>đ</p>
+                                        <p class="prod-info__total-price" id="prod-total-price"><?= number_format($product['base_price']) ?>đ</p>
                                         <div class="qty">
                                             <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
                                             <input type="number" class="qty-input" name="quantity" value="1" min="1">
@@ -684,27 +695,16 @@ foreach($reviews as $r){
         });
     });
 
-    // chọn size
-    document.querySelectorAll('input[name="variant_id"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const price = Number(this.dataset.price);
-
-            document.getElementById('prod-price').innerText =
-                price.toLocaleString() + 'đ';
-
-            updateTotal();
-        });
-    });
-
-
 
     function updateTotal() {
-        // Nếu chọn variant, dùng giá variant, không cộng base
+        const basePrice = <?= $product['base_price'] ?>;
+
         const variant = document.querySelector('input[name="variant_id"]:checked');
-        const basePrice = variant ? Number(variant.dataset.price) : <?= $product['base_price'] ?>;
+        const variantPrice = variant ? Number(variant.dataset.price) : 0;
 
         let toppingTotal = 0;
         let toppingCount = 0;
+
         document.querySelectorAll('input[name="toppings[]"]:checked').forEach(cb => {
             toppingTotal += Number(cb.dataset.price);
             toppingCount++;
@@ -714,13 +714,15 @@ foreach($reviews as $r){
 
         const qty = Number(document.querySelector('.qty-input').value) || 1;
 
-        const finalPrice = (basePrice + toppingTotal) * qty;
+        const finalPrice = (basePrice + variantPrice + toppingTotal) * qty;
 
-        // Hiển thị giá
-        document.getElementById('prod-price').innerText = basePrice.toLocaleString() + 'đ';
-        document.getElementById('prod-total-price').innerText = finalPrice.toLocaleString() + 'đ';
+        // 👇 HIỂN THỊ GIÁ ĐÚNG
+        document.getElementById('prod-price').innerText =
+            (basePrice + variantPrice).toLocaleString() + 'đ';
+
+        document.getElementById('prod-total-price').innerText =
+            finalPrice.toLocaleString() + 'đ';
     }
-
     // change variant
     document.querySelectorAll('input[name="variant_id"]').forEach(radio => {
         radio.addEventListener('change', updateTotal);

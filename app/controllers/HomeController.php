@@ -23,7 +23,6 @@ function pagination() {
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
 
-    // Trả dữ liệu về router
     return [
         'products' => $stmt->fetchAll(PDO::FETCH_ASSOC),
         'page' => $page,
@@ -34,11 +33,8 @@ function pagination() {
 
 function getProducts() {
     $conn = getDB();
-
     $stmt = $conn->query("SELECT * FROM products");
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    return $products;
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function getProductById($id) {
@@ -55,7 +51,6 @@ function getProductById($id) {
 
     if (!$product) return null;
 
-    // 🔥 THÊM DÒNG NÀY
     $product['variants'] = getVariantsByProductId($id);
     $product['toppings'] = getToppingsByProductId($id);
 
@@ -88,7 +83,6 @@ function getAverageRating($productId) {
         WHERE product_id = ? AND status = 1
     ");
     $stmt->execute([$productId]);
-
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
@@ -97,10 +91,9 @@ function getVariantsByProductId($productId) {
 
     $stmt = $conn->prepare("
         SELECT * FROM product_variants
-        WHERE product_id = ? AND status = 1
+        WHERE product_id = ? OR (product_id IS NULL AND status = 1)
     ");
     $stmt->execute([$productId]);
-
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -114,7 +107,6 @@ function getToppingsByProductId($productId) {
         WHERE pt.product_id = ? AND t.status = 1
     ");
     $stmt->execute([$productId]);
-
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -127,16 +119,14 @@ function getVariantById($id) {
         WHERE id = ?
     ");
     $stmt->execute([$id]);
-
     $variant = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($variant) {
-        // 👉 map lại cho code cũ dùng
         $variant['name'] = $variant['variant_name'];
     }
-
     return $variant;
 }
+
 function getToppingById($id) {
     $conn = getDB();
 
@@ -145,7 +135,6 @@ function getToppingById($id) {
         WHERE id = ? AND status = 1
     ");
     $stmt->execute([$id]);
-
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
@@ -154,7 +143,6 @@ function addReview() {
         session_start();
     }
 
-    // ❌ Chưa login
     if (!isset($_SESSION['user'])) {
         header("Location: index.php?url=login");
         exit;
@@ -171,9 +159,7 @@ function addReview() {
         exit;
     }
 
-    // ================================
-    // 🔥 LẤY / TẠO CUSTOMER
-    // ================================
+    // Lấy hoặc tạo customer
     $stmt = $conn->prepare("SELECT id FROM customers WHERE user_id = ?");
     $stmt->execute([$_SESSION['user']['id']]);
     $customer = $stmt->fetch();
@@ -189,52 +175,32 @@ function addReview() {
         $customer_id = $customer['id'];
     }
 
-    // ================================
-    // 📸 UPLOAD ẢNH
-    // ================================
+    // Upload ảnh
     $images = [];
-
     if (!empty($_FILES['images']['name'][0])) {
-
         if (!is_dir("uploads/review")) {
             mkdir("uploads/review", 0777, true);
         }
-
         foreach ($_FILES['images']['tmp_name'] as $key => $tmp) {
-
             if ($_FILES['images']['error'][$key] === 0) {
-
                 $ext = strtolower(pathinfo($_FILES['images']['name'][$key], PATHINFO_EXTENSION));
-
                 $allow = ['jpg','jpeg','png','webp'];
                 if (!in_array($ext, $allow)) continue;
-
                 $name = time() . '_' . $key . '.' . $ext;
-
                 if (move_uploaded_file($tmp, "uploads/review/" . $name)) {
                     $images[] = $name;
                 }
             }
         }
     }
-
     $imageString = implode(',', $images);
 
-    // ================================
-    // 💾 INSERT REVIEW (🔥 FIX Ở ĐÂY)
-    // ================================
+    // Insert review
     $stmt = $conn->prepare("
         INSERT INTO reviews (customer_id, product_id, rating, comment, images, likes, status, created_at)
         VALUES (?, ?, ?, ?, ?, 0, 1, NOW())
     ");
-
-    $stmt->execute([
-        $customer_id,
-        $product_id,
-        $rating,
-        $comment,
-        $imageString
-    ]);
+    $stmt->execute([$customer_id, $product_id, $rating, $comment, $imageString]);
 
     header("Location: index.php?url=product&id=" . $product_id);
     exit;
@@ -244,4 +210,107 @@ function getCategories() {
     $conn = getDB();
     $stmt = $conn->query("SELECT * FROM categories ORDER BY id ASC");
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Lấy sản phẩm có lọc, phân trang – SỬA LỖI MIXED PARAMETERS
+ * Chỉ dùng named parameters (:`ten`)
+ */
+function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
+    $conn = getDB();
+    $offset = ($page - 1) * $limit;
+    $limit = (int)$limit;
+    $offset = (int)$offset;
+
+    $sql = "SELECT p.*, COALESCE(AVG(r.rating), 0) as rating
+            FROM products p
+            LEFT JOIN reviews r ON p.id = r.product_id
+            WHERE p.status = 1";
+    $params = [];
+
+    // Xây dựng điều kiện với named parameters
+    if (!empty($filters['min_price'])) {
+        $sql .= " AND p.base_price >= :min_price";
+        $params[':min_price'] = (float)$filters['min_price'];
+    }
+    if (!empty($filters['max_price'])) {
+        $sql .= " AND p.base_price <= :max_price";
+        $params[':max_price'] = (float)$filters['max_price'];
+    }
+    if (!empty($filters['size'])) {
+        $sql .= " AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.variant_name = :size)";
+        $params[':size'] = $filters['size'];
+    }
+    if (!empty($filters['keyword'])) {
+        $sql .= " AND p.name LIKE :keyword";
+        $params[':keyword'] = '%' . $filters['keyword'] . '%';
+    }
+
+    $sql .= " GROUP BY p.id";
+
+    // Sắp xếp
+    if (!empty($filters['sort'])) {
+        if ($filters['sort'] === 'price_asc') {
+            $sql .= " ORDER BY p.base_price ASC";
+        } elseif ($filters['sort'] === 'price_desc') {
+            $sql .= " ORDER BY p.base_price DESC";
+        } else {
+            $sql .= " ORDER BY p.id DESC";
+        }
+    } else {
+        $sql .= " ORDER BY p.id DESC";
+    }
+
+    $sql .= " LIMIT :limit OFFSET :offset";
+
+    $stmt = $conn->prepare($sql);
+    // Bind các tham số lọc (named)
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    // Bind limit, offset (kiểu INT)
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Đếm tổng sản phẩm thỏa mãn bộ lọc – dùng positional (?) hoặc named, ở đây giữ nguyên positional
+ * (Không bị lỗi vì không trộn với named)
+ */
+function countFilteredProducts($filters = []) {
+    $conn = getDB();
+    $sql = "SELECT COUNT(DISTINCT p.id) as total
+            FROM products p
+            WHERE p.status = 1";
+    $params = [];
+
+    if (!empty($filters['min_price'])) {
+        $sql .= " AND p.base_price >= ?";
+        $params[] = (float)$filters['min_price'];
+    }
+    if (!empty($filters['max_price'])) {
+        $sql .= " AND p.base_price <= ?";
+        $params[] = (float)$filters['max_price'];
+    }
+    if (!empty($filters['size'])) {
+        $sql .= " AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.variant_name = ?)";
+        $params[] = $filters['size'];
+    }
+    if (!empty($filters['keyword'])) {
+        $sql .= " AND p.name LIKE ?";
+        $params[] = '%' . $filters['keyword'] . '%';
+    }
+
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row['total'] ?? 0;
+}
+
+function getAllVariants() {
+    $conn = getDB();
+    $stmt = $conn->query("SELECT DISTINCT variant_name FROM product_variants ORDER BY variant_name");
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
