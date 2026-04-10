@@ -6,7 +6,27 @@ $favIds = $favIds ?? [];
 $categories = $categories ?? [];
 $variants = $variants ?? [];
 ?>
+<style>
+    .filter-selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0;
+}
 
+.filter-chip {
+    background: #f5f5f5;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.filter-chip:hover {
+    background: #ff4d4f;
+    color: #fff;
+}
+</style>
 <main class="container home">
 
     <!-- Slideshow -->
@@ -51,7 +71,7 @@ $variants = $variants ?? [];
         </div>
     </div>
 
-    <!-- Browse Categories (đã sửa link thành javascript) -->
+    <!-- Browse Categories -->
     <section class="home__container">
         <div class="home__cate row row-cols-4 row-cols-md-1 cate-slider">
             <?php foreach ($categories as $cat): ?>
@@ -532,14 +552,48 @@ $variants = $variants ?? [];
                 form.dispatchEvent(new Event('submit'));
             });
         });
-        // Category links from browse categories
+        // Category links from browse categories - GỌI TRỰC TIẾP LOADPRODUCTS
         document.querySelectorAll('.category-link').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 const catId = this.getAttribute('data-cat-id');
+
+                // Reset tất cả các bộ lọc khác về mặc định
+                minPriceInput.value = '';
+                maxPriceInput.value = '';
+                sizeHidden.value = '';
+                sortSelect.value = '';
+                if (keywordInput) keywordInput.value = '';
+
+                // Xóa active class của size và category cũ
+                sizeOptions.forEach(opt => opt.classList.remove('active'));
+                categoryOptions.forEach(opt => opt.classList.remove('active'));
+
+                // Đặt category mới
                 categoryInput.value = catId;
-                syncCategoryActiveFromInput();
-                form.dispatchEvent(new Event('submit'));
+                // Active cho category vừa chọn
+                categoryOptions.forEach(opt => {
+                    if (opt.getAttribute('data-id') === catId) {
+                        opt.classList.add('active');
+                    }
+                });
+
+                // Đồng bộ giao diện giá, size
+                syncPriceActiveFromInputs();
+                syncSizeActiveFromInput();
+
+                // Gọi trực tiếp loadProducts, không qua form submit (nhanh hơn)
+                const queryString = buildFilterQueryString();
+                const url = `index.php?url=home&ajax=1&${queryString}`;
+                loadProducts(url, true);
+
+                // Đóng filter nếu đang mở
+                const filterDiv = document.getElementById('home-filter');
+                if (filterDiv && filterDiv.classList.contains('show')) {
+                    filterDiv.classList.remove('show');
+                }
+
+                // Cuộn đến sản phẩm
                 document.querySelector('.home__container').scrollIntoView({ behavior: 'smooth' });
             });
         });
@@ -569,7 +623,7 @@ $variants = $variants ?? [];
         if (sortSelect) {
             sortSelect.addEventListener('change', () => form.dispatchEvent(new Event('submit')));
         }
-        // Reset filters
+        // Reset filters (Cancel)
         function resetFiltersAndSubmit() {
             minPriceInput.value = '';
             maxPriceInput.value = '';

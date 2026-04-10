@@ -16,6 +16,7 @@ require_once __DIR__ . '/../app/controllers/FavoritesController.php';
 require_once __DIR__ . '/../app/controllers/OrderController.php';
 require_once __DIR__ . '/../app/controllers/PaymentController.php';
 require_once __DIR__ . '/../app/controllers/SettingsController.php';
+require_once __DIR__ . '/../app/helpers/order_helper.php';
 
 // Lấy danh sách sản phẩm (dùng cho home)
 $products = getProducts();
@@ -333,6 +334,31 @@ switch ($url) {
         cancelOrder();
         break;
 
+    case 'load-orders':
+        $status = $_GET['status'] ?? '';
+
+        $conn = getDB();
+        $userId = $_SESSION['user']['id'];
+
+        $sql = "SELECT * FROM orders WHERE user_id = ?";
+        $params = [$userId];
+
+        if ($status) {
+            $sql .= " AND status = ?";
+            $params[] = $status;
+        }
+
+        $sql .= " ORDER BY id DESC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $orders = $stmt->fetchAll();
+
+        foreach ($orders as $order) {
+            echo renderOrder($order);
+        }
+        exit;
+
     // ==================== PRODUCT ====================
     case 'product':
         $product = getProductById($_GET['id'] ?? 0);
@@ -372,40 +398,54 @@ switch ($url) {
         handleNotificationApi();
         exit;
 
-    // ==================== HOME & DEFAULT ====================
-   case 'home':
-    default:
-        // Lấy tham số từ $_GET
-        $page = $_GET['page'] ?? 1;
-        $limit = 10; // số sản phẩm mỗi trang
-        $filters = [
-            'category'  => $_GET['category'] ?? '',
-            'min_price' => $_GET['min_price'] ?? '',
-            'max_price' => $_GET['max_price'] ?? '',
-            'size'      => $_GET['size'] ?? '',
-            'sort'      => $_GET['sort'] ?? '',
-            'keyword'   => $_GET['keyword'] ?? ''
-        ];
+    // ==================== PAGES (Support, Blog, Promotion, About) ====================
+    case 'support':
+        $view = view('support');
+        break;
 
-        // Nếu là AJAX, chỉ trả về phần product-list và pagination
-        if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
+    case 'blog':
+        $view = view('blog');
+        break;
+
+    case 'promotion':
+        $view = view('promotion');
+        break;
+
+    case 'about':
+        $view = view('about');
+    break;
+
+    // ==================== HOME & DEFAULT ====================
+    case 'home':
+        default:
+
+            $page = $_GET['page'] ?? 1;
+            $limit = 10;
+
+            $filters = [
+                'category'  => $_GET['category'] ?? '',
+                'min_price' => $_GET['min_price'] ?? '',
+                'max_price' => $_GET['max_price'] ?? '',
+                'size'      => $_GET['size'] ?? '',
+                'sort'      => $_GET['sort'] ?? '',
+                'keyword'   => $_GET['keyword'] ?? ''
+            ];
+
             $products = getFilteredProducts($page, $limit, $filters);
             $totalProducts = countFilteredProducts($filters);
             $totalPages = ceil($totalProducts / $limit);
-            // Chỉ hiển thị product list và pagination
-            include view('product-list-ajax'); // tạo file này hoặc inline
-            exit;
-        }
 
-        // Load normal page
-        $products = getFilteredProducts($page, $limit, $filters);
-        $totalProducts = countFilteredProducts($filters);
-        $totalPages = ceil($totalProducts / $limit);
-        $favIds = getFavoriteIds();
-        $categories = getCategories();
-        $variants = getAllVariants(); // lấy danh sách size từ DB
+            $favIds = getFavoriteIds();
+            $categories = getCategories();
+            $variants = getAllVariants();
 
-        $view = view('home');
+            // 🔥 FIX Ở ĐÂY
+            if (isset($_GET['ajax'])) {
+                include view('home'); // ✅ trả lại FULL HTML
+                exit;
+            }
+
+            $view = view('home');
         break;
     }
 

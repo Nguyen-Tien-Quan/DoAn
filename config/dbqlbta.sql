@@ -63,6 +63,14 @@ CREATE TABLE categories (
     updated_at TIMESTAMP NULL
 );
 
+USE QlBANTHUCAN;
+ALTER TABLE categories ADD COLUMN `position` INT DEFAULT 0 AFTER `parent_id`;
+UPDATE categories SET `position` = id;
+
+ALTER TABLE categories ADD COLUMN parent_id BIGINT UNSIGNED DEFAULT 0 AFTER id;
+
+
+
 -- =========================================
 -- 5. PRODUCTS
 -- =========================================
@@ -85,8 +93,7 @@ CREATE TABLE products (
 -- 1. Thêm cột stock_quantity vào bảng products (nếu chưa có)
 ALTER TABLE products ADD COLUMN stock_quantity INT DEFAULT 0 AFTER image;
 
-USE QlBANTHUCAN;
-SET SQL_SAFE_UPDATES = 0;
+
 UPDATE products SET stock_quantity = 999;
 
 -- 3. Tạo bảng order_statuses (lịch sử trạng thái đơn hàng)
@@ -99,7 +106,7 @@ CREATE TABLE IF NOT EXISTS order_statuses (
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-SET SQL_SAFE_UPDATES = 1;
+
 
 -- =========================================
 -- 6. PRODUCT_VARIANTS (FIX)
@@ -199,6 +206,9 @@ CREATE TABLE orders (
     FOREIGN KEY (customer_id) REFERENCES customers(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+USE QlBANTHUCAN;
+ALTER TABLE orders ADD FOREIGN KEY (shipping_address_id) REFERENCES shipping_addresses(id);
 
 -- =========================================
 -- 12. ORDER_ITEMS

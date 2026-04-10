@@ -1,9 +1,10 @@
 <style>
-    .order-detail{
+.order-detail{
     background:#f6f7fb;
     padding:30px 0;
 }
 
+/* HEADER */
 .od-header{
     display:flex;
     justify-content:space-between;
@@ -21,6 +22,7 @@
     color:#555;
 }
 
+/* CARD */
 .od-card{
     background:#fff;
     border-radius:16px;
@@ -84,9 +86,55 @@
 .od-status{
     padding:10px;
     border-radius:10px;
-    background:#e6f7ff;
     text-align:center;
     font-weight:600;
+}
+
+.od-status.pending{ background:#fff3cd; color:#856404; }
+.od-status.confirmed{ background:#d1ecf1; color:#0c5460; }
+.od-status.preparing{ background:#cce5ff; color:#004085; }
+.od-status.delivering{ background:#e2e3e5; color:#383d41; }
+.od-status.completed{ background:#d4edda; color:#155724; }
+.od-status.cancelled{ background:#f8d7da; color:#721c24; }
+
+/* PROGRESS */
+.order-progress{
+    display:flex;
+    justify-content:space-between;
+    margin-top:15px;
+    position:relative;
+}
+
+.order-progress::before{
+    content:'';
+    position:absolute;
+    top:6px;
+    left:0;
+    right:0;
+    height:2px;
+    background:#eee;
+}
+
+.order-progress .step{
+    text-align:center;
+    flex:1;
+    position:relative;
+}
+
+.order-progress .dot{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:#ccc;
+    margin:auto;
+}
+
+.order-progress .step.active .dot{
+    background:#ff4d4f;
+}
+
+.order-progress span{
+    font-size:12px;
 }
 
 /* TIMELINE */
@@ -132,7 +180,20 @@
     font-size:13px;
     color:#555;
 }
+
+/* BUTTON */
+.btn-reorder{
+    display:block;
+    text-align:center;
+    margin-top:15px;
+    padding:10px;
+    background:#ff4d4f;
+    color:#fff;
+    border-radius:10px;
+    text-decoration:none;
+}
 </style>
+
 <main class="order-detail">
     <div class="container">
 
@@ -161,7 +222,14 @@
                             <img src="<?= $base ?>assets/img/product/<?= $item['image'] ?>">
 
                             <div class="info">
-                                <div class="name"><?= $item['product_name'] ?></div>
+                                <div class="name">
+                                    <?= $item['product_name'] ?>
+                                    <?php if (!empty($item['variant_name'])): ?>
+                                        <span style="font-size:12px;color:#888;">
+                                            (<?= $item['variant_name'] ?>)
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="qty">x<?= $item['quantity'] ?></div>
                             </div>
 
@@ -190,6 +258,10 @@
                             <span><?= number_format($order['final_amount'] ?? $order['total_amount']) ?>đ</span>
                         </div>
                     </div>
+
+                    <a href="index.php?url=reorder&id=<?= $order['id'] ?>" class="btn-reorder">
+                        🔁 Mua lại
+                    </a>
                 </div>
 
             </div>
@@ -210,10 +282,23 @@
                         'completed'=>'Hoàn thành',
                         'cancelled'=>'Đã hủy'
                     ];
+
+                    $steps = ['pending','confirmed','preparing','delivering','completed'];
+                    $currentIndex = array_search($order['status'], $steps);
                     ?>
 
-                    <div class="od-status">
+                    <div class="od-status <?= $order['status'] ?>">
                         <?= $map[$order['status']] ?? $order['status'] ?>
+                    </div>
+
+                    <!-- PROGRESS -->
+                    <div class="order-progress">
+                        <?php foreach ($steps as $i => $step): ?>
+                            <div class="step <?= $i <= $currentIndex ? 'active' : '' ?>">
+                                <div class="dot"></div>
+                                <span><?= $map[$step] ?? $step ?></span>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
 

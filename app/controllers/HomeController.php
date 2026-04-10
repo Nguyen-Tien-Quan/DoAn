@@ -3,7 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__ . '/../../config/database.php';
 
 function pagination() {
     $conn = getDB();
@@ -250,7 +249,6 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
 
     $sql .= " GROUP BY p.id";
 
-    // Sắp xếp
     if (!empty($filters['sort'])) {
         if ($filters['sort'] === 'price_asc') {
             $sql .= " ORDER BY p.base_price ASC";
