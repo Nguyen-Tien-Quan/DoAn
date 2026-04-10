@@ -429,10 +429,15 @@ INSERT INTO roles (id, name) VALUES
 -- =============================
 -- USERS (password = 123456)
 -- =============================
-INSERT INTO users (id, role_id, name, email, password, phone, status) VALUES
-(1, 1, 'Admin', 'admin@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9Q0p1R0tJ3Q0Q0Q0Q0Q0Q', '0123456789', 1),
-(2, 3, 'Nguyen Van A', 'a@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9Q0p1R0tJ3Q0Q0Q0Q0Q0Q', '0987654321', 1),
-(3, 3, 'Tran Thi B', 'b@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9Q0p1R0tJ3Q0Q0Q0Q0Q0Q', '0977777777', 1);
+
+
+INSERT INTO users (role_id, name, email, password, phone, status) VALUES
+(1, 1, 'Admin', 'admin@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '0123456789', 1),
+(2, 3, 'Nguyen Van A', 'a@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '0987654321', 1),
+(3, 3, 'Tran Thi B', 'b@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '0977777777', 1);
+USE QlBANTHUCAN;
+INSERT INTO users (role_id, name, email, password, phone, status) VALUES
+(2, 'Nguyen Van A', 'st2@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '0987654321', 1);
 
 -- =============================
 -- CUSTOMERS
