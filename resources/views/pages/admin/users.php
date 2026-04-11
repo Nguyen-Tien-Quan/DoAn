@@ -115,11 +115,11 @@ $totalRecords = $stmt->fetchColumn();
 $totalPages = ceil($totalRecords / $limit);
 
 // Lấy danh sách
-$sql = "SELECT u.*, r.name as role_name 
-        FROM users u 
-        LEFT JOIN roles r ON u.role_id = r.id 
-        $where 
-        ORDER BY u.id DESC 
+$sql = "SELECT u.*, r.name as role_name
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        $where
+        ORDER BY u.id DESC
         LIMIT $limit OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

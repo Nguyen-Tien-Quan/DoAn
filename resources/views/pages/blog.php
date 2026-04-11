@@ -1,5 +1,25 @@
 <?php
-// Giả sử có thể lấy bài viết từ DB sau, hiện tại dùng dữ liệu mẫu
+// Lấy kết nối database
+require_once __DIR__ . '/../../../config/database.php';
+$conn = getDB();
+
+// Phân trang
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 6;
+$offset = ($page - 1) * $limit;
+
+// Đếm tổng số bài viết
+$totalStmt = $conn->prepare("SELECT COUNT(*) FROM blog_posts WHERE status = 1");
+$totalStmt->execute();
+$totalPosts = $totalStmt->fetchColumn();
+$totalPages = ceil($totalPosts / $limit);
+
+// Lấy danh sách bài viết
+$stmt = $conn->prepare("SELECT * FROM blog_posts WHERE status = 1 ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
+$posts = $stmt->fetchAll();
 ?>
 <main class="container blog-page">
     <div class="page-header">
@@ -8,40 +28,30 @@
     </div>
 
     <div class="blog-grid">
-        <article class="blog-card">
-            <img src="<?= $base ?>assets/img/blog/blog-1.jpg" alt="Burger ngon">
-            <div class="blog-card__content">
-                <span class="blog-category">Công thức</span>
-                <h3><a href="#">Cách làm burger bò phô mai tại nhà</a></h3>
-                <p>Chỉ 15 phút với nguyên liệu đơn giản, bạn đã có bữa sáng hoàn hảo...</p>
-                <div class="blog-meta">15/04/2025 • 5 phút đọc</div>
-            </div>
-        </article>
-        <article class="blog-card">
-            <img src="<?= $base ?>assets/img/blog/blog-2.jpg" alt="Cà phê">
-            <div class="blog-card__content">
-                <span class="blog-category">Kiến thức</span>
-                <h3><a href="#">Phân biệt Arabica và Robusta</a></h3>
-                <p>Hương vị, độ caffeine và cách chọn cà phê phù hợp với khẩu vị...</p>
-                <div class="blog-meta">10/04/2025 • 8 phút đọc</div>
-            </div>
-        </article>
-        <article class="blog-card">
-            <img src="<?= $base ?>assets/img/blog/blog-3.jpg" alt="Trà sữa">
-            <div class="blog-card__content">
-                <span class="blog-category">Review</span>
-                <h3><a href="#">Top 5 loại trà đào được yêu thích nhất</a></h3>
-                <p>Thanh mát, giải nhiệt – lựa chọn hàng đầu cho mùa hè...</p>
-                <div class="blog-meta">05/04/2025 • 3 phút đọc</div>
-            </div>
-        </article>
+        <?php if (empty($posts)): ?>
+            <p class="text-center">Chưa có bài viết nào.</p>
+        <?php else: ?>
+            <?php foreach ($posts as $post): ?>
+                <article class="blog-card">
+                    <img src="<?= $base . htmlspecialchars($post['image'] ?? 'assets/img/blog/default.jpg') ?>" alt="<?= htmlspecialchars($post['title']) ?>">
+                    <div class="blog-card__content">
+                        <span class="blog-category"><?= htmlspecialchars($post['category'] ?? 'Chung') ?></span>
+                        <h3><a href="<?= $base ?>index.php?url=blog-detail&slug=<?= urlencode($post['slug']) ?>"><?= htmlspecialchars($post['title']) ?></a></h3>
+                        <p><?= htmlspecialchars(substr($post['excerpt'] ?? $post['content'], 0, 120)) ?>...</p>
+                        <div class="blog-meta"><?= date('d/m/Y', strtotime($post['created_at'])) ?> • <?= $post['views'] ?? 0 ?> lượt xem</div>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
-    <div class="pagination">
-        <span class="active">1</span>
-        <a href="#">2</a>
-        <a href="#">3</a>
-    </div>
+    <?php if ($totalPages > 1): ?>
+        <div class="pagination">
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <a href="<?= $base ?>index.php?url=blog&page=<?= $i ?>" class="<?= $i == $page ? 'active' : '' ?>"><?= $i ?></a>
+            <?php endfor; ?>
+        </div>
+    <?php endif; ?>
 </main>
 
 <style>

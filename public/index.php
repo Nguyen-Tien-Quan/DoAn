@@ -59,6 +59,11 @@ switch ($url) {
         $layout = __DIR__ . '/../resources/views/layouts/auth.php';
         break;
 
+    case 'reset-password':
+        $view = view('reset-password');
+        $layout = __DIR__ . '/../resources/views/layouts/auth.php';
+        break;
+
     // ==================== SETTINGS ====================
     case 'settings':
         // Lấy dữ liệu từ hàm trong SettingsController

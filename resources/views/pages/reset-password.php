@@ -1,12 +1,18 @@
 <?php
-require_once __DIR__ . '/../../config/database.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-$token = $_GET['token'] ?? '';
+// ❌ CHẶN nếu chưa verify OTP
+if (!isset($_SESSION['otp_verified']) || !$_SESSION['otp_verified']) {
+    header("Location: index.php?url=forgot-password");
+    exit;
+}
+
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $token = $_POST['token'];
     $password = $_POST['password'];
     $confirm = $_POST['confirm'];
 
@@ -15,38 +21,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
 
         $conn = getDB();
+        $email = $_SESSION['reset_email'];
 
-        $stmt = $conn->prepare("
-            SELECT * FROM password_resets
-            WHERE token = ? AND expire_at > NOW()
-        ");
-        $stmt->execute([$token]);
-        $reset = $stmt->fetch();
+        $hash = password_hash($password, PASSWORD_DEFAULT);
 
-        if (!$reset) {
-            $message = "❌ Token không hợp lệ hoặc hết hạn";
-        } else {
+        $conn->prepare("UPDATE users SET password = ? WHERE email = ?")
+             ->execute([$hash, $email]);
 
-            $hash = password_hash($password, PASSWORD_DEFAULT);
+        $conn->prepare("DELETE FROM password_resets WHERE email = ?")
+             ->execute([$email]);
 
-            // update password
-            $conn->prepare("UPDATE users SET password = ? WHERE email = ?")
-                 ->execute([$hash, $reset['email']]);
+        unset($_SESSION['otp_verified']);
+        unset($_SESSION['reset_email']);
 
-            // xóa token
-            $conn->prepare("DELETE FROM password_resets WHERE email = ?")
-                 ->execute([$reset['email']]);
-
-            $message = "✅ Đổi mật khẩu thành công!";
-        }
+        $message = "✅ Đổi mật khẩu thành công!";
     }
 }
 ?>
+
 <main class="auth">
+
+    <!-- INTRO giống forgot password -->
+    <div class="auth__intro d-md-none">
+        <img src="./assets/img/auth/forgot-password.png" class="auth__intro-img" />
+    </div>
+
     <div class="auth__content">
         <div class="auth__content-inner">
 
-            <h1 class="auth__heading">Set new password</h1>
+            <!-- LOGO -->
+            <a href="./" class="logo">
+                <img src="./assets/icons/logo.svg" class="logo__img" />
+                <h2 class="logo__title">TrQShop</h2>
+            </a>
+
+            <h1 class="auth__heading">Thay đổi mật khẩu mới</h1>
 
             <?php if ($message): ?>
                 <div class="auth__message message message--success">
@@ -54,13 +63,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" class="form">
-                <input type="hidden" name="token" value="<?= $token ?>">
+            <form method="POST" class="form auth__form">
 
-                <input type="password" name="password" placeholder="New password" required class="form__input"><br><br>
-                <input type="password" name="confirm" placeholder="Confirm password" required class="form__input"><br><br>
+                <div class="form__group">
+                    <div class="form__text-input">
+                        <input type="password"
+                               name="password"
+                               placeholder="Mật khẩu mới"
+                               class="form__input"
+                               required>
+                    </div>
+                </div>
 
-                <button class="btn btn--primary">Update Password</button>
+                <div class="form__group">
+                    <div class="form__text-input">
+                        <input type="password"
+                               name="confirm"
+                               placeholder="Nhập lại mật khẩu "
+                               class="form__input"
+                               required>
+                    </div>
+                </div>
+
+                <div class="form__group auth__btn-group">
+                    <button class="btn btn--primary auth__btn">
+                        Đổi mật khẩu
+                    </button>
+                </div>
+
             </form>
 
         </div>

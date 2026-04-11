@@ -87,15 +87,14 @@ function getAverageRating($productId) {
 
 function getVariantsByProductId($productId) {
     $conn = getDB();
-
+    // Chỉ lấy variant thuộc về sản phẩm này
     $stmt = $conn->prepare("
         SELECT * FROM product_variants
-        WHERE product_id = ? OR (product_id IS NULL AND status = 1)
+        WHERE product_id = ? AND status = 1
     ");
     $stmt->execute([$productId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
 function getToppingsByProductId($productId) {
     $conn = getDB();
 

@@ -339,12 +339,12 @@ $totalFav = count($favorites);
                 <!-- User menu -->
                 <div class="top-act__user">
                     <?php if ($user): ?>
-                        <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($_SESSION['user']['avatar'] ?? 'default.png') ?>" alt="Avatar" class="top-act__avatar" />
+                        <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($_SESSION['user']['avatar'] ?? 'avatar-default.png') ?>" alt="Avatar" class="top-act__avatar" />
                         <div class="act-dropdown top-act__dropdown">
                             <div class="act-dropdown__inner user-menu">
                                 <img src="<?= $base ?>assets/icons/arrow-up.png" alt="" class="act-dropdown__arrow top-act__dropdown-arrow" />
                                 <div class="user-menu__top">
-                                    <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($_SESSION['user']['avatar'] ?? 'default.png') ?>" alt="Avatar" class="user-menu__avatar" />
+                                    <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($_SESSION['user']['avatar'] ?? 'avatar-default.png') ?>" alt="Avatar" class="user-menu__avatar" />
                                     <div>
                                         <p class="user-menu__name"><?= $user['name'] ?? 'User' ?></p>
                                         <p>@<?= explode('@', $user['email'])[0] ?? '' ?></p>

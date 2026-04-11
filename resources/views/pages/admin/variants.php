@@ -1,77 +1,17 @@
-<?php
-require_once __DIR__ . '/includes/auth.php';
-requireStaffOrAdmin();
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/header.php';
-require_once __DIR__ . '/includes/sidebar.php';
-
-// Tự động thêm cột nếu thiếu (đảm bảo tương thích)
-try { $pdo->exec("ALTER TABLE product_variants ADD COLUMN stock_quantity INT DEFAULT 0"); } catch(PDOException $e) {}
-try { $pdo->exec("ALTER TABLE product_variants ADD COLUMN status TINYINT DEFAULT 1"); } catch(PDOException $e) {}
-
-// Xử lý thêm mới size
-$error = $success = '';
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add') {
-    $product_id = (int)($_POST['product_id'] ?? 0);
-    $variant_name = trim($_POST['variant_name'] ?? '');
-    $price = (float)($_POST['price'] ?? 0);
-    $stock = (int)($_POST['stock_quantity'] ?? 0);
-    if ($product_id > 0 && !empty($variant_name) && $price > 0) {
-        $stmt = $pdo->prepare("INSERT INTO product_variants (product_id, variant_name, price, stock_quantity) VALUES (?,?,?,?)");
-        $stmt->execute([$product_id, $variant_name, $price, $stock]);
-        $success = "Thêm size thành công";
-    } else {
-        $error = "Vui lòng nhập đầy đủ thông tin (sản phẩm, tên size, giá)";
-    }
-}
-
-// Xử lý sửa size
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'edit') {
-    $id = (int)($_POST['id'] ?? 0);
-    $product_id = (int)($_POST['product_id'] ?? 0);
-    $variant_name = trim($_POST['variant_name'] ?? '');
-    $price = (float)($_POST['price'] ?? 0);
-    $stock = (int)($_POST['stock_quantity'] ?? 0);
-    if ($id > 0 && $product_id > 0 && !empty($variant_name) && $price > 0) {
-        $stmt = $pdo->prepare("UPDATE product_variants SET product_id=?, variant_name=?, price=?, stock_quantity=? WHERE id=?");
-        $stmt->execute([$product_id, $variant_name, $price, $stock, $id]);
-        $success = "Cập nhật size thành công";
-    } else {
-        $error = "Dữ liệu không hợp lệ";
-    }
-}
-
-// Xóa size (xóa cứng, vì size không quan trọng lưu lịch sử)
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $pdo->prepare("DELETE FROM product_variants WHERE id = ?")->execute([$id]);
-    $success = "Đã xóa size";
-}
-
-// Lấy danh sách sản phẩm để hiển thị trong dropdown
-$products = $pdo->query("SELECT id, name FROM products WHERE status = 1 ORDER BY name")->fetchAll();
-// Lấy danh sách size kèm tên sản phẩm
-$variants = $pdo->query("
-    SELECT v.*, p.name as product_name 
-    FROM product_variants v 
-    LEFT JOIN products p ON v.product_id = p.id 
-    ORDER BY v.id DESC
-")->fetchAll();
-?>
-
 <div id="content-wrapper" class="d-flex flex-column">
     <div id="content">
-        <?php require_once __DIR__ . '/includes/topbar.php'; ?>
         <div class="container-fluid">
             <div class="d-sm-flex align-items-center justify-content-between mb-4">
                 <h1 class="h3 mb-0 text-gray-800">Quản lý size món ăn</h1>
-                <button class="btn btn-primary" data-toggle="modal" data-target="#addVariantModal"><i class="fas fa-plus"></i> Thêm size</button>
+                <button class="btn btn-primary" data-toggle="modal" data-target="#addVariantModal">
+                    <i class="fas fa-plus"></i> Thêm size
+                </button>
             </div>
 
-            <?php if ($success): ?>
+            <?php if (!empty($success)): ?>
                 <div class="alert alert-success alert-dismissible fade show" role="alert"><?= htmlspecialchars($success) ?><button type="button" class="close" data-dismiss="alert">&times;</button></div>
             <?php endif; ?>
-            <?php if ($error): ?>
+            <?php if (!empty($error)): ?>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert"><?= htmlspecialchars($error) ?><button type="button" class="close" data-dismiss="alert">&times;</button></div>
             <?php endif; ?>
 
@@ -79,7 +19,7 @@ $variants = $pdo->query("
             <div class="modal fade" id="addVariantModal" tabindex="-1" role="dialog">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
-                        <form method="POST">
+                        <form method="POST" action="admin.php?url=variants">
                             <div class="modal-header">
                                 <h5 class="modal-title">Thêm size mới</h5>
                                 <button type="button" class="close" data-dismiss="modal">&times;</button>
@@ -141,15 +81,15 @@ $variants = $pdo->query("
                                         <td><?= (int)$v['stock_quantity'] ?></td>
                                         <td>
                                             <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editModal<?= $v['id'] ?>"><i class="fas fa-edit"></i></button>
-                                            <a href="variants.php?delete=<?= $v['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Xóa size này?')"><i class="fas fa-trash"></i></a>
-                                        </td>
-                                    </tr>
+                                            <a href="admin.php?url=variant-delete&id=<?= $v['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Xóa size này?')"><i class="fas fa-trash"></i></a>
+                                         </td>
+                                     </tr>
 
                                     <!-- Modal sửa size -->
                                     <div class="modal fade" id="editModal<?= $v['id'] ?>" tabindex="-1">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
-                                                <form method="POST">
+                                                <form method="POST" action="admin.php?url=variants">
                                                     <div class="modal-header">
                                                         <h5 class="modal-title">Sửa size</h5>
                                                         <button type="button" class="close" data-dismiss="modal">&times;</button>
@@ -196,5 +136,3 @@ $variants = $pdo->query("
         </div>
     </div>
 </div>
-
-<?php require_once __DIR__ . '/includes/footer.php'; require_once __DIR__ . '/includes/scripts.php'; ?>
