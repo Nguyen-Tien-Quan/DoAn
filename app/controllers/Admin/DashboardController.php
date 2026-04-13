@@ -88,19 +88,31 @@ function handleAddVoucher() {
         header('Location: admin.php?url=vouchers');
         exit;
     }
+
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
     $conn = getDB();
+
     $code = trim($_POST['code'] ?? '');
     $name = trim($_POST['name'] ?? '');
     $discount_type = $_POST['discount_type'] ?? 'percent';
     $discount_value = (float)($_POST['discount_value'] ?? 0);
     $min_order_amount = (float)($_POST['min_order_amount'] ?? 0);
     $max_discount_amount = (float)($_POST['max_discount_amount'] ?? 0);
-    $start_date = $_POST['start_date'] ?? null;
-    $end_date = $_POST['end_date'] ?? null;
+
+    // ✅ FIX TIME FORMAT (QUAN TRỌNG NHẤT)
+    $start_date = !empty($_POST['start_date'])
+        ? date('Y-m-d H:i:s', strtotime($_POST['start_date']))
+        : null;
+
+    $end_date = !empty($_POST['end_date'])
+        ? date('Y-m-d H:i:s', strtotime($_POST['end_date']))
+        : null;
+
     $usage_limit = (int)($_POST['usage_limit'] ?? 0);
     $status = (int)($_POST['status'] ?? 1);
 
-    // Kiểm tra trùng mã
+    // Check trùng code
     $check = $conn->prepare("SELECT id FROM vouchers WHERE code = ?");
     $check->execute([$code]);
     if ($check->fetch()) {
@@ -109,10 +121,28 @@ function handleAddVoucher() {
         exit;
     }
 
-    $sql = "INSERT INTO vouchers (code, name, discount_type, discount_value, min_order_amount, max_discount_amount, start_date, end_date, usage_limit, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO vouchers (
+                code, name, discount_type, discount_value,
+                min_order_amount, max_discount_amount,
+                start_date, end_date,
+                usage_limit, used_count, status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)";
+
     $stmt = $conn->prepare($sql);
-    $success = $stmt->execute([$code, $name, $discount_type, $discount_value, $min_order_amount, $max_discount_amount, $start_date, $end_date, $usage_limit, $status]);
+
+    $success = $stmt->execute([
+        $code,
+        $name,
+        $discount_type,
+        $discount_value,
+        $min_order_amount,
+        $max_discount_amount,
+        $start_date,
+        $end_date,
+        $usage_limit,
+        $status
+    ]);
 
     $_SESSION['success'] = $success ? "Thêm mã thành công." : "Thêm thất bại.";
     header('Location: admin.php?url=vouchers');

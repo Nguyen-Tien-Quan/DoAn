@@ -57,8 +57,12 @@
 .navbar {
     margin-left: 129px;
 
+    @include abstracts.screen(xxl) {
+        margin-left: 60px;
+    }
+
     @include abstracts.screen(xl) {
-        margin-left: 28px;
+        margin-left: 0px;
     }
 
     @include abstracts.screen(lg) {
@@ -170,7 +174,7 @@
         @include abstracts.screen(lg) {
             justify-content: space-between;
             padding: 0 40px;
-
+            gap: 0;
             font-size: 1.6rem;
             line-height: 150%;
         }

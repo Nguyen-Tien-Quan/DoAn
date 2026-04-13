@@ -251,9 +251,16 @@ switch ($url) {
             $productId = $input['product_id'] ?? 0;
 
             if (addFavorite($productId)) {
-                echo json_encode(['success' => true]);
+                echo json_encode([
+                    'success' => true,
+                    'total_favorites' => favoriteCount(),
+                    'message' => 'Đã thêm vào yêu thích'
+                ]);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Sản phẩm đã có trong favorites']);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Sản phẩm đã có trong favorites'
+                ]);
             }
             exit;
         }
@@ -262,13 +269,17 @@ switch ($url) {
         addFavorite($productId);
         header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
         exit;
-        break;
+    break;
 
     case 'remove-favorite':
         $productId = $_GET['id'] ?? 0;
         $success = removeFavoriteByProduct($productId);
         header('Content-Type: application/json');
-        echo json_encode(['success' => $success]);
+        echo json_encode([
+            'success' => $success,
+            'total_favorites' => favoriteCount(),
+            'message' => $success ? 'Đã xóa khỏi yêu thích' : 'Xóa thất bại'
+        ]);
         exit;
         break;
 

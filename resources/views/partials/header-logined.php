@@ -114,7 +114,8 @@ $totalFav = count($favorites);
                 <a href="<?= $base ?>index.php?url=favorite" class="nav-btn d-none d-md-flex">
                     <img src="<?= $base ?>assets/icons/heart.svg" class="nav-btn__icon icon" />
                     <span class="nav-btn__title">Favorite</span>
-                    <span class="nav-btn__qnt"><?= count($_SESSION['favorite'] ?? []) ?></span>
+                    <span class="nav-btn__qnt fav-count-badge"><?= $totalFav ?></span>
+
                 </a>
 
                 <ul class="navbar__list js-dropdown-list">
@@ -262,7 +263,7 @@ $totalFav = count($favorites);
                     <div class="top-act__btn-wrap">
                         <a class="top-act__btn" href="<?= $base ?>index.php?url=favorite">
                             <img src="<?= $base ?>assets/icons/heart.svg" alt="" class="icon top-act__icon" />
-                            <span class="top-act__title"><?= $totalFav ?></span>
+                            <span class="top-act__title fav-count-badge"><?= $totalFav ?></span>
                         </a>
                         <div class="act-dropdown">
                             <div class="act-dropdown__inner">

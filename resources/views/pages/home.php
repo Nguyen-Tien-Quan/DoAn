@@ -682,4 +682,44 @@ $variants = $variants ?? [];
         if (paginationDiv) observer.observe(paginationDiv, { childList: true, subtree: true });
     }
     document.addEventListener("DOMContentLoaded", init);
+
+    // ========== APPLY COUPON ==========
+function applyCouponCode(code) {
+    const subtotalEl = document.querySelector('#cart-subtotal'); // phải có id này
+    if (!subtotalEl) return;
+
+    let subtotal = parseInt(subtotalEl.dataset.value || 0);
+
+    fetch('index.php?url=applyCoupon', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `code=${encodeURIComponent(code)}&subtotal=${subtotal}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            updateCartSummary(data);
+        } else {
+            showToast(data.message || 'Mã không hợp lệ');
+        }
+    })
+    .catch(() => {
+        showToast('Lỗi khi áp dụng mã');
+    });
+}
+
+function updateCartSummary(data) {
+    const discountEl = document.querySelector('#cart-discount');
+    const totalEl = document.querySelector('#cart-total');
+
+    if (discountEl) {
+        discountEl.innerText = data.formatted_discount;
+    }
+
+    if (totalEl) {
+        totalEl.innerText = data.formatted_new_total;
+    }
+}
 </script>

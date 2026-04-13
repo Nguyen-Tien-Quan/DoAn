@@ -485,6 +485,22 @@ INSERT INTO roles (id, name) VALUES
 (2, 'staff'),
 (3, 'customer');
 
+-- =============================================
+-- THÊM ROLE SHIPPER VÀ CẬP NHẬT CẤU TRÚC ORDERS
+-- =============================================
+
+-- 1. Thêm role shipper (id = 4)
+INSERT INTO roles (id, name, created_at, updated_at) 
+VALUES (4, 'shipper', NOW(), NOW())
+ON DUPLICATE KEY UPDATE name = 'shipper';
+
+-- 2. Thêm cột shipper_id vào bảng orders
+ALTER TABLE orders 
+ADD COLUMN shipper_id BIGINT UNSIGNED NULL AFTER user_id,
+ADD CONSTRAINT fk_orders_shipper FOREIGN KEY (shipper_id) REFERENCES users(id) ON DELETE SET NULL;
+
+
+
 -- USERS (password = 123456)
 INSERT INTO users (id, role_id, name, email, password, phone, status) VALUES
 (1, 1, 'Admin', 'admin@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9Q0p1R0tJ3Q0Q0Q0Q0Q0Q', '0123456789', 1),
@@ -522,6 +538,10 @@ INSERT INTO products (id, category_id, name, slug, description, base_price, imag
 (15,2, 'Khoai tây chiên','khoai-tay-chien','Khoai tây chiên size vừa',20000,'fries.png',0,1),
 (16,4, 'Combo Độc thân','combo-doc-than','1 Burger bò, 1 Pepsi, 1 Khoai tây',79000,'combo-solo.png',1,1);
 
+
+UPDATE product_variants 
+SET stock_quantity = 0 
+WHERE product_id = 16 AND variant_name = 'Mặc định';
 -- PRODUCT VARIANTS (size và tồn kho)
 INSERT INTO product_variants (id, product_id, variant_name, price, stock_quantity) VALUES
 (1, 1, 'S', 50000, 100),
@@ -567,6 +587,18 @@ INSERT INTO cart_items (cart_id, product_id, variant_id, quantity) VALUES
 INSERT INTO orders (id, order_code, customer_id, order_type, payment_method, total_amount, final_amount, status) VALUES
 (1,'ORD001',1,'delivery','cash',100000,100000,'completed'),
 (2,'ORD002',2,'pickup','momo',65000,65000,'pending');
+
+USE qlbthucan;
+SET SQL_SAFE_UPDATES = 0;
+UPDATE orders 
+SET order_type = 'delivery' 
+WHERE order_type IS NULL;
+SET SQL_SAFE_UPDATES = 1;
+
+USE qlbthucan;
+UPDATE orders 
+SET status = 'confirmed' 
+WHERE id = 6;
 
 -- Lấy variant_id mặc định của sản phẩm 6 để dùng trong order_items
 SET @default_variant_id = (SELECT id FROM product_variants WHERE product_id=6 AND variant_name='Mặc định');

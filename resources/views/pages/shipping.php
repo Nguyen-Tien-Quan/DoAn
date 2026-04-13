@@ -10,12 +10,19 @@ if (!$user) {
     exit;
 }
 
-$cartData = getCart(false);           // lấy từ CartController
+$cartData = getCart(false);
 $cartItems = $cartData['items'] ?? [];
 $subtotal = $cartData['subtotal'] ?? 0;
 $total = $subtotal + 10000;
 
 $addresses = getShippingAddresses($user['id']);
+
+// Hàm định dạng tiền Việt Nam (nếu chưa có)
+if (!function_exists('vnd')) {
+    function vnd($amount) {
+        return number_format($amount, 0, ',', '.') . 'đ';
+    }
+}
 ?>
 
 <style>
@@ -29,9 +36,9 @@ $addresses = getShippingAddresses($user['id']);
         <!-- Breadcrumbs -->
         <div class="checkout-container">
             <ul class="breadcrumbs checkout-page__breadcrumbs">
-                <li><a href="<?= $base ?>" class="breadcrumbs__link">Home</a></li>
-                <li><a href="index.php?url=checkout" class="breadcrumbs__link">Checkout</a></li>
-                <li><a href="#!" class="breadcrumbs__link breadcrumbs__link--current">Shipping</a></li>
+                <li><a href="<?= $base ?>" class="breadcrumbs__link">Trang chủ</a></li>
+                <li><a href="index.php?url=checkout" class="breadcrumbs__link">Thanh toán</a></li>
+                <li><a href="#!" class="breadcrumbs__link breadcrumbs__link--current">Vận chuyển</a></li>
             </ul>
         </div>
 
@@ -40,16 +47,16 @@ $addresses = getShippingAddresses($user['id']);
                 <!-- LEFT -->
                 <div class="col-8 col-xl-12">
                     <div class="cart-info">
-                        <h1 class="cart-info__heading">1. Shipping Information</h1>
+                        <h1 class="cart-info__heading">1. Thông tin giao hàng</h1>
 
                         <!-- Shipping Address -->
                         <div class="user-address">
                             <div class="user-address__top">
-                                <h2 class="user-address__title">Shipping address</h2>
+                                <h2 class="user-address__title">Địa chỉ giao hàng</h2>
                                 <button class="user-address__btn btn btn--primary btn--rounded btn--small js-toggle"
                                         toggle-target="#add-new-address">
                                         <img src="./assets/icons/plus.svg" alt="" />
-                                    Add new address
+                                    Thêm địa chỉ mới
                                 </button>
                             </div>
 
@@ -70,11 +77,9 @@ $addresses = getShippingAddresses($user['id']);
                                                     </label>
                                                 </div>
                                                 <div class="address-card__info">
-                                                    <h3 class="address-card__title">Tên: <?= htmlspecialchars($addr['full_name']) ?></h3>
-                                                    <!-- Thêm SĐT -->
-                                                    <p class="address-card__phone">📞 <?= htmlspecialchars($addr['phone']) ?></p>
-                                                    <!-- Thêm địa chỉ đầy đủ -->
-                                                    <p class="address-card__desc">Địa chỉ: <?= htmlspecialchars($addr['address']) ?>, Thành Phố <?= htmlspecialchars($addr['city']) ?></p>
+                                                    <h3 class="address-card__title">Tên khách hàng: <?= htmlspecialchars($addr['full_name']) ?></h3>
+                                                    <p class="address-card__phone">Số điện thoại: 📞 <?= htmlspecialchars($addr['phone']) ?></p>
+                                                    <p class="address-card__desc">Địa chỉ: <?= htmlspecialchars($addr['address']) ?>, Thành phố <?= htmlspecialchars($addr['city']) ?></p>
                                                     <?php if ($addr['is_default']): ?>
                                                         <span class="address-card__default">Mặc định</span>
                                                     <?php endif; ?>
@@ -93,7 +98,7 @@ $addresses = getShippingAddresses($user['id']);
                                                         data-is_default="<?= $addr['is_default'] ?>"
                                                     >
                                                         <img class="icon" src="./assets/icons/edit.svg" alt="" />
-                                                        Edit
+                                                        Sửa
                                                     </button>
                                                 </div>
                                             </div>
@@ -109,7 +114,7 @@ $addresses = getShippingAddresses($user['id']);
                         </div>
 
                         <!-- Items -->
-                        <h2 class="cart-info__sub-heading mt-5">Items details</h2>
+                        <h2 class="cart-info__sub-heading mt-5">Chi tiết sản phẩm</h2>
                         <div class="cart-info__list">
                             <?php foreach ($cartItems as $item): ?>
                                 <article class="cart-item">
@@ -117,11 +122,11 @@ $addresses = getShippingAddresses($user['id']);
                                     <div class="cart-item__content">
                                         <div class="cart-item__content-left">
                                             <h3 class="cart-item__title"><?= htmlspecialchars($item['name']) ?></h3>
-                                            <p class="cart-item__price-wrap">$<?= number_format($item['price'], 2) ?></p>
-                                            <div class="cart-item__input">Quantity: <?= $item['quantity'] ?></div>
+                                            <p class="cart-item__price-wrap"><?= vnd($item['price']) ?></p>
+                                            <div class="cart-item__input">Số lượng: <?= $item['quantity'] ?></div>
                                         </div>
                                         <div class="cart-item__content-right">
-                                            <p class="cart-item__total-price">$<?= number_format($item['price'] * $item['quantity'], 2) ?></p>
+                                            <p class="cart-item__total-price"><?= vnd($item['price'] * $item['quantity']) ?></p>
                                         </div>
                                     </div>
                                 </article>
@@ -134,23 +139,23 @@ $addresses = getShippingAddresses($user['id']);
                 <div class="col-4 col-xl-12">
                     <div class="cart-info">
                         <div class="cart-info__row">
-                            <span>Subtotal (<?= count($cartItems) ?> items)</span>
-                            <span>$<?= number_format($subtotal, 2) ?></span>
+                            <span>Tạm tính (<?= count($cartItems) ?> sản phẩm)</span>
+                            <span><?= vnd($subtotal) ?></span>
                         </div>
                         <div class="cart-info__row">
-                            <span>Shipping</span>
-                            <span>$10.00</span>
+                            <span>Vận chuyển</span>
+                            <span><?= vnd(10000) ?></span>
                         </div>
                         <div class="cart-info__separate"></div>
                         <div class="cart-info__row cart-info__row--bold">
-                            <span>Estimated Total</span>
-                            <span>$<?= number_format($total, 2) ?></span>
+                            <span>Tổng cộng</span>
+                            <span><?= vnd($total) ?></span>
                         </div>
 
                         <form action="index.php?url=payment" method="POST">
                             <input type="hidden" name="shipping_address_id" id="selected_address" value="">
                             <button type="submit" class="cart-info__next-btn btn btn--primary btn--rounded">
-                                Continue to Payment
+                                Tiếp tục đến thanh toán
                             </button>
                         </form>
                     </div>
@@ -203,7 +208,7 @@ $addresses = getShippingAddresses($user['id']);
                     <p class="form__error">Địa chỉ không được để trống</p>
                 </div>
 
-                <!-- Thành phố / Quận / Huyện (không fix cứng) -->
+                <!-- Thành phố / Quận / Huyện -->
                 <div class="form__group">
                     <label class="form__label form__label--small">Tỉnh/Thành phố <span class="text-danger">*</span></label>
                     <div class="form__text-input form__text-input--small">
@@ -259,19 +264,25 @@ $addresses = getShippingAddresses($user['id']);
             document.getElementById('selected_address').value = this.value;
         });
     });
-    // Toggle modal (đảm bảo hoạt động với tất cả nút js-toggle)
+    // Set giá trị mặc định ban đầu
+    const defaultChecked = document.querySelector('input[name="shipping_address_id"]:checked');
+    if (defaultChecked) {
+        document.getElementById('selected_address').value = defaultChecked.value;
+    }
+
+    // Toggle modal
     document.querySelectorAll(".js-toggle").forEach(btn => {
         btn.addEventListener("click", function () {
             const target = this.getAttribute("toggle-target");
             const modal = document.querySelector(target);
             if (modal) {
                 modal.classList.toggle("hide");
-                modal.classList.toggle("show");   // thêm class show để đẹp hơn
+                modal.classList.toggle("show");
             }
         });
     });
 
-    // Danh sách tỉnh/thành phố Việt Nam (không fix cứng trong HTML)
+    // Danh sách tỉnh/thành phố Việt Nam
     const vietnamCities = [
         "Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ",
         "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu",
@@ -288,32 +299,26 @@ $addresses = getShippingAddresses($user['id']);
         "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
     ];
 
-    // Render danh sách thành phố
     function renderCityList(filteredCities) {
         const list = document.getElementById('city-list');
         list.innerHTML = '';
-
         filteredCities.forEach(city => {
             const li = document.createElement('li');
             li.className = 'form__option';
             li.textContent = city;
             li.addEventListener('click', () => {
-                document.getElementById('city-input').value = city; // vẫn đúng
+                document.getElementById('city-input').value = city;
                 document.getElementById('city-dialog').classList.add('hide');
             });
             list.appendChild(li);
         });
     }
 
-    // Khởi tạo dialog thành phố
     document.addEventListener('DOMContentLoaded', () => {
         const cityDialog = document.getElementById('city-dialog');
         const searchInput = document.getElementById('city-search');
-
         if (cityDialog) {
             renderCityList(vietnamCities);
-
-            // Tìm kiếm realtime
             searchInput.addEventListener('input', function () {
                 const term = this.value.toLowerCase().trim();
                 const filtered = vietnamCities.filter(city =>
@@ -324,7 +329,7 @@ $addresses = getShippingAddresses($user['id']);
         }
     });
 
-    // Bấm nút Edit → fill form
+    // Bấm nút Sửa → fill form
     document.querySelectorAll('.edit-address-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             const name = this.dataset.name || '';
@@ -334,14 +339,12 @@ $addresses = getShippingAddresses($user['id']);
             const is_default = this.dataset.is_default === '1';
             const address_id = this.dataset.id;
 
-            // Fill vào form
             document.querySelector('#add-address-form [name="recipient_name"]').value = name;
             document.querySelector('#add-address-form [name="phone"]').value = phone;
             document.querySelector('#add-address-form [name="address"]').value = address;
             document.querySelector('#add-address-form [name="city"]').value = city;
             document.querySelector('#add-address-form [name="is_default"]').checked = is_default;
 
-            // Lưu id address vào form hidden (dùng khi update)
             let hiddenId = document.querySelector('#add-address-form [name="address_id"]');
             if (!hiddenId) {
                 hiddenId = document.createElement('input');
@@ -351,28 +354,25 @@ $addresses = getShippingAddresses($user['id']);
             }
             hiddenId.value = address_id;
 
-            // 🔥 Thay đổi tiêu đề modal
             const heading = document.querySelector('#add-new-address .modal__heading');
             heading.textContent = address_id ? 'Cập nhật địa chỉ' : 'Thêm địa chỉ mới';
 
-            // Mở modal
             const modal = document.querySelector('#add-new-address');
             modal.classList.remove('hide');
             modal.classList.add('show');
         });
     });
 
-    // Nếu bấm nút Thêm mới (không edit)
+    // Nút Thêm mới reset form
     document.querySelectorAll('.user-address__btn, .user-address__link.js-toggle').forEach(btn => {
-    btn.addEventListener('click', function () {
-        const form = document.querySelector('#add-address-form');
-        form.reset(); // reset form
-        const hiddenId = form.querySelector('[name="address_id"]');
-        if (hiddenId) hiddenId.remove();
+        btn.addEventListener('click', function () {
+            const form = document.querySelector('#add-address-form');
+            form.reset();
+            const hiddenId = form.querySelector('[name="address_id"]');
+            if (hiddenId) hiddenId.remove();
 
-        // Thay tiêu đề modal
-        const heading = document.querySelector('#add-new-address .modal__heading');
-        heading.textContent = 'Thêm địa chỉ mới';
+            const heading = document.querySelector('#add-new-address .modal__heading');
+            heading.textContent = 'Thêm địa chỉ mới';
+        });
     });
-});
 </script>

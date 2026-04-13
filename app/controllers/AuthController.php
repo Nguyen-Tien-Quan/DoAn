@@ -70,11 +70,12 @@ function handleLogin() {
         case 1:
             header("Location: admin.php"); // admin
             break;
-
         case 2:
             header("Location: staff.php"); // nhân viên
             break;
-
+        case 4:
+            header("Location: shipper.php"); // shipper - THÊM MỚI
+            break;
         case 3:
         default:
             header("Location: index.php"); // user
@@ -98,7 +99,14 @@ function autoLogin() {
             $_SESSION['user'] = $user;
             // refresh cookie 30 ngày
             setcookie('remember_me', $token, time() + 30*24*60*60, '/', '', false, true);
-            header("Location: index.php");
+            // Phân quyền redirect
+            switch ($user['role_id']) {
+                case 1: header("Location: admin.php"); break;
+                case 2: header("Location: staff.php"); break;
+                case 4: header("Location: shipper.php"); break;
+                default: header("Location: index.php");
+            }
+            exit;
             exit;
         } else {
             setcookie('remember_me', '', time() - 3600, '/', '', false, true);

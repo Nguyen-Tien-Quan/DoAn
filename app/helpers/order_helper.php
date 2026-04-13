@@ -3,55 +3,68 @@
 function renderOrder($order){
     ob_start();
 
-    // Map trạng thái tiếng Việt
-    $statusText = match($order['status']){
-        'pending' => '🟡 Đang xử lý',
-        'confirmed' => '🔵 Đã xác nhận',
-        'preparing' => '🟠 Đang chuẩn bị',
-        'delivering' => '🚚 Đang giao',
-        'completed' => '✅ Hoàn thành',
-        'cancelled' => '❌ Đã hủy',
-        default => $order['status']
-    };
+    // Lấy giá trị an toàn
+    $status = $order['status'] ?? 'pending';
+    $shipper_id = $order['shipper_id'] ?? null;
+    $delivery_status = $order['delivery_status'] ?? 'pending';
+    $order_code = $order['order_code'] ?? '';
+    $created_at = $order['created_at'] ?? '';
+    $final_amount = $order['final_amount'] ?? 0;
+    $id = $order['id'] ?? 0;
+
+    // Xác định text và class
+    $displayStatus = '';
+    $statusClass = '';
+
+    if ($status == 'cancelled') {
+        $displayStatus = '❌ Đã hủy';
+        $statusClass = 'cancelled';
+    } elseif ($status == 'completed') {
+        $displayStatus = '✅ Hoàn thành';
+        $statusClass = 'completed';
+    } elseif ($delivery_status == 'shipping') {
+        $displayStatus = '🚚 Đang giao';
+        $statusClass = 'delivering';
+    } elseif ($status == 'confirmed' && !empty($shipper_id)) {
+        $displayStatus = '🛵 Đã có tài xế nhận';
+        $statusClass = 'accepted';
+    } elseif ($status == 'confirmed') {
+        $displayStatus = '🔵 Đã xác nhận';
+        $statusClass = 'confirmed';
+    } elseif ($status == 'pending') {
+        $displayStatus = '🟡 Đang xử lý';
+        $statusClass = 'pending';
+    } elseif ($status == 'preparing') {
+        $displayStatus = '🟠 Đang chuẩn bị';
+        $statusClass = 'preparing';
+    } elseif ($status == 'delivering') {
+        $displayStatus = '🚚 Đang giao';
+        $statusClass = 'delivering';
+    } else {
+        $displayStatus = $status;
+        $statusClass = $status;
+    }
 
     // Timeline
     $steps = ['pending','confirmed','preparing','delivering','completed'];
-    $currentIndex = array_search($order['status'], $steps);
+    $currentIndex = array_search($status, $steps);
+    if ($currentIndex === false) $currentIndex = 0;
 ?>
-
 <div class="order-card">
-
-    <!-- TOP -->
     <div class="order-top">
-        <div class="order-code">#<?= $order['order_code'] ?></div>
-        <div class="order-date"><?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></div>
+        <div class="order-code">#<?= htmlspecialchars($order_code) ?></div>
+        <div class="order-date"><?= date('d/m/Y H:i', strtotime($created_at)) ?></div>
     </div>
-
-    <!-- BODY -->
     <div class="order-body">
-        <div class="order-price">
-            <?= number_format($order['final_amount']) ?>đ
-        </div>
-
-        <div class="order-status <?= $order['status'] ?>">
-            <?= $statusText ?>
-        </div>
-
+        <div class="order-price"><?= number_format($final_amount, 0, ',', '.') ?>đ</div>
+        <div class="order-status <?= $statusClass ?>"><?= $displayStatus ?></div>
         <div class="order-actions">
-            <a href="index.php?url=order-detail&id=<?= $order['id'] ?>" class="btn-view">
-                Chi tiết
-            </a>
-
-            <?php if (in_array($order['status'], ['pending','confirmed'])): ?>
-                <button class="btn-cancel"
-                    onclick="openCancelModal(<?= $order['id'] ?>)">
-                    Hủy
-                </button>
+            <a href="index.php?url=order-detail&id=<?= $id ?>" class="btn-view">Chi tiết</a>
+            <?php if (in_array($status, ['pending','confirmed'])): ?>
+                <button class="btn-cancel" onclick="openCancelModal(<?= $id ?>)">Hủy</button>
             <?php endif; ?>
         </div>
     </div>
-
-    <!-- PROGRESS -->
     <div class="order-progress">
         <?php foreach ($steps as $index => $step): ?>
             <div class="step <?= $index <= $currentIndex ? 'active' : '' ?>">
@@ -60,9 +73,7 @@ function renderOrder($order){
             </div>
         <?php endforeach; ?>
     </div>
-
 </div>
-
 <?php
     return ob_get_clean();
 }

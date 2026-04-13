@@ -1633,9 +1633,14 @@ html {
 .navbar {
   margin-left: 129px;
 }
+@media (max-width: 1399.98px) {
+  .navbar {
+    margin-left: 60px;
+  }
+}
 @media (max-width: 1199.98px) {
   .navbar {
-    margin-left: 28px;
+    margin-left: 0px;
   }
 }
 @media (max-width: 991.98px) {
@@ -1737,6 +1742,7 @@ html {
   .navbar__link {
     justify-content: space-between;
     padding: 0 40px;
+    gap: 0;
     font-size: 1.6rem;
     line-height: 150%;
   }
