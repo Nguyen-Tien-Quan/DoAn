@@ -184,7 +184,7 @@
 
         <details class="faq-item">
             <summary>Làm sao để đặt hàng?</summary>
-            <p>Chọn sản phẩm → Thêm vào giỏ → Thanh toán → Nhận email xác nhận.</p>
+            <p>Chọn sản phẩm → Thêm vào giỏ → Thanh toán → Thông báo đặt hàng thành công.</p>
         </details>
 
         <details class="faq-item">
@@ -192,10 +192,6 @@
             <p>10.000đ với đơn dưới 200k. Miễn phí cho đơn từ 200k.</p>
         </details>
 
-        <details class="faq-item">
-            <summary>Đổi trả như thế nào?</summary>
-            <p>Đổi trả trong 7 ngày nếu lỗi hoặc sai mô tả.</p>
-        </details>
 
     </div>
 

@@ -184,6 +184,18 @@ CREATE TABLE orders (
     FOREIGN KEY (shipping_address_id) REFERENCES shipping_addresses(id)
 );
 
+
+ALTER TABLE orders 
+MODIFY status ENUM('pending','confirmed','preparing','ready_for_delivery','delivering','completed','cancelled') DEFAULT 'pending';
+UPDATE orders 
+SET status = 'pending'
+WHERE id > 0;
+
+USE qlbthucan;
+SELECT id, status, LENGTH(status) FROM orders;
+
+UPDATE orders SET status = 'ready_for_delivery' WHERE status = 'preparing' AND id > 0;
+SHOW COLUMNS FROM orders LIKE 'status';
 -- =========================================
 -- 12. ORDER_ITEMS
 -- =========================================
@@ -475,6 +487,13 @@ CREATE TABLE pages (
     updated_at TIMESTAMP NULL
 );
 
+USE QlBANTHUCAN;
+CREATE TABLE chatbot (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    queries TEXT NOT NULL,
+    replies TEXT NOT NULL
+);
+
 -- =========================================
 -- DỮ LIỆU MẪU
 -- =========================================
@@ -588,17 +607,25 @@ INSERT INTO orders (id, order_code, customer_id, order_type, payment_method, tot
 (1,'ORD001',1,'delivery','cash',100000,100000,'completed'),
 (2,'ORD002',2,'pickup','momo',65000,65000,'pending');
 
-USE qlbthucan;
+USE QlBANTHUCAN;
 SET SQL_SAFE_UPDATES = 0;
+
 UPDATE orders 
 SET order_type = 'delivery' 
 WHERE order_type IS NULL;
+
 SET SQL_SAFE_UPDATES = 1;
 
-USE qlbthucan;
+
+
+UPDATE orders 
+SET order_type = 'delivery' 
+WHERE order_type IS NULL AND id > 0;
+
+USE QlBANTHUCAN;
 UPDATE orders 
 SET status = 'confirmed' 
-WHERE id = 6;
+WHERE id = 12;
 
 -- Lấy variant_id mặc định của sản phẩm 6 để dùng trong order_items
 SET @default_variant_id = (SELECT id FROM product_variants WHERE product_id=6 AND variant_name='Mặc định');
@@ -633,6 +660,13 @@ INSERT INTO blog_posts (title, slug, excerpt, content, image, category, views, s
 ('Cách làm burger bò phô mai tại nhà','cach-lam-burger-bo-pho-mai','Chỉ 15 phút với nguyên liệu đơn giản...','<p>Nội dung chi tiết...</p>','assets/img/blog/blog-1.jpg','Công thức',120,1,NOW()),
 ('Phân biệt Arabica và Robusta','phan-biet-arabica-robusta','Hương vị, độ caffeine và cách chọn...','<p>Nội dung chi tiết...</p>','assets/img/blog/blog-2.jpg','Kiến thức',85,1,NOW()),
 ('Top 5 loại trà đào được yêu thích nhất','top-5-tra-dao','Thanh mát, giải nhiệt – lựa chọn hàng đầu...','<p>Nội dung chi tiết...</p>','assets/img/blog/blog-3.jpg','Review',200,1,NOW());
+
+USE qlbthucan;
+ALTER TABLE blog_posts 
+ADD COLUMN user_id BIGINT UNSIGNED NULL;
+
+ALTER TABLE blog_posts 
+ADD FOREIGN KEY (user_id) REFERENCES users(id);
 
 -- PROMOTIONS
 INSERT INTO promotions (name, slug, discount_percent, start_date, end_date, description, image, status, created_at) VALUES

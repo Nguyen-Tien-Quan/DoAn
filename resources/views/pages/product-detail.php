@@ -41,19 +41,20 @@ foreach($reviews as $r){
     $starCount[$r['rating']]++;
 }
 
-// ========== CẢI TIẾN TÍNH TỒN KHO ==========
-// Nếu có variants -> tổng tồn = tổng stock_quantity của các variant
-// Nếu không có variants -> lấy stock_quantity từ sản phẩm (nếu có), mặc định là 1 (còn hàng)
+// ========== TÍNH TỒN KHO ==========
 $totalStock = 0;
 if (!empty($variants)) {
     foreach ($variants as $v) {
         $totalStock += (int)($v['stock_quantity'] ?? 0);
     }
 } else {
-    // Nếu sản phẩm không có variant, coi như còn hàng nếu không có cột stock_quantity
     $totalStock = isset($product['stock_quantity']) ? (int)$product['stock_quantity'] : 1;
 }
 $hasStock = $totalStock > 0;
+
+// ========== LẤY DANH SÁCH YÊU THÍCH (từ controller truyền vào) ==========
+$favIds = $favIds ?? [];
+$isFavorited = in_array($product['id'], $favIds);
 ?>
 <style>
 /* =========================
@@ -217,14 +218,14 @@ $hasStock = $totalStock > 0;
 }
 
 /* =========================
-   NO OPTION MESSAGE & STOCK INFO (TĂNG FONT)
+   NO OPTION MESSAGE & STOCK INFO
 ========================= */
 .no-option-message {
     background: #f8f9fa;
     padding: 12px 16px;
     border-radius: 12px;
     color: #6c757d;
-    font-size: 1.4rem; /* tăng từ 0.9rem lên 1.4rem */
+    font-size: 1.4rem;
     margin: 8px 0;
     display: flex;
     align-items: center;
@@ -237,7 +238,7 @@ $hasStock = $totalStock > 0;
 .stock-info {
     margin-top: 8px;
     margin-bottom: 12px;
-    font-size: 1.3rem; /* tăng font */
+    font-size: 1.3rem;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -247,6 +248,137 @@ $hasStock = $totalStock > 0;
 }
 .stock-info .out-of-stock {
     color: #dc3545;
+}
+
+/* ========== REVIEW SECTION ========== */
+.review-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.review-filter a {
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #f0f0f0;
+    text-decoration: none;
+    color: #333;
+    font-size: 13px;
+}
+.review-filter a.active {
+    background: #ff4d4f;
+    color: white;
+}
+.review-summary {
+    display: flex;
+    gap: 20px;
+    background: #f9f9f9;
+    padding: 16px;
+    border-radius: 16px;
+    margin: 16px 0;
+}
+.review-summary__left {
+    text-align: center;
+    min-width: 100px;
+}
+.avg {
+    font-size: 32px;
+    font-weight: bold;
+}
+.stars {
+    color: #ffc107;
+}
+.bar {
+    background: #e0e0e0;
+    border-radius: 10px;
+    height: 8px;
+    width: 150px;
+    overflow: hidden;
+}
+.bar div {
+    background: #ffc107;
+    height: 100%;
+}
+.review-form {
+    border: 1px solid #ddd;
+    padding: 16px;
+    border-radius: 16px;
+    margin: 16px 0;
+}
+.review-form__group {
+    margin-bottom: 12px;
+}
+.star-input {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 4px;
+}
+.star-input input {
+    display: none;
+}
+.star-input label {
+    font-size: 24px;
+    color: #ccc;
+    cursor: pointer;
+}
+.star-input input:checked ~ label,
+.star-input label:hover,
+.star-input label:hover ~ label {
+    color: #ffc107;
+}
+.review-card {
+    border-bottom: 1px solid #eee;
+    padding: 16px 0;
+    position: relative;
+}
+.review-like {
+    position: absolute;
+    right: 0;
+    top: 16px;
+    background: #f0f0f0;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.review-card__top {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+.review-card__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.review-card__stars .star.active {
+    color: #ffc107;
+}
+.review-images {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.review-images img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+.review-empty {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+}
+
+.custom-toast {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    border-left: 4px solid #fff;
+    border-radius: 8px !important;
 }
 </style>
 
@@ -303,7 +435,7 @@ $hasStock = $totalStock > 0;
                                         <span class="prod-prop__title">(<?= $product['avg_rating'] ?? 0 ?>) <?= count($reviews) ?> reviews</span>
                                     </div>
 
-                                    <!-- STOCK INFO (đã sửa logic) -->
+                                    <!-- STOCK INFO -->
                                     <div class="stock-info">
                                         <?php if ($hasStock): ?>
                                             <i class="fas fa-check-circle in-stock"></i>
@@ -341,7 +473,6 @@ $hasStock = $totalStock > 0;
                                                     </label>
                                                 <?php endforeach; ?>
                                             </div>
-                                            <!-- Nếu có variant nhưng tất cả đều hết hàng thì cập nhật lại $hasStock -->
                                             <?php
                                             $anyVariantInStock = false;
                                             foreach ($variants as $v) {
@@ -404,7 +535,8 @@ $hasStock = $totalStock > 0;
                                             <button type="submit" onclick="addCart()" class="btn btn--primary prod-info__add-to-cart" <?= !$hasStock ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '' ?>>
                                                 <?= $hasStock ? 'Add to cart' : 'Hết hàng' ?>
                                             </button>
-                                            <button type="button" class="like-btn prod-info__like-btn">
+                                            <!-- Nút like với class động -->
+                                            <button type="button" class="like-btn prod-info__like-btn <?= $isFavorited ? 'like-btn--liked' : '' ?>" data-id="<?= $product['id'] ?>">
                                                 <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
                                                 <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
                                             </button>
@@ -515,10 +647,10 @@ $hasStock = $totalStock > 0;
                                 <?php for($i=5;$i>=1;$i--):
                                     $percent = $totalReview ? ($starCount[$i]/$totalReview)*100 : 0;
                                 ?>
-                                <div class="row">
-                                    <span><?= $i ?>★</span>
-                                    <div class="bar"><div style="width:<?= $percent ?>%"></div></div>
-                                    <span><?= $starCount[$i] ?></span>
+                                <div class="row" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                    <span style="width: 30px;"><?= $i ?>★</span>
+                                    <div class="bar" style="flex:1;"><div style="width:<?= $percent ?>%"></div></div>
+                                    <span style="width: 30px;"><?= $starCount[$i] ?></span>
                                 </div>
                                 <?php endfor; ?>
                             </div>
@@ -557,7 +689,7 @@ $hasStock = $totalStock > 0;
                                     👍 Hữu ích (<span class="like-count"><?= $rev['likes'] ?? 0 ?></span>)
                                 </div>
                                 <div class="review-card__top">
-                                    <img src="<?= $base ?>assets/img/avatar/<?= $rev['avatar'] ?? 'avatar-1.png' ?>" class="review-card__avatar">
+                                    <img src="<?= $base ?>assets/img/avatars/<?= $rev['avatar'] ?? 'avatar-1.png' ?>" class="review-card__avatar">
                                     <div class="review-card__info">
                                         <div class="review-card__name"><?= htmlspecialchars($rev['full_name']) ?></div>
                                         <div class="review-card__stars">
@@ -596,7 +728,8 @@ $hasStock = $totalStock > 0;
                                                 <a href="<?= $base ?>index.php?url=product-detail&id=<?= $sim['id'] ?>">
                                                     <img src="<?= $base ?>assets/img/product/<?= $sim['images'][0] ?>" class="product-card__thumb" />
                                                 </a>
-                                                <button class="like-btn product-card__like-btn">
+                                                <!-- Nút like cho sản phẩm tương tự, kiểm tra yêu thích -->
+                                                <button class="like-btn product-card__like-btn <?= in_array($sim['id'], $favIds) ? 'like-btn--liked' : '' ?>" data-id="<?= $sim['id'] ?>">
                                                     <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
                                                     <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
                                                 </button>
@@ -622,16 +755,62 @@ $hasStock = $totalStock > 0;
 </main>
 
 <script>
+    // ========== TOAST NOTIFICATION ==========
+    function showToast(message, type = 'error') {
+        // Xóa toast cũ nếu có
+        const oldToast = document.querySelector('.custom-toast');
+        if (oldToast) oldToast.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast';
+        toast.innerText = message;
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.backgroundColor = type === 'error' ? '#dc3545' : (type === 'success' ? '#28a745' : '#333');
+        toast.style.color = '#fff';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '8px';
+        toast.style.fontSize = '14px';
+        toast.style.zIndex = '9999';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 10);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    let currentStock = <?= $totalStock ?>;
+
     function addCart() {
         const isLogin = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
         if (!isLogin) {
-            alert("Chưa đăng nhập!");
-            window.location.href = "index.php?url=login";
+            showToast("Vui lòng đăng nhập để thêm vào giỏ!", "error");
+            setTimeout(() => { window.location.href = "index.php?url=login"; }, 1500);
             return;
         }
         const hasStock = <?= $hasStock ? 'true' : 'false' ?>;
         if (!hasStock) {
-            alert("Sản phẩm đã hết hàng!");
+            showToast("Sản phẩm đã hết hàng!", "error");
+            return;
+        }
+        const qtyInput = document.querySelector('.qty-input');
+        let qty = parseInt(qtyInput.value);
+        if (isNaN(qty) || qty < 1) qty = 1;
+        if (qty > currentStock) {
+            showToast(`Số lượng không được vượt quá tồn kho (${currentStock})`, "error");
+            qtyInput.value = currentStock;
             return;
         }
         document.querySelector(".add-cart-form").submit();
@@ -643,6 +822,10 @@ $hasStock = $totalStock > 0;
         let val = Number(input.value);
         val += n;
         if(val < 1) val = 1;
+        if(val > currentStock) {
+            showToast(`Chỉ còn ${currentStock} sản phẩm trong kho`, "error");
+            val = currentStock;
+        }
         input.value = val;
         input.style.transform = "scale(1.2)";
         setTimeout(() => input.style.transform = "scale(1)", 150);
@@ -674,29 +857,50 @@ $hasStock = $totalStock > 0;
         document.getElementById('prod-total-price').innerText = finalPrice.toLocaleString() + 'đ';
     }
 
-    // Nếu có variant thì gắn sự kiện và chọn mặc định
+    function updateVariantStock() {
+        const variantRadios = document.querySelectorAll('input[name="variant_id"]');
+        if (variantRadios.length) {
+            const selected = document.querySelector('input[name="variant_id"]:checked');
+            if (selected) {
+                const stock = parseInt(selected.dataset.stock) || 0;
+                currentStock = stock;
+            } else {
+                currentStock = <?= $totalStock ?>;
+            }
+        } else {
+            currentStock = <?= $totalStock ?>;
+        }
+        const qtyInput = document.querySelector('.qty-input');
+        if (qtyInput) {
+            qtyInput.max = currentStock;
+            let currentVal = parseInt(qtyInput.value);
+            if (currentVal > currentStock) {
+                qtyInput.value = currentStock;
+                updateTotal();
+            }
+        }
+    }
+
     const variantRadios = document.querySelectorAll('input[name="variant_id"]');
     if (variantRadios.length) {
-        variantRadios.forEach(radio => radio.addEventListener('change', updateTotal));
+        variantRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                updateVariantStock();
+                updateTotal();
+            });
+        });
         const anyChecked = Array.from(variantRadios).some(r => r.checked);
         if (!anyChecked) {
             const firstEnabled = Array.from(variantRadios).find(r => !r.disabled);
             if (firstEnabled) firstEnabled.checked = true;
         }
-        updateTotal(); // cập nhật giá lần đầu
+        updateVariantStock();
+        updateTotal();
     }
 
     document.querySelectorAll('input[name="toppings[]"]').forEach(cb => {
         cb.addEventListener('change', updateTotal);
     });
-
-    function showFloat(text){
-        const el = document.createElement("div");
-        el.className = "float-price";
-        el.innerText = text;
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 600);
-    }
 
     // tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -735,8 +939,8 @@ $hasStock = $totalStock > 0;
         });
     }
 
-    // Khởi tạo updateTotal ngay khi load trang (cho trường hợp không có variant)
     document.addEventListener('DOMContentLoaded', function() {
         updateTotal();
+        updateVariantStock();
     });
 </script>

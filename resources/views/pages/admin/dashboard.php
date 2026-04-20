@@ -16,7 +16,7 @@ $lowStock = $data['lowStock'] ?? 0;
     <div class="container-fluid">
         <div class="d-sm-flex align-items-center justify-content-between mb-4">
             <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
-            <a href="<?= $base ?>" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i class="fas fa-download fa-sm text-white-50"></i> Xuất báo cáo</a>
+            <a href="?url=dashboard&export=1&<?= http_build_query(array_merge($_GET, ['export'=>1])) ?>" class="btn btn-success ml-2">Xuất CSV</a>
         </div>
         <div class="row">
             <div class="col-xl-3 col-md-6 mb-4">

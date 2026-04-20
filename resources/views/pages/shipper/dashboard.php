@@ -17,8 +17,8 @@ $currentShipperId = $_SESSION['user']['id'] ?? 0;
     <div class="stat-card">
         <i class="fas fa-clock"></i>
         <div class="stat-info">
-            <span class="stat-value"><?= $stats['pending'] ?? 0 ?></span>
-            <span class="stat-label">Chờ giao</span>
+            <span class="stat-value"><?= $stats['waiting'] ?? 0 ?></span>
+            <span class="stat-label">Chờ nhận</span>
         </div>
     </div>
     <div class="stat-card">

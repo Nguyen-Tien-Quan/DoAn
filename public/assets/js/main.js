@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // ====================== SLIDESHOW (chỉ chạy nếu có slideshow) ======================
+    // ====================== SLIDESHOW ======================
     const inner = document.getElementById("slideshowInner");
-
     if (inner) {
         const slides = document.querySelectorAll(".slideshow__item");
         const prevBtn = document.getElementById("prevBtn");
@@ -87,15 +86,12 @@ document.addEventListener("DOMContentLoaded", function () {
     function openModal(id) {
         const modal = document.querySelector(id);
         if (!modal) return;
-
-        modal.classList.remove("hide", "show");
+        modal.classList.remove("hide");
         modal.classList.add("show");
     }
-
     function closeModal(id) {
         const modal = document.querySelector(id);
         if (!modal) return;
-
         modal.classList.remove("hide", "show");
         modal.classList.add("hide");
     }
@@ -105,7 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return money.toLocaleString("vi-VN") + "đ";
     }
 
-    // ====================== UPDATE TỔNG TIỀN BÊN PHẢI ======================
+    // ====================== UPDATE CART SUMMARY ======================
     function updateCartSummary() {
         let subtotal = 0;
         let itemCount = 0;
@@ -171,25 +167,19 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // ====================== Cart DELETE (MODAL) ======================
+    // ====================== CART DELETE ======================
     let deleteId = null;
-
-    // Mở modal khi nhấn nút delete
     document.querySelectorAll(".btn-delete").forEach((btn) => {
         btn.addEventListener("click", function () {
             deleteId = this.dataset.id;
-
-            openModal("#delete-confirm"); // 🔥 dùng hàm chung
+            openModal("#delete-confirm");
         });
     });
 
-    // Xác nhận xóa
     const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
-
     if (confirmDeleteBtn) {
         confirmDeleteBtn.onclick = function () {
             if (!deleteId) return;
-
             fetch(`index.php?url=remove-cart&id=${deleteId}`)
                 .then((res) => res.json())
                 .then((data) => {
@@ -197,32 +187,19 @@ document.addEventListener("DOMContentLoaded", function () {
                         const item = document.getElementById(
                             `item-${deleteId}`,
                         );
-
-                        // 🔥 LẤY LIST TRƯỚC
                         const list = item?.closest(".cart-info");
-
-                        // 🔥 SAU ĐÓ MỚI XÓA
                         if (item) item.remove();
-
                         const remainItems =
                             list?.querySelectorAll(".cart-item");
-
                         if (!remainItems || remainItems.length === 0) {
-                            list.innerHTML = `
-                            <p class="text-center py-5 fs-4 cart-info__list--empty">
+                            list.innerHTML = `<p class="text-center py-5 fs-4 cart-info__list--empty">
                                 <img src="/DoAn/DoAnTotNghiep/assets/img/empty-cart.png" alt="Empty cart" class="mb-4" />
-                                <a href="/index.php" class="btn btn--primary mt-4" style="margin: 20px 0 0;">
-                                    Tiếp tục mua sắm
-                                </a>
-                            </p>
-                        `;
+                                <a href="/index.php" class="btn btn--primary mt-4" style="margin: 20px 0 0;">Tiếp tục mua sắm</a>
+                            </p>`;
                         }
-
                         closeModal("#delete-confirm");
-
                         updateCartSummary();
                         showToast("Đã xóa 🗑️", "success");
-
                         deleteId = null;
                     }
                 })
@@ -230,21 +207,15 @@ document.addEventListener("DOMContentLoaded", function () {
         };
     }
 
-    // ====================== DELETE FAVORITE (MODAL) ======================
-
+    // ====================== DELETE FAVORITE ======================
     let deleteFavId = null;
-    let deleteFavIds = [];
-
-    // Mở modal khi nhấn nút delete favorite
     document.querySelectorAll(".btn-delete-fav").forEach((btn) => {
         btn.addEventListener("click", function () {
             deleteFavId = this.closest(".cart-item")?.dataset.id;
-
-            openModal("#delete-fav-confirm"); // 🔥 dùng chung
+            openModal("#delete-fav-confirm");
         });
     });
 
-    // Xác nhận xóa favorite
     const confirmDeleteFavBtn = document.getElementById("confirm-delete-fav");
     if (confirmDeleteFavBtn) {
         confirmDeleteFavBtn.addEventListener("click", function () {
@@ -256,32 +227,21 @@ document.addEventListener("DOMContentLoaded", function () {
                         const item = document.querySelector(
                             `.cart-item[data-id='${deleteFavId}']`,
                         );
-
                         if (item) item.remove();
-
-                        // ✅ FIX: nếu hết item thì show empty
                         const list = document.querySelector(".cart-info__list");
                         if (list && list.children.length === 0) {
                             const container =
                                 document.querySelector(".cart-info");
-
                             if (container) {
-                                container.innerHTML = `
-                                    <h1 class="cart-info__heading">Favorite List</h1>
-
-                                    <div class="favorites-empty text-center" style="padding: 50px 0;">
-                                        <div class="favorites-empty text-center" style="padding: 50px 0;">
-                                            <img src="/DoAn/DoAnTotNghiep/public/assets/img/empty-favorites.png" alt="No Favorites" style="max-width: 200px; margin-bottom: 20px;">
-                                            <p style="font-size: 18px; color: #555; margin-bottom: 20px;">Bạn ko có bất kỳ sản phẩm nào trong danh sách yêu thích.</p>
-                                            <a href="/DoAn/DoAnTotNghiep/public/" class="btn btn--primary btn--rounded mt-3">Explore Products</a>
-                                        </div>
-                                    </div>
-                                `;
+                                container.innerHTML = `<h1 class="cart-info__heading">Favorite List</h1>
+                                <div class="favorites-empty text-center" style="padding: 50px 0;">
+                                    <img src="/DoAn/DoAnTotNghiep/public/assets/img/empty-favorites.png" style="max-width:200px;margin-bottom:20px;">
+                                    <p>Bạn không có sản phẩm yêu thích nào.</p>
+                                    <a href="/DoAn/DoAnTotNghiep/public/" class="btn btn--primary">Explore Products</a>
+                                </div>`;
                             }
                         }
-
                         closeModal("#delete-fav-confirm");
-
                         showToast("Đã xóa khỏi yêu thích 🗑️", "success");
                         deleteFavId = null;
                     }
@@ -290,14 +250,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Cancel / overlay favorite
     document
         .querySelectorAll("#delete-fav-confirm .js-toggle")
         .forEach((btn) => {
             btn.addEventListener("click", () => {
                 const modal = document.getElementById("delete-fav-confirm");
-                modal.classList.remove("show"); // remove show
-                modal.classList.add("hide"); // add hide
+                modal.classList.remove("show");
+                modal.classList.add("hide");
                 deleteFavId = null;
             });
         });
@@ -305,27 +264,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // ====================== CHECK ALL ======================
     const checkAll = document.getElementById("check-all");
     const deleteAllBtn = document.getElementById("delete-all-btn");
-
-    // 👉 Khi click "Check all"
     if (checkAll) {
         checkAll.addEventListener("change", function () {
             const checked = this.checked;
-
-            // chỉ lấy checkbox trong từng item
             document
                 .querySelectorAll(".cart-item .cart-info__checkbox-input")
                 .forEach((cb) => {
                     cb.checked = checked;
                 });
-
-            // show / hide nút delete all
-            if (deleteAllBtn) {
-                deleteAllBtn.classList.toggle("d-none", !checked);
-            }
+            if (deleteAllBtn) deleteAllBtn.classList.toggle("d-none", !checked);
         });
     }
 
-    // ====================== CHECK TỪNG ITEM ======================
     document
         .querySelectorAll(".cart-item .cart-info__checkbox-input")
         .forEach((cb) => {
@@ -336,78 +286,56 @@ document.addEventListener("DOMContentLoaded", function () {
                 const checkedItems = document.querySelectorAll(
                     ".cart-item .cart-info__checkbox-input:checked",
                 );
-
-                // 👉 update nút delete all
-                if (deleteAllBtn) {
+                if (deleteAllBtn)
                     deleteAllBtn.classList.toggle(
                         "d-none",
                         checkedItems.length === 0,
                     );
-                }
-
-                // 👉 update trạng thái check all
-                if (checkAll) {
+                if (checkAll)
                     checkAll.checked = checkedItems.length === allItems.length;
-                }
             });
         });
 
-    // ====================== DELETE ALL ======================
     if (deleteAllBtn) {
         deleteAllBtn.addEventListener("click", function () {
             const selected = [];
-
             document.querySelectorAll(".cart-item").forEach((item) => {
                 const checkbox = item.querySelector(
                     ".cart-info__checkbox-input",
                 );
-
-                if (checkbox && checkbox.checked) {
+                if (checkbox && checkbox.checked)
                     selected.push(item.dataset.id);
-                }
             });
-
             if (selected.length === 0) {
                 showToast("Chưa chọn sản phẩm", "error");
                 return;
             }
-
-            // 👉 CALL API
             fetch("index.php?url=delete-all-favorite", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ids: selected }),
             })
                 .then((res) => res.json())
                 .then((data) => {
                     if (data.success) {
-                        // 👉 XÓA UI
                         selected.forEach((id) => {
                             const el = document.querySelector(
                                 `.cart-item[data-id="${id}"]`,
                             );
                             if (el) el.remove();
                         });
-
-                        // 👉 nếu hết item → show empty
                         if (
                             document.querySelectorAll(".cart-item").length === 0
                         ) {
-                            document.querySelector(".cart-info").innerHTML = `
-                            <div class="favorites-empty text-center" style="padding: 50px 0;">
+                            document.querySelector(".cart-info").innerHTML =
+                                `<div class="favorites-empty text-center" style="padding: 50px 0;">
                                 <img src="/DoAn/DoAnTotNghiep/public/assets/img/empty-favorites.png" style="max-width:200px;margin-bottom:20px;">
                                 <p>Không còn sản phẩm yêu thích</p>
                                 <a href="/DoAn/DoAnTotNghiep/public/" class="btn btn--primary">Explore</a>
-                            </div>
-                        `;
+                            </div>`;
                         }
-
-                        // reset
                         if (deleteAllBtn) deleteAllBtn.classList.add("d-none");
                         if (checkAll) checkAll.checked = false;
-
                         showToast("Đã xóa tất cả 🗑️", "success");
                     }
                 })
@@ -419,7 +347,6 @@ document.addEventListener("DOMContentLoaded", function () {
     function loadMiniCart() {
         const list = document.getElementById("mini-cart-list");
         if (!list) return;
-
         fetch("index.php?url=get-mini-cart")
             .then((res) => res.json())
             .then((data) => {
@@ -429,16 +356,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 data.items.forEach((item) => {
-                    list.innerHTML += `
-                        <div class="col">
-                            <article class="cart-preview-item">
-                                <div class="cart-preview-item__img-wrap">
-                                    <img src="assets/img/product/${item.image}" class="cart-preview-item__thumb"/>
-                                </div>
-                                <h3 class="cart-preview-item__title">${item.name}</h3>
-                                <p class="cart-preview-item__price">${formatVND(item.price)}</p>
-                            </article>
-                        </div>`;
+                    list.innerHTML += `<div class="col"><article class="cart-preview-item">
+                        <div class="cart-preview-item__img-wrap"><img src="assets/img/product/${item.image}" class="cart-preview-item__thumb"/></div>
+                        <h3 class="cart-preview-item__title">${item.name}</h3>
+                        <p class="cart-preview-item__price">${formatVND(item.price)}</p>
+                    </article></div>`;
                 });
                 const miniSubtotalEl = document.getElementById("mini-subtotal");
                 const miniTotalEl = document.getElementById("mini-total");
@@ -447,16 +369,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (miniTotalEl) miniTotalEl.innerText = formatVND(data.total);
             });
     }
-
     document
         .querySelector(".top-act__btn-wrap")
         ?.addEventListener("mouseenter", loadMiniCart);
 
-    // ====================== SAVE → FAVORITE ======================
+    // ====================== SAVE → FAVORITE (nút lưu riêng) ======================
     document.querySelectorAll(".btn-save").forEach((btn) => {
         btn.addEventListener("click", function () {
             const id = this.dataset.id;
-
             fetch("index.php?url=add-favorite", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -464,14 +384,25 @@ document.addEventListener("DOMContentLoaded", function () {
             })
                 .then((res) => res.json())
                 .then((data) => {
-                    if (data.success)
+                    if (data.success) {
                         showToast("Đã thêm vào yêu thích ❤️", "success");
-                    else throw new Error(data.message || "Lỗi favorite");
+                        if (!btn.classList.contains("liked")) {
+                            btn.classList.add("liked");
+                            document
+                                .querySelectorAll(".fav-count-badge")
+                                .forEach((el) => {
+                                    let count = parseInt(el.textContent) || 0;
+                                    el.textContent = count + 1;
+                                });
+                        }
+                    } else {
+                        showToast(
+                            data.message || "Sản phẩm đã có trong yêu thích",
+                            "error",
+                        );
+                    }
                 })
-                .catch((err) => {
-                    console.error(err);
-                    showToast("Sản phẩm đã có trong yêu thích", "error");
-                });
+                .catch(() => showToast("Lỗi kết nối", "error"));
         });
     });
 
@@ -493,24 +424,24 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // ====================== LIKE BTN TOGGLE ======================
+    // ====================== LIKE BTN TOGGLE (QUAN TRỌNG NHẤT) ======================
+    // Chỉ một nơi xử lý sự kiện click cho nút like (trái tim)
     document.addEventListener("click", function (e) {
         const btn = e.target.closest(".like-btn");
         if (!btn) return;
 
+        e.preventDefault();
         const productId = btn.dataset.id;
-
         const isLiked = btn.classList.contains("like-btn--liked");
 
+        // Xác định URL và method
         const url = isLiked
             ? "index.php?url=remove-favorite&id=" + productId
             : "index.php?url=add-favorite";
-
         const options = {
             method: isLiked ? "GET" : "POST",
             headers: { "Content-Type": "application/json" },
         };
-
         if (!isLiked) {
             options.body = JSON.stringify({ product_id: productId });
         }
@@ -518,124 +449,106 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch(url, options)
             .then((res) => res.json())
             .then((res) => {
-                if (res.success) {
-                    // toggle class
+                // Kiểm tra response có field success không
+                if (res.success === true) {
+                    // Toggle class trái tim
                     btn.classList.toggle("like-btn--liked");
 
-                    // update count
-                    const favCountElem = document.querySelector(
-                        ".top-act__btn-wrap .top-act__title",
-                    );
-
-                    if (favCountElem) {
-                        let count = parseInt(favCountElem.textContent) || 0;
-                        count = isLiked ? count - 1 : count + 1;
-                        favCountElem.textContent = count;
+                    // Cập nhật tất cả badge yêu thích (chỉ class .fav-count-badge)
+                    if (res.total_favorites !== undefined) {
+                        document
+                            .querySelectorAll(".fav-count-badge")
+                            .forEach((el) => {
+                                el.textContent = res.total_favorites;
+                            });
+                    } else {
+                        // Fallback: tự tăng/giảm 1 nếu server không trả total_favorites
+                        const delta = isLiked ? -1 : 1;
+                        document
+                            .querySelectorAll(".fav-count-badge")
+                            .forEach((el) => {
+                                let current = parseInt(el.textContent) || 0;
+                                let newVal = current + delta;
+                                if (newVal < 0) newVal = 0;
+                                el.textContent = newVal;
+                            });
                     }
                 } else {
-                    showToast("Lỗi khi xử lý yêu thích", "error");
+                    // Lỗi từ server: hiển thị thông báo lỗi
+                    showToast(
+                        res.message || "Có lỗi xảy ra, vui lòng thử lại",
+                        "error",
+                    );
                 }
+            })
+            .catch((err) => {
+                console.error("Favorite error:", err);
+                showToast("Lỗi kết nối đến máy chủ", "error");
             });
     });
 
-    // ====================== PAGINATION AJAX (KHÔNG RELOAD) ======================
+    // ====================== PAGINATION AJAX (giữ nguyên) ======================
     document.addEventListener("click", function (e) {
-        const link = e.target.closest(".pagination-link");
-
-        if (link) {
-            const url = link.getAttribute("href");
-
-            // optional loading
-            const container = document.querySelector("#product-list");
-            if (container) {
-                container.style.opacity = "0.5";
-            }
-
-            fetch(url)
-                .then((res) => res.text())
-                .then((html) => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, "text/html");
-
-                    const newContent = doc.querySelector("#product-list");
-
-                    if (newContent && container) {
-                        container.innerHTML = newContent.innerHTML;
-                    }
-
-                    // update URL (không reload)
-                    history.pushState(null, "", url);
-
-                    if (container) {
-                        container.style.opacity = "1";
-                    }
-                })
-                .catch(() => {
-                    showToast("Lỗi khi chuyển trang", "error");
-                });
-        }
+        const link = e.target.closest(".pagination a");
+        if (!link) return;
+        e.preventDefault();
+        const url = link.href;
+        const container = document.querySelector("#product-list");
+        if (container) container.style.opacity = "0.5";
+        fetch(url)
+            .then((res) => res.text())
+            .then((html) => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+                const newContent = doc.querySelector("#product-list");
+                if (newContent && container)
+                    container.innerHTML = newContent.innerHTML;
+                history.pushState(null, "", url);
+                if (container) container.style.opacity = "1";
+            })
+            .catch(() => showToast("Lỗi khi chuyển trang", "error"));
     });
 
-    // 🔥 Toggle mở search
-    document.querySelector(".search-toggle").onclick = function () {
-        const box = document.querySelector(".search-box");
-        box.classList.toggle("active");
+    // ====================== SEARCH ======================
+    const searchToggle = document.querySelector(".search-toggle");
+    if (searchToggle) {
+        searchToggle.onclick = function () {
+            const box = document.querySelector(".search-box");
+            box.classList.toggle("active");
+            const input = box.querySelector(".search-input");
+            if (box.classList.contains("active")) input.focus();
+        };
+    }
 
-        const input = box.querySelector(".search-input");
-        if (box.classList.contains("active")) {
-            input.focus();
-        }
-    };
-
-    // 🔥 Realtime search (SAFE VERSION)
-    const input = document.querySelector(".search-input");
+    const searchInput = document.querySelector(".search-input");
     const suggestBox = document.querySelector(".search-suggest");
     const searchBox = document.querySelector(".search-box");
-
     let debounceTimer;
-
-    // ✅ CHỈ chạy khi tồn tại đủ element
-    if (input && suggestBox) {
-        input.addEventListener("input", function () {
+    if (searchInput && suggestBox) {
+        searchInput.addEventListener("input", function () {
             const keyword = this.value.trim();
-
             clearTimeout(debounceTimer);
-
             debounceTimer = setTimeout(() => {
                 if (!keyword) {
                     suggestBox.style.display = "none";
                     return;
                 }
-
                 fetch(`index.php?url=search&q=${keyword}&ajax=1`)
                     .then((res) => res.json())
                     .then((data) => {
                         suggestBox.innerHTML = "";
-
                         if (data.length === 0) {
-                            suggestBox.innerHTML = `
-                            <div class="search-suggest-item">
-                                Không tìm thấy
-                            </div>`;
+                            suggestBox.innerHTML = `<div class="search-suggest-item">Không tìm thấy</div>`;
                         } else {
                             data.forEach((item) => {
-                                suggestBox.innerHTML += `
-                                <div class="search-suggest-item"
-                                     onclick="location.href='index.php?url=product&id=${item.id}'">
-                                    ${item.name}
-                                </div>`;
+                                suggestBox.innerHTML += `<div class="search-suggest-item" onclick="location.href='index.php?url=product&id=${item.id}'">${item.name}</div>`;
                             });
                         }
-
                         suggestBox.style.display = "block";
                     })
-                    .catch(() => {
-                        suggestBox.style.display = "none";
-                    });
+                    .catch(() => (suggestBox.style.display = "none"));
             }, 300);
         });
-
-        // 🔥 Click ngoài để đóng
         document.addEventListener("click", function (e) {
             if (!e.target.closest(".search-box")) {
                 if (searchBox) searchBox.classList.remove("active");
@@ -644,15 +557,12 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // ====================== Shipping Address (SAFE VERSION) ======================
+    // ====================== SHIPPING ADDRESS ======================
     const addressForm = document.getElementById("add-address-form");
-
     if (addressForm) {
         addressForm.addEventListener("submit", function (e) {
             e.preventDefault();
-
             const formData = new FormData(this);
-
             fetch("index.php?url=add-shipping-address", {
                 method: "POST",
                 body: formData,
@@ -664,16 +574,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             "Đã thêm địa chỉ mới thành công ✅",
                             "success",
                         );
-
-                        // Đóng modal an toàn
                         const modal =
                             document.querySelector("#add-new-address");
                         if (modal) {
                             modal.classList.remove("show");
                             modal.classList.add("hide");
                         }
-
-                        // Reload trang
                         setTimeout(() => location.reload(), 800);
                     } else {
                         showToast(
@@ -682,17 +588,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         );
                     }
                 })
-                .catch(() => {
-                    showToast("Lỗi kết nối server", "error");
-                });
+                .catch(() => showToast("Lỗi kết nối server", "error"));
         });
     }
 
-    // ... các hàm hiện có (handleActiveMenu, AJAX pagination) giữ nguyên ...
-
     // ====================== FILTER ======================
-
-    // Chọn size
     document.querySelectorAll(".size-option").forEach((btn) => {
         btn.addEventListener("click", function () {
             document
@@ -703,22 +603,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Submit filter (AJAX)
     const filterForm = document.getElementById("filter-form");
     if (filterForm) {
         filterForm.addEventListener("submit", function (e) {
             e.preventDefault();
-
             const formData = new FormData(this);
             const params = new URLSearchParams(formData).toString();
             const url = `index.php?url=home&ajax=1&${params}`;
-
             const productList = document.getElementById("product-list");
             let overlay = document.createElement("div");
             overlay.className = "ajax-overlay";
             productList.appendChild(overlay);
             productList.classList.add("loading");
-
             fetch(url)
                 .then((res) => res.text())
                 .then((html) => {
@@ -730,10 +626,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (newPagination)
                         document.getElementById("pagination").innerHTML =
                             newPagination.innerHTML;
-
                     productList.classList.remove("loading");
                     overlay.remove();
-                    // Cập nhật URL params (tùy chọn)
                     const newUrl = new URL(window.location.href);
                     newUrl.search = params;
                     window.history.pushState({}, "", newUrl);
@@ -746,12 +640,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const notiList = document.getElementById("noti-list");
         const badge = document.getElementById("noti-count");
         if (!notiList) return;
-
-        // Sử dụng baseUrl đã được định nghĩa trong PHP (xem hướng dẫn bên dưới)
         const url =
             (typeof baseUrl !== "undefined" ? baseUrl : "") +
             "index.php?url=api/notifications";
-
         fetch(url)
             .then((res) => res.json())
             .then((data) => {
@@ -771,13 +662,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 let html = "";
                 items.slice(0, 5).forEach((noti) => {
-                    html += `
-                    <div class="noti-item ${!noti.is_read ? "unread" : ""}" data-id="${noti.id}">
+                    html += `<div class="noti-item ${!noti.is_read ? "unread" : ""}" data-id="${noti.id}">
                         <div class="noti-title">${escapeHtml(noti.title)}</div>
                         <div class="noti-text">${escapeHtml(noti.content)}</div>
                         <div class="noti-time">${formatTime(noti.created_at)}</div>
-                    </div>
-                `;
+                    </div>`;
                 });
                 notiList.innerHTML = html;
                 if (badge) badge.innerText = unread > 99 ? "99+" : unread;
@@ -806,7 +695,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return date.toLocaleDateString("vi-VN");
     }
 
-    // Đánh dấu tất cả đã đọc
     const markAllReadBtn = document.getElementById("mark-all-read");
     if (markAllReadBtn) {
         markAllReadBtn.addEventListener("click", function (e) {
@@ -818,12 +706,16 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Tải thông báo lần đầu và định kỳ
-    if (document.getElementById("noti-list")) {
+    // Tải thông báo CHỈ khi ở trang notification
+    if (
+        document.getElementById("noti-list") &&
+        window.location.href.includes("notification")
+    ) {
         loadNotifications();
         setInterval(loadNotifications, 30000);
     }
 
+    // ====================== TOAST ======================
     function showToast(message, type = "success") {
         const toast = document.createElement("div");
         toast.innerText = message;
@@ -841,7 +733,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (type === "success") toast.style.background = "#28a745";
         else if (type === "error") toast.style.background = "#dc3545";
         else toast.style.background = "#333";
-
         document.body.appendChild(toast);
         setTimeout(() => {
             toast.style.opacity = "1";
@@ -854,5 +745,5 @@ document.addEventListener("DOMContentLoaded", function () {
         }, 2500);
     }
 
-    console.log("✅ JS Checkout đã load thành công - Không còn lỗi");
+    console.log("✅ JS đã load thành công");
 });

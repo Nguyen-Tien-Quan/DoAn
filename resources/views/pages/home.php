@@ -7,24 +7,247 @@ $categories = $categories ?? [];
 $variants = $variants ?? [];
 ?>
 <style>
-    .filter-selected {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 10px 0;
+/* ================= DARK THEME ================= */
+html.dark {
+    --filter-bg: rgba(17, 24, 39, 0.95);
+    --filter-shadow: 0 8px 30px rgba(0,0,0,0.4);
+
+    --filter-input-bg: #1f2937;
+    --filter-input-text: #fff;
+
+    --filter-label-color: #aaa;
+
+    --filter-chip-bg: #1f2937;
+    --filter-chip-text: #ddd;
+    --filter-chip-hover: #374151;
+
+    --filter-chip-active: linear-gradient(45deg, #6366f1, #ec4899);
+    --filter-chip-active-text: #fff;
+    --filter-chip-active-shadow: 0 0 10px rgba(236,72,153,0.5);
+
+    --filter-clear-bg: #ef4444;
+    --filter-clear-text: #fff;
 }
 
-.filter-chip {
-    background: #f5f5f5;
-    border-radius: 20px;
-    padding: 4px 10px;
+/* ================= FILTER ================= */
+.filter-pro {
+    position: sticky;
+    top: 80px;
+    z-index: 50;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    /* LIGHT fallback */
+    background: var(--filter-bg, #ffffff);
+    backdrop-filter: blur(10px);
+
+    padding: 14px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+
+    box-shadow: var(--filter-shadow, 0 8px 30px rgba(0,0,0,0.08));
+}
+
+/* Search */
+.filter-search {
+    flex: 1 1 250px;
+}
+
+.filter-search input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: none;
+
+    background: var(--filter-input-bg, #f1f5f9);
+    color: var(--filter-input-text, #111);
+
+    outline: none;
+}
+
+/* Chips */
+.filter-chips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.label {
+    color: var(--filter-label-color, #666);
     font-size: 13px;
+}
+
+/* Chip */
+.chip {
+    background: var(--filter-chip-bg, #f1f5f9);
+    border: 1px solid transparent;
+
+    padding: 6px 12px;
+    border-radius: 999px;
+
+    color: var(--filter-chip-text, #333);
+    font-size: 13px;
+
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.chip:hover {
+    background: var(--filter-chip-hover, #e2e8f0);
+    transform: translateY(-1px);
+}
+
+.chip.active {
+    background: var(--filter-chip-active, linear-gradient(45deg, #6366f1, #ec4899));
+    color: var(--filter-chip-active-text, #fff);
+    border: none;
+
+    box-shadow: var(--filter-chip-active-shadow, 0 0 10px rgba(99,102,241,0.3));
+}
+
+/* Clear */
+.clear-filter {
+    margin-left: auto;
+
+    background: var(--filter-clear-bg, #ef4444);
+    border: none;
+
+    padding: 8px 14px;
+    border-radius: 10px;
+
+    color: var(--filter-clear-text, #fff);
     cursor: pointer;
 }
 
-.filter-chip:hover {
-    background: #ff4d4f;
-    color: #fff;
+.clear-filter:hover {
+    opacity: 0.9;
+}
+
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .filter-pro {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .filter-search {
+        flex: 1 1 200px;
+    }
+
+    .chip {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+}
+
+.filter-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-top: 6px;
+}
+
+/* group */
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+/* mobile fix */
+@media (max-width: 768px) {
+    .filter-pro {
+        flex-direction: column;
+    }
+
+    .filter-search {
+        width: 100%;
+    }
+
+    .filter-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .filter-group {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .filter-pro {
+        position: sticky;
+        top: 70px;
+
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+
+        padding: 8px;
+        gap: 8px;
+
+        border-radius: 12px;
+
+        scroll-snap-type: x mandatory;
+    }
+
+    .filter-pro::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Search nhỏ lại */
+    .filter-search {
+        flex: 0 0 65%;
+        min-width: 200px;
+    }
+
+    .filter-search input {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    /* Ẩn label cho gọn */
+    .label {
+        display: none;
+    }
+
+    /* Group filter = dạng button */
+    .filter-chips {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 6px;
+    }
+
+    .chip {
+        flex: 0 0 auto;
+        white-space: nowrap;
+
+        font-size: 12px;
+        padding: 6px 10px;
+
+        border-radius: 999px;
+    }
+
+    /* Clear */
+    .clear-filter {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>
 <main class="container home">
@@ -33,14 +256,7 @@ $variants = $variants ?? [];
     <div class="home__container">
         <div class="slideshow">
             <div class="slideshow__inner" id="slideshowInner">
-                <div class="slideshow__item">
-                    <a href="#!" class="slideshow__link">
-                        <picture>
-                            <source media="(max-width: 767.98px)" srcset="<?= $base ?>assets/img/slideshow/item-1-md.png" />
-                            <img src="<?= $base ?>assets/img/slideshow/item-1.png" alt="" class="slideshow__img" />
-                        </picture>
-                    </a>
-                </div>
+
                 <div class="slideshow__item">
                     <a href="#!" class="slideshow__link">
                         <img src="<?= $base ?>assets/img/slideshow/item-2.png" alt="anh 2" class="slideshow__img" />
@@ -93,100 +309,64 @@ $variants = $variants ?? [];
     <!-- Browse Products -->
     <section class="home__container">
         <div class="home__row">
-            <h2 class="home__heading">Total LavAzza 1320</h2>
-            <div class="filter-wrap">
-                <button class="filter-btn js-toggle" toggle-target="#home-filter">
-                    Filter
-                    <img src="./assets/icons/filter.svg" alt="" class="filter-btn__icon icon" />
-                </button>
 
-                <div id="home-filter" class="filter hide">
-                    <img src="./assets/icons/arrow-up.png" alt="" class="filter__arrow" />
-                    <h3 class="filter__heading">
-                        Filter
-                        <img src="./assets/icons/close.svg" alt="" class="d-none d-sm-block filter__btn-icon icon js-toggle" toggle-target="#home-filter" />
-                    </h3>
-                    <form action="" class="filter__form form" id="filter-form">
-                        <div class="filter__row filter__content">
-                            <!-- Price -->
-                            <div class="filter__col">
-                                <label class="form__label">Price</label>
-                                <div class="filter__form-group">
-                                    <div class="filter__form-slider" style="--min-value: 0%; --max-value: 70%"></div>
-                                </div>
-                                <div class="filter__form-group filter__form-group--inline">
-                                    <div>
-                                        <label class="form__label form__label--small">Minimum</label>
-                                        <div class="filter__form-text-input filter__form-text-input--small">
-                                            <input type="text" id="min_price" class="filter__form-input" value="0" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="form__label form__label--small">Maximum</label>
-                                        <div class="filter__form-text-input filter__form-text-input--small">
-                                            <input type="text" id="max_price" class="filter__form-input" value="200000" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+            <div class="filter-pro">
 
-                            <div class="filter__separate"></div>
-
-                            <!-- Size -->
-                            <div class="filter__col">
-                                <label class="form__label">Size</label>
-                                <div class="filter__form-group">
-                                    <div class="form__tags">
-                                        <button type="button" class="form__tag size-option" data-size="S">Small</button>
-                                        <button type="button" class="form__tag size-option" data-size="M">Medium</button>
-                                        <button type="button" class="form__tag size-option" data-size="L">Large</button>
-                                        <button type="button" class="form__tag size-option" data-size="XL">XL</button>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="size-input" name="size" value="">
-                            </div>
-
-                            <div class="filter__separate"></div>
-
-                            <!-- Category -->
-                            <div class="filter__col">
-                                <label class="form__label">Danh mục</label>
-                                <div class="filter__form-group">
-                                    <div class="form__tags">
-                                        <?php foreach ($categories as $cat): ?>
-                                            <button type="button" class="form__tag category-option" data-id="<?= $cat['id'] ?>">
-                                                <?= htmlspecialchars($cat['name']) ?>
-                                            </button>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="category-input" name="category" value="">
-                            </div>
-
-                            <div class="filter__separate"></div>
-
-                            <!-- Sort -->
-                            <div class="filter__col">
-                                <label class="form__label">Sắp xếp</label>
-                                <div class="filter__form-group">
-                                    <select id="sort-select" class="form__select" name="sort">
-                                        <option value="">Mặc định</option>
-                                        <option value="price_asc">Giá thấp → cao</option>
-                                        <option value="price_desc">Giá cao → thấp</option>
-                                        <option value="name_asc">Tên A → Z</option>
-                                        <option value="name_desc">Tên Z → A</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="filter__row filter__footer">
-                            <button type="button" class="btn btn--text filter__cancel js-toggle" toggle-target="#home-filter">Cancel</button>
-                            <button type="submit" class="btn btn--primary filter__submit">Show Result</button>
-                        </div>
-                    </form>
+                <!-- Search -->
+                <div class="filter-search">
+                    <input type="text" id="keyword" placeholder="🔍 Tìm sản phẩm...">
                 </div>
+
+                <!-- Wrapper scroll ngang -->
+                <div class="filter-scroll">
+
+                    <!-- Price -->
+                    <div class="filter-group">
+                        <span class="label">Giá</span>
+                        <button class="chip" data-type="price" data-value="">Tất cả</button>
+                        <button class="chip" data-type="price" data-value="0-50000">Dưới 50k</button>
+                        <button class="chip" data-type="price" data-value="50000-100000">50k - 100k</button>
+                        <button class="chip" data-type="price" data-value="100000-99999999">100k+</button>
+                    </div>
+
+                    <!-- Size -->
+                    <div class="filter-group">
+                        <span class="label">Size</span>
+                        <button class="chip" data-type="size" data-value="">All</button>
+                        <button class="chip" data-type="size" data-value="S">S</button>
+                        <button class="chip" data-type="size" data-value="M">M</button>
+                        <button class="chip" data-type="size" data-value="L">L</button>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="filter-group">
+                        <span class="label">Danh mục</span>
+                        <button class="chip" data-type="category" data-value="">Tất cả</button>
+
+                        <?php foreach ($categories as $cat): ?>
+                            <button class="chip"
+                                    data-type="category"
+                                    data-value="<?= $cat['id'] ?>">
+                                <?= $cat['name'] ?>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <!-- Sort -->
+                    <div class="filter-group">
+                        <span class="label">Sắp xếp</span>
+                        <button class="chip" data-type="sort" data-value="">Mặc định</button>
+                        <button class="chip" data-type="sort" data-value="price_asc">Giá ↑</button>
+                        <button class="chip" data-type="sort" data-value="price_desc">Giá ↓</button>
+                    </div>
+
+                </div>
+
+                <!-- Clear -->
+                <button class="clear-filter">✖</button>
+
             </div>
+
         </div>
 
         <!-- Products Grid -->
@@ -721,5 +901,113 @@ function updateCartSummary(data) {
     if (totalEl) {
         totalEl.innerText = data.formatted_new_total;
     }
+}
+const state = {
+    price: '',
+    size: '',
+    category: '',
+    sort: '',
+    keyword: ''
+};
+
+// ================= CLICK CHIP =================
+document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', function () {
+
+        const type = this.dataset.type;
+        const value = this.dataset.value;
+
+        // toggle
+        if (state[type] === value) {
+            state[type] = '';
+            this.classList.remove('active');
+        } else {
+            state[type] = value;
+
+            // remove active cùng group
+            document.querySelectorAll(`.chip[data-type="${type}"]`)
+                .forEach(c => c.classList.remove('active'));
+
+            this.classList.add('active');
+        }
+
+        applyFilter();
+    });
+});
+
+// ================= SEARCH =================
+const keywordInput = document.getElementById('keyword');
+
+let debounceTimer;
+keywordInput.addEventListener('input', function () {
+    state.keyword = this.value;
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(applyFilter, 400);
+});
+
+// ================= CLEAR =================
+document.querySelector('.clear-filter').addEventListener('click', () => {
+
+    Object.keys(state).forEach(k => state[k] = '');
+
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+
+    keywordInput.value = '';
+
+    applyFilter();
+});
+
+// ================= AJAX LOAD =================
+let controller;
+
+function applyFilter() {
+
+    let params = new URLSearchParams();
+
+    Object.entries(state).forEach(([k, v]) => {
+        if (v) params.append(k, v);
+    });
+
+    const url = `index.php?url=home&ajax=1&${params.toString()}`;
+
+    loadProductsAjax(url);
+}
+
+// ================= LOAD PRODUCTS =================
+function loadProductsAjax(url) {
+
+    const productList = document.getElementById('product-list');
+
+    // loading overlay
+    productList.style.opacity = "0.5";
+
+    if (controller) controller.abort();
+    controller = new AbortController();
+
+    fetch(url, { signal: controller.signal })
+        .then(res => res.text())
+        .then(html => {
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+
+            const newList = doc.getElementById("product-list");
+
+            if (newList) {
+                productList.innerHTML = newList.innerHTML;
+            }
+
+            productList.style.opacity = "1";
+
+            // update URL (không reload)
+            window.history.replaceState({}, '', url.replace('&ajax=1', ''));
+
+        })
+        .catch(err => {
+            if (err.name !== "AbortError") {
+                console.error(err);
+            }
+        });
 }
 </script>

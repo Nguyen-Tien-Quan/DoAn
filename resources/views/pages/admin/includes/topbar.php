@@ -15,6 +15,27 @@ if (!function_exists('getPendingOrdersCount')) {
 $pendingOrdersCount = getPendingOrdersCount($pdo);
 $lowStockCount = getLowStockIngredientsCount($pdo);
 $totalNotifications = $pendingOrdersCount + $lowStockCount;
+
+// Đảm bảo biến $base được định nghĩa (nếu chưa có)
+if (!isset($base)) {
+    $base = '/DoAn/DoAnTotNghiep/public/';
+}
+
+// Xử lý avatar: nếu có avatar và file tồn tại thì dùng, không thì dùng avatar mặc định
+$avatarDefault = $base . 'assets/img/avatars/avatar-default.png';
+$avatarPath = $avatarDefault;
+if (!empty($currentUser['avatar'])) {
+    // Nếu avatar là đường dẫn đầy đủ (http hoặc /)
+    if (strpos($currentUser['avatar'], 'http') === 0 || strpos($currentUser['avatar'], '/') === 0) {
+        $avatarPath = $currentUser['avatar'];
+    } else {
+        // Giả sử avatar chỉ là tên file, nằm trong thư mục assets/img/avatars/
+        $filePath = $_SERVER['DOCUMENT_ROOT'] . '/DoAn/DoAnTotNghiep/public/assets/img/avatars/' . $currentUser['avatar'];
+        if (file_exists($filePath)) {
+            $avatarPath = $base . 'assets/img/avatars/' . $currentUser['avatar'];
+        }
+    }
+}
 ?>
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
     <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3"><i class="fa fa-bars"></i></button>
@@ -50,10 +71,7 @@ $totalNotifications = $pendingOrdersCount + $lowStockCount;
         <li class="nav-item dropdown no-arrow">
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-toggle="dropdown">
                 <span class="mr-2 d-none d-lg-inline text-gray-600 small"><?= htmlspecialchars($currentUser['name'] ?? $_SESSION['user_name'] ?? 'Admin') ?></span>
-                <?php 
-                $avatar = !empty($currentUser['avatar']) ? $currentUser['avatar'] : 'img/undraw_profile.svg';
-                ?>
-                <img class="img-profile rounded-circle" src="<?= htmlspecialchars($avatar) ?>" width="32" height="32" style="object-fit: cover;">
+                <img class="img-profile rounded-circle" src="<?= htmlspecialchars($avatarPath) ?>" width="32" height="32" style="object-fit: cover;" onerror="this.src='<?= $avatarDefault ?>'">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in">
                 <a class="dropdown-item" href="profile.php"><i class="fas fa-user fa-sm fa-fw mr-2"></i> Hồ sơ</a>

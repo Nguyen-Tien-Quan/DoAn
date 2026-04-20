@@ -1,132 +1,143 @@
 @use "../abstracts";
 
 html {
-    --text-color: #1a162e;
+    /* ================= TEXT ================= */
+    --text-color: #1f2937;
+    --text-light: #6b7280;
+
     --icon-color: brightness(0) saturate(100%) invert(8%) sepia(10%)
         saturate(4042%) hue-rotate(212deg) brightness(90%) contrast(95%);
 
-    --body-bg: #f6f6f6;
-    --header-bg-color: #eee;
-    --footer-bg-color: var(--header-bg-color);
+    /* ================= BRAND ================= */
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-gradient: linear-gradient(135deg, #6366f1, #ec4899);
 
+    /* ================= BACKGROUND ================= */
+    --body-bg: #f9fafb;
+    --header-bg-color: #ffffff;
+    --footer-bg-color: #f3f4f6;
+
+    --hover-bg: #f3f4f6;
+
+    /* ================= TOP ACTION ================= */
     --top-act-group-bg-color: #fff;
-    --top-act-group-shadow: rgba(237, 237, 246, 0.2);
-    --top-act-group-separate: #ededf6;
+    --top-act-group-shadow: rgba(0, 0, 0, 0.04);
+    --top-act-group-separate: #e5e7eb;
 
     @include abstracts.screen(lg) {
         --header-bg-color: #fff;
-        --header-shadow-color: rgba(237, 237, 246, 0.2);
+        --header-shadow-color: rgba(0, 0, 0, 0.06);
     }
 
-    // Header
+    /* ================= HEADER ================= */
     --header-act-dropdown-bg: #fff;
-    --header-act-dropdown-shadow: rgba(200, 200, 200, 0.4);
-    --header-act-dropdown-border-color: #d2d1d6;
+    --header-act-dropdown-shadow: rgba(0, 0, 0, 0.08);
+    --header-act-dropdown-border-color: #e5e7eb;
 
-    // Dropdown
+    /* ================= DROPDOWN ================= */
     --dropdown-bg-color: #fff;
-    --dropdown-shadow-color: rgba(200, 200, 200, 0.4);
-    --top-menu-border-color: #d2d1d6;
+    --dropdown-shadow-color: rgba(0, 0, 0, 0.08);
+    --top-menu-border-color: #e5e7eb;
 
-    // Sidebar
+    /* ================= SIDEBAR ================= */
     --sidebar-bg: #fff;
-    --sidebar-shadow: rgba(200, 200, 200, 0.4);
+    --sidebar-shadow: rgba(0, 0, 0, 0.08);
 
-    // Category item
-    --cate-item-bg: #eee;
+    /* ================= CATEGORY ================= */
+    --cate-item-bg: #f3f4f6;
     --cate-item-thumb-bg: #fff;
-    --cate-item-title-color: #000;
+    --cate-item-title-color: #111827;
 
     @include abstracts.screen(md) {
         --cate-item-bg: #fff;
     }
 
-    // Buttons
-    --filter-btn-color: #6c6c72;
+    /* ================= BUTTON ================= */
+    --filter-btn-color: #374151;
     --filter-btn-bg: #fff;
 
-    // Product card
+    /* ================= PRODUCT CARD ================= */
     --product-card-bg: #fff;
-    --product-card-shadow: rgba(237, 237, 246, 0.2);
+    --product-card-shadow: rgba(0, 0, 0, 0.06);
 
-    // Filter form
+    /* ================= FILTER ================= */
     --filter-form-bg: #fff;
-    --filter-form-shadow: rgba(200, 200, 200, 0.4);
-    --form-tag-bg: #f8f8fb;
+    --filter-form-shadow: rgba(0, 0, 0, 0.08);
+    --form-tag-bg: #f3f4f6;
 
-    // Auth
+    /* ================= AUTH ================= */
     --auth-content-bg: #fff;
 
     @include abstracts.screen(md) {
         --auth-intro-bg: #fff;
     }
 
-    // Forms
-    --form-placeholder-color: #d2d1d6;
-    --form-select-dialog-shadow: rgba($color: #000000, $alpha: 0.15);
+    /* ================= FORM ================= */
+    --form-placeholder-color: #9ca3af;
+    --form-select-dialog-shadow: rgba(0, 0, 0, 0.15);
     --form-select-dialog-bg: #fff;
-    --form-option-hover-bg: #ebebeb;
+    --form-option-hover-bg: #f3f4f6;
 
-    // Product detail
+    /* ================= PRODUCT DETAIL ================= */
     --product-detail-bg: #fff;
-    --product-detail-info-bg: #f6f6f6;
+    --product-detail-info-bg: #f9fafb;
     --product-detail-info-content-bg: #fff;
-    --product-detail-tag-bg: #ededf6;
+    --product-detail-tag-bg: #e5e7eb;
 
     @include abstracts.screen(md) {
         --product-detail-bg: #fafafd;
         --product-detail-info-bg: #fff;
     }
 
-    // Breadcrumbs
-    --breadcrumbs-bg: #f6f6f6;
-    --breadcrumbs-shadow: rgba(237, 237, 246, 0.2);
+    /* ================= BREADCRUMBS ================= */
+    --breadcrumbs-bg: #f9fafb;
+    --breadcrumbs-shadow: rgba(0, 0, 0, 0.04);
 
     @include abstracts.screen(md) {
         --breadcrumbs-bg: #fff;
     }
 
-    // Search bar
+    /* ================= SEARCH ================= */
     --search-bar-bg: #fff;
 
-    // Review card
-    --review-card-bg: #fafafd;
+    /* ================= REVIEW ================= */
+    --review-card-bg: #ffffff;
 
     @include abstracts.screen(md) {
         --review-card-bg: #fff;
     }
 
-    // Text content
-    --text-content-hr-bg: #ebebeb;
+    /* ================= TEXT CONTENT ================= */
+    --text-content-hr-bg: #e5e7eb;
 
-    // Checkout
+    /* ================= CHECKOUT ================= */
     --checkout-breadcrumbs-bg: #fff;
     --checkout-cart-info-bg: #fff;
-    --checkout-cart-info-shadow: rgba(237, 237, 246, 0.2);
-    --checkout-border-color: #d2d1d6;
-    --checkout-gift-shadow: rgba(237, 237, 246, 0.2);
-    --checkout-payment-item-bg: #f6f6f6;
+    --checkout-cart-info-shadow: rgba(0, 0, 0, 0.05);
+    --checkout-border-color: #e5e7eb;
+    --checkout-gift-shadow: rgba(0, 0, 0, 0.05);
+    --checkout-payment-item-bg: #f3f4f6;
 
-    // Dialog
+    /* ================= DIALOG ================= */
     --dialog-bg: #fff;
-    --dialog-shadow: rgba(237, 237, 246, 0.2);
+    --dialog-shadow: rgba(0, 0, 0, 0.08);
 
-    // Profile
+    /* ================= PROFILE ================= */
     --profile-sidebar-bg: #fff;
-    --profile-sidebar-shadow: rgba(237, 237, 246, 0.2);
-    --profile-sidebar-link-hover: #ebebeb;
+    --profile-sidebar-shadow: rgba(0, 0, 0, 0.06);
+    --profile-sidebar-link-hover: #f3f4f6;
 
-    // Account info
-    --account-info-bg: #f6f6f6;
+    /* ================= ACCOUNT ================= */
+    --account-info-bg: #f3f4f6;
     --account-info-icon-bg: #fff;
 
-    // Separate
-    --separate-color: #d2d1d6;
+    /* ================= SEPARATE ================= */
+    --separate-color: #e5e7eb;
 
-    // Review & Tabs
+    /* ================= REVIEW DETAIL ================= */
     --review-summary-bg: var(--top-act-group-bg-color);
     --review-summary-shadow: var(--top-act-group-shadow);
-    --review-card-bg: #fafafd; // Bạn đã có biến này, mình đồng bộ lại
     --review-card-shadow: var(--product-card-shadow);
     --review-filter-bg: var(--cate-item-bg);
     --review-filter-text: var(--text-color);
@@ -134,29 +145,29 @@ html {
     --review-form-border: var(--separate-color);
     --review-input-bg: var(--top-act-group-bg-color);
 
-    // Màu cố định (Thường không đổi theo theme hoặc đổi nhẹ)
-    --star-color: #f5a623;
-    --star-empty-color: #ccc;
+    /* ================= FIXED COLORS ================= */
+    --star-color: #f59e0b;
+    --star-empty-color: #d1d5db;
 
     @include abstracts.screen(md) {
         --review-card-bg: #fff;
     }
 
-    // ===== PRODUCT OPTION (SIZE / TOPPING) =====
+    /* ================= PRODUCT OPTION ================= */
     --option-border: var(--separate-color);
     --option-bg: var(--top-act-group-bg-color);
     --option-hover-bg: var(--form-tag-bg);
 
-    --option-active-border: #ff4d4f;
-    --option-active-bg: rgba(255, 77, 79, 0.1);
+    --option-active-border: #6366f1;
+    --option-active-bg: rgba(99, 102, 241, 0.1);
 
     --option-disabled-opacity: 0.5;
 
-    // Quantity
+    /* ================= QUANTITY ================= */
     --qty-bg: var(--top-act-group-bg-color);
     --qty-border: var(--separate-color);
     --qty-hover-bg: var(--form-tag-bg);
 
-    // Floating price
-    --float-bg: #ff4d4f;
+    /* ================= FLOATING ================= */
+    --float-bg: #ef4444;
 }

@@ -51,6 +51,10 @@ function getProductById($id) {
 
     $product['variants'] = getVariantsByProductId($id);
     $product['toppings'] = getToppingsByProductId($id);
+    $product['reviews'] = getReviewsByProductId($id);
+    $avg = getAverageRating($id);
+    $product['avg_rating'] = $avg['avg_rating'] ?? 0;
+    $product['total_reviews'] = $avg['total_reviews'] ?? 0;
 
     return $product;
 }
@@ -86,7 +90,6 @@ function getAverageRating($productId) {
 
 function getVariantsByProductId($productId) {
     $conn = getDB();
-    // Chỉ lấy variant thuộc về sản phẩm này
     $stmt = $conn->prepare("
         SELECT * FROM product_variants
         WHERE product_id = ? AND status = 1
@@ -94,6 +97,7 @@ function getVariantsByProductId($productId) {
     $stmt->execute([$productId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
 function getToppingsByProductId($productId) {
     $conn = getDB();
 
@@ -210,7 +214,7 @@ function getCategories() {
 }
 
 /**
- * Lấy sản phẩm có lọc, phân trang (đã hỗ trợ lọc category)
+ * Lấy sản phẩm có lọc, phân trang (hỗ trợ lọc category)
  */
 function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
     $conn = getDB();
@@ -272,7 +276,7 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
 }
 
 /**
- * Đếm tổng sản phẩm thỏa mãn bộ lọc (đã hỗ trợ category)
+ * Đếm tổng sản phẩm thỏa mãn bộ lọc
  */
 function countFilteredProducts($filters = []) {
     $conn = getDB();
@@ -312,5 +316,86 @@ function getAllVariants() {
     $conn = getDB();
     $stmt = $conn->query("SELECT DISTINCT variant_name FROM product_variants ORDER BY variant_name");
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+function getProductsByCategoryId($categoryId, $limit = 4) {
+    $conn = getDB();
+    $limit = (int)$limit;
+    $sql = "
+        SELECT id, name, image, base_price
+        FROM products
+        WHERE category_id = ? AND status = 1
+        ORDER BY id DESC
+        LIMIT " . $limit;
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$categoryId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ========== THÊM MỚI: LẤY SẢN PHẨM TƯƠNG TỰ ==========
+function getSimilarProducts($productId, $categoryId, $limit = 4) {
+    $conn = getDB();
+    $limit = (int)$limit;
+    $sql = "
+        SELECT id, name, image, base_price,
+               (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE product_id = p.id AND status = 1) as avg_rating
+        FROM products p
+        WHERE category_id = ? AND id != ? AND status = 1
+        ORDER BY id DESC
+        LIMIT " . $limit;
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$categoryId, $productId]);
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Đảm bảo mỗi sản phẩm có trường images (mảng)
+    foreach ($products as &$prod) {
+        $prod['images'] = [$prod['image']];
+    }
+    return $products;
+}
+
+// ========== THÊM MỚI: LẤY DANH SÁCH YÊU THÍCH CỦA USER ==========
+function getUserFavorites($userId) {
+    $conn = getDB();
+    $stmt = $conn->prepare("SELECT product_id FROM favorites WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+// ========== THÊM MỚI: LẤY SẢN PHẨM YÊU THÍCH (KÈM THÔNG TIN) ==========
+function getFavoriteProducts($userId, $limit = 10) {
+    $conn = getDB();
+    $limit = (int)$limit;
+    $sql = "
+        SELECT p.*, COALESCE(AVG(r.rating), 0) as rating
+        FROM favorites f
+        JOIN products p ON f.product_id = p.id
+        LEFT JOIN reviews r ON p.id = r.product_id
+        WHERE f.user_id = ? AND p.status = 1
+        GROUP BY p.id
+        ORDER BY f.created_at DESC
+        LIMIT " . $limit;
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ========== THÊM MỚI: THÊM / XÓA YÊU THÍCH ==========
+function toggleFavorite($userId, $productId) {
+    $conn = getDB();
+    // Kiểm tra đã tồn tại chưa
+    $stmt = $conn->prepare("SELECT id FROM favorites WHERE user_id = ? AND product_id = ?");
+    $stmt->execute([$userId, $productId]);
+    $exists = $stmt->fetch();
+    if ($exists) {
+        // Xóa yêu thích
+        $stmt = $conn->prepare("DELETE FROM favorites WHERE user_id = ? AND product_id = ?");
+        $stmt->execute([$userId, $productId]);
+        return ['status' => 'removed'];
+    } else {
+        // Thêm yêu thích
+        $stmt = $conn->prepare("INSERT INTO favorites (user_id, product_id, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$userId, $productId]);
+        return ['status' => 'liked'];
+    }
 }
 ?>

@@ -1,89 +1,89 @@
 <?php
-// Đảm bảo có session
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-$user = $_SESSION['user'] ?? null;
-
-// Helper format tiền
-if (!function_exists('vnd')) {
-    function vnd($amount) {
-        return number_format($amount) . 'đ';
+    // Đảm bảo có session
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
-}
 
-// Hàm lấy favorites (bạn thay bằng code thật)
-if (!function_exists('getFavorites')) {
-    function getFavorites() {
-        return []; // TODO: truy vấn DB
+    $user = $_SESSION['user'] ?? null;
+
+    // Helper format tiền
+    if (!function_exists('vnd')) {
+        function vnd($amount) {
+            return number_format($amount) . 'đ';
+        }
     }
-}
 
-// Kết nối DB
-require_once __DIR__ . '/../../../config/database.php';
+    // Hàm lấy favorites (bạn thay bằng code thật)
+    if (!function_exists('getFavorites')) {
+        function getFavorites() {
+            return []; // TODO: truy vấn DB
+        }
+    }
 
-// Lấy danh mục - kiểm tra cột parent_id
-$hasParentCol = false;
-try {
-    $stmt = $conn->query("SHOW COLUMNS FROM categories LIKE 'parent_id'");
-    $hasParentCol = $stmt->rowCount() > 0;
-} catch (PDOException $e) {
+    // Kết nối DB
+    require_once __DIR__ . '/../../../config/database.php';
+
+    // Lấy danh mục - kiểm tra cột parent_id
     $hasParentCol = false;
-}
+    try {
+        $stmt = $conn->query("SHOW COLUMNS FROM categories LIKE 'parent_id'");
+        $hasParentCol = $stmt->rowCount() > 0;
+    } catch (PDOException $e) {
+        $hasParentCol = false;
+    }
 
-if ($hasParentCol) {
-    $sql = "SELECT id, name, slug, parent_id, image, description FROM categories ORDER BY parent_id, id";
-    $result = $conn->query($sql);
-    $categories = [];
-    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-        $categories[$row['id']] = $row;
-    }
-    $tree = [];
-    foreach ($categories as $id => $cat) {
-        if ($cat['parent_id'] == 0) {
-            $tree[$id] = $cat;
-            $tree[$id]['children'] = [];
+    if ($hasParentCol) {
+        $sql = "SELECT id, name, slug, parent_id, image, description FROM categories ORDER BY parent_id, id";
+        $result = $conn->query($sql);
+        $categories = [];
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $categories[$row['id']] = $row;
         }
-    }
-    foreach ($categories as $id => $cat) {
-        if ($cat['parent_id'] != 0 && isset($tree[$cat['parent_id']])) {
-            $tree[$cat['parent_id']]['children'][$id] = $cat;
-            $tree[$cat['parent_id']]['children'][$id]['children'] = [];
+        $tree = [];
+        foreach ($categories as $id => $cat) {
+            if ($cat['parent_id'] == 0) {
+                $tree[$id] = $cat;
+                $tree[$id]['children'] = [];
+            }
         }
-    }
-    foreach ($categories as $id => $cat) {
-        if ($cat['parent_id'] != 0) {
-            foreach ($tree as $parentId => $parent) {
-                if (isset($parent['children'][$cat['parent_id']])) {
-                    $parent['children'][$cat['parent_id']]['children'][$id] = $cat;
+        foreach ($categories as $id => $cat) {
+            if ($cat['parent_id'] != 0 && isset($tree[$cat['parent_id']])) {
+                $tree[$cat['parent_id']]['children'][$id] = $cat;
+                $tree[$cat['parent_id']]['children'][$id]['children'] = [];
+            }
+        }
+        foreach ($categories as $id => $cat) {
+            if ($cat['parent_id'] != 0) {
+                foreach ($tree as $parentId => $parent) {
+                    if (isset($parent['children'][$cat['parent_id']])) {
+                        $parent['children'][$cat['parent_id']]['children'][$id] = $cat;
+                    }
                 }
             }
         }
+    } else {
+        $sql = "SELECT id, name, slug, image, description FROM categories ORDER BY id";
+        $result = $conn->query($sql);
+        $tree = [];
+        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+            $tree[$row['id']] = $row;
+            $tree[$row['id']]['children'] = [];
+        }
     }
-} else {
-    $sql = "SELECT id, name, slug, image, description FROM categories ORDER BY id";
-    $result = $conn->query($sql);
-    $tree = [];
-    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-        $tree[$row['id']] = $row;
-        $tree[$row['id']]['children'] = [];
+
+    // Các biến giỏ hàng, yêu thích
+    $cart = $_SESSION['cart'] ?? [];
+    $cartCount = count($cart);
+    $total = 0;
+    foreach ($cart as $item) {
+        $total += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
     }
-}
+    $shipping = 10000;
+    $miniSubtotal = $total;
+    $miniTotal = $miniSubtotal + $shipping;
 
-// Các biến giỏ hàng, yêu thích
-$cart = $_SESSION['cart'] ?? [];
-$cartCount = count($cart);
-$total = 0;
-foreach ($cart as $item) {
-    $total += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
-}
-$shipping = 10000;
-$miniSubtotal = $total;
-$miniTotal = $miniSubtotal + $shipping;
-
-$favorites = $user ? getFavorites() : [];
-$totalFav = count($favorites);
+    $favorites = $user ? getFavorites() : [];
+    $totalFav = count($favorites);
 ?>
 <header id="header" class="header">
     <div class="container">
@@ -100,7 +100,7 @@ $totalFav = count($favorites);
             </a>
 
             <!-- Navbar -->
-            <nav id="navbar" class="navbar hide">
+            <nav id="navbar" class="navbar">
                 <button class="navbar__close-btn js-toggle" toggle-target="#navbar">
                     <img class="icon" src="./assets/icons/arrow-left.svg" alt="" />
                 </button>
@@ -115,7 +115,6 @@ $totalFav = count($favorites);
                     <img src="<?= $base ?>assets/icons/heart.svg" class="nav-btn__icon icon" />
                     <span class="nav-btn__title">Favorite</span>
                     <span class="nav-btn__qnt fav-count-badge"><?= $totalFav ?></span>
-
                 </a>
 
                 <ul class="navbar__list js-dropdown-list">
@@ -143,43 +142,51 @@ $totalFav = count($favorites);
                                                                 <?= htmlspecialchars($rootCat['name']) ?>
                                                             </a>
                                                             <?php if (!empty($rootCat['children'])): ?>
-                                                                <div class="sub-menu">
-                                                                    <div class="sub-menu__inner">
-                                                                        <?php
-                                                                        $chunks = array_chunk($rootCat['children'], ceil(count($rootCat['children']) / 3));
-                                                                        foreach ($chunks as $chunk):
-                                                                        ?>
-                                                                            <div class="sub-menu__column">
-                                                                                <?php foreach ($chunk as $childId => $childCat): ?>
-                                                                                    <div class="menu-column">
-                                                                                        <?php if (!empty($childCat['image'])): ?>
-                                                                                            <div class="menu-column__icon">
-                                                                                                <img src="<?= $base ?>assets/img/category/<?= htmlspecialchars($childCat['image']) ?>" alt="" class="menu-column__icon-1" />
-                                                                                            </div>
-                                                                                        <?php endif; ?>
-                                                                                        <div class="menu-column__content">
-                                                                                            <h3 class="menu-column__heading">
-                                                                                                <a href="<?= $base ?>index.php?url=category&id=<?= $childCat['id'] ?>">
-                                                                                                    <?= htmlspecialchars($childCat['name']) ?>
-                                                                                                </a>
-                                                                                            </h3>
-                                                                                            <?php if (!empty($childCat['children'])): ?>
-                                                                                                <ul class="menu-column__list">
-                                                                                                    <?php foreach ($childCat['children'] as $grandId => $grandCat): ?>
-                                                                                                        <li class="menu-column__item">
-                                                                                                            <a href="<?= $base ?>index.php?url=category&id=<?= $grandCat['id'] ?>" class="menu-column__link">
-                                                                                                                <?= htmlspecialchars($grandCat['name']) ?>
-                                                                                                            </a>
-                                                                                                        </li>
-                                                                                                    <?php endforeach; ?>
-                                                                                                </ul>
-                                                                                            <?php endif; ?>
+                                                                <div class="sub-menu sub-menu--not-main">
+                                                                    <?php
+                                                                    $children = $rootCat['children'];
+
+                                                                    // 👉 mỗi column chứa 2 menu-column (giống Grocery)
+                                                                    $columns = array_chunk($children, 2);
+                                                                    ?>
+
+                                                                    <?php foreach ($columns as $column): ?>
+                                                                        <div class="sub-menu__column">
+
+                                                                            <?php foreach ($column as $childCat): ?>
+                                                                                <div class="menu-column">
+
+                                                                                    <?php if (!empty($childCat['image'])): ?>
+                                                                                        <div class="menu-column__icon">
+                                                                                            <img src="<?= $base ?>assets/img/category/<?= htmlspecialchars($childCat['image']) ?>" class="menu-column__icon-1" />
                                                                                         </div>
+                                                                                    <?php endif; ?>
+
+                                                                                    <div class="menu-column__content">
+                                                                                        <h2 class="menu-column__heading">
+                                                                                            <a href="<?= $base ?>index.php?url=category&id=<?= $childCat['id'] ?>">
+                                                                                                <?= htmlspecialchars($childCat['name']) ?>
+                                                                                            </a>
+                                                                                        </h2>
+
+                                                                                        <?php if (!empty($childCat['children'])): ?>
+                                                                                            <ul class="menu-column__list">
+                                                                                                <?php foreach ($childCat['children'] as $grandChild): ?>
+                                                                                                    <li class="menu-column__item">
+                                                                                                        <a href="<?= $base ?>index.php?url=category&id=<?= $grandChild['id'] ?>" class="menu-column__link">
+                                                                                                            <?= htmlspecialchars($grandChild['name']) ?>
+                                                                                                        </a>
+                                                                                                    </li>
+                                                                                                <?php endforeach; ?>
+                                                                                            </ul>
+                                                                                        <?php endif; ?>
                                                                                     </div>
-                                                                                <?php endforeach; ?>
-                                                                            </div>
-                                                                        <?php endforeach; ?>
-                                                                    </div>
+
+                                                                                </div>
+                                                                            <?php endforeach; ?>
+
+                                                                        </div>
+                                                                    <?php endforeach; ?>
                                                                 </div>
                                                             <?php endif; ?>
                                                         </li>
@@ -197,13 +204,6 @@ $totalFav = count($favorites);
                     <li class="navbar__item">
                         <a href="<?= $base ?>index.php?url=promotion" class="navbar__link">
                             Khuyến mãi
-                        </a>
-                    </li>
-
-                    <!-- ========== BLOG ========== -->
-                    <li class="navbar__item">
-                        <a href="<?= $base ?>index.php?url=blog" class="navbar__link">
-                            Blog
                         </a>
                     </li>
 
@@ -373,4 +373,28 @@ $totalFav = count($favorites);
 </header>
 <script>
     window.dispatchEvent(new Event("template-loaded"));
+    // Hàm cập nhật số lượng yêu thích trên header (gọi từ mọi nơi)
+window.updateFavoriteBadge = function(newCount = null) {
+    if (newCount !== null) {
+        // Cập nhật trực tiếp nếu biết số mới
+        document.querySelectorAll('.fav-count-badge').forEach(el => {
+            el.textContent = newCount;
+        });
+    } else {
+        // Nếu không truyền số, gọi AJAX lấy số mới từ server
+        fetch('index.php?url=get-favorites-count', {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.count !== undefined) {
+                document.querySelectorAll('.fav-count-badge').forEach(el => {
+                    el.textContent = data.count;
+                });
+            }
+        })
+        .catch(err => console.error('Lỗi lấy số lượng yêu thích:', err));
+    }
+};
 </script>

@@ -1,4 +1,6 @@
 <?php
+// app/Controllers/OrderController.php
+
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Định nghĩa getDB nếu chưa có (phòng khi config/database.php không tồn tại)
@@ -169,6 +171,8 @@ function createOrderAPI() {
     $shipping_method = $input['shipping_method'] ?? 'fedex';
     $shipping_fee = intval($input['shipping_fee'] ?? 0);
     $payment_method = $input['payment_method'] ?? 'card';
+    // ===== SỬA LỖI order_type =====
+    $order_type = $input['order_type'] ?? 'delivery'; // mặc định giao hàng
 
     $cart = $_SESSION['cart'] ?? [];
     if (empty($cart)) {
@@ -198,15 +202,17 @@ function createOrderAPI() {
     try {
         $order_code = 'ORD' . date('Ymd') . '_' . strtoupper(uniqid());
 
+        // ===== ĐÃ THÊM order_type VÀ payment_status =====
         $stmt = $conn->prepare("
             INSERT INTO orders
-            (order_code, user_id, shipping_address_id, total_amount, discount_amount, shipping_fee, final_amount, payment_method, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
+            (order_code, user_id, shipping_address_id, order_type, total_amount, discount_amount, shipping_fee, final_amount, payment_method, payment_status, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', NOW(), NOW())
         ");
         $stmt->execute([
             $order_code,
             $user_id,
             $shipping_address_id,
+            $order_type,       // thêm order_type
             $subtotal,
             $discount,
             $shipping_fee,
@@ -249,7 +255,7 @@ function createOrderAPI() {
                 }
             }
 
-            // ========== CẬP NHẬT TỒN KHO ==========
+            // Cập nhật tồn kho
             if ($variant_id) {
                 $stmtStock = $conn->prepare("UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?");
                 $stmtStock->execute([$item['quantity'], $variant_id, $item['quantity']]);
@@ -257,21 +263,21 @@ function createOrderAPI() {
                     throw new Exception("Sản phẩm '{$item['name']}' không đủ số lượng tồn kho.");
                 }
             } else {
-                // Nếu sản phẩm không có variant, trừ từ bảng products (cần có cột stock_quantity)
                 $stmtStock = $conn->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?");
                 $stmtStock->execute([$item['quantity'], $item['id'], $item['quantity']]);
                 if ($stmtStock->rowCount() == 0) {
                     throw new Exception("Sản phẩm '{$item['name']}' không đủ số lượng tồn kho.");
                 }
             }
-            // ====================================
         }
 
+        // Ghi log trạng thái (nếu có bảng order_statuses)
         try {
             $stmtLog = $conn->prepare("INSERT INTO order_statuses (order_id, status, note) VALUES (?, 'pending', ?)");
             $stmtLog->execute([$order_id, 'Đơn hàng được tạo từ thanh toán']);
         } catch (Exception $e) {}
 
+        // Xử lý voucher
         if (!empty($_SESSION['coupon_data']) && !empty($_SESSION['coupon_code'])) {
             $voucher_code = $_SESSION['coupon_code'];
             $stmtVoucher = $conn->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ?");
@@ -287,12 +293,121 @@ function createOrderAPI() {
         }
 
         $conn->commit();
-        echo json_encode(['success' => true, 'order_id' => $order_id]);
+
+        // ===== TRẢ VỀ payment_url NẾU THANH TOÁN ONLINE =====
+        $payment_url = null;
+        if (in_array($payment_method, ['vnpay', 'momo', 'zalopay'])) {
+            // Tạo URL thanh toán (giả định bạn có class PaymentGateway)
+            // $payment_url = PaymentGateway::create($order_code, $total, $payment_method);
+            // Ở đây tạm thời trả về URL giả để minh họa
+            $payment_url = "index.php?url=payment-return&method=$payment_method&order_code=$order_code";
+        }
+
+        echo json_encode([
+            'success' => true,
+            'order_id' => $order_id,
+            'order_code' => $order_code,
+            'payment_url' => $payment_url
+        ]);
         exit;
 
     } catch (Exception $e) {
         $conn->rollBack();
         echo json_encode(['success' => false, 'message' => 'Lỗi tạo đơn hàng: ' . $e->getMessage()]);
+        exit;
+    }
+}
+
+/**
+ * Xử lý callback từ cổng thanh toán (VNPAY, MoMo, ZaloPay...)
+ * Được gọi khi khách hoàn tất thanh toán hoặc bị hủy
+ */
+function paymentReturn() {
+    $method = $_GET['method'] ?? '';
+    $order_code = $_GET['order_code'] ?? '';
+    // Các tham số khác tùy cổng (vnp_ResponseCode, vnp_TxnRef...)
+
+    if (!$order_code) {
+        die("Thiếu mã đơn hàng");
+    }
+
+    $conn = getDB();
+
+    // Lấy thông tin đơn hàng
+    $stmt = $conn->prepare("SELECT id, final_amount, payment_status FROM orders WHERE order_code = ?");
+    $stmt->execute([$order_code]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$order) {
+        die("Đơn hàng không tồn tại");
+    }
+
+    $is_success = false;
+    $transaction_code = '';
+
+    // Xử lý theo từng cổng
+    switch ($method) {
+        case 'vnpay':
+            $vnp_ResponseCode = $_GET['vnp_ResponseCode'] ?? '';
+            $vnp_TransactionNo = $_GET['vnp_TransactionNo'] ?? '';
+            if ($vnp_ResponseCode == '00') {
+                $is_success = true;
+                $transaction_code = $vnp_TransactionNo;
+            }
+            break;
+
+        case 'momo':
+            $errorCode = $_GET['errorCode'] ?? $_POST['errorCode'] ?? '';
+            $transId = $_GET['transId'] ?? $_POST['transId'] ?? '';
+            if ($errorCode == '0') {
+                $is_success = true;
+                $transaction_code = $transId;
+            }
+            break;
+
+        case 'zalopay':
+            $status = $_GET['status'] ?? $_POST['status'] ?? '';
+            $zp_trans_id = $_GET['zp_trans_id'] ?? $_POST['zp_trans_id'] ?? '';
+            if ($status == '1') {
+                $is_success = true;
+                $transaction_code = $zp_trans_id;
+            }
+            break;
+
+        default:
+            die("Phương thức thanh toán không hỗ trợ");
+    }
+
+    if ($is_success) {
+        // Cập nhật đơn hàng: đã thanh toán, xác nhận
+        $stmt = $conn->prepare("
+            UPDATE orders
+            SET payment_status = 'paid',
+                status = 'confirmed',
+                updated_at = NOW()
+            WHERE order_code = ?
+        ");
+        $stmt->execute([$order_code]);
+
+        // Ghi log thanh toán
+        try {
+            $stmtPay = $conn->prepare("
+                INSERT INTO payments (order_id, payment_method, amount, payment_status, transaction_code, paid_at, created_at)
+                VALUES (?, ?, ?, 'paid', ?, NOW(), NOW())
+            ");
+            $stmtPay->execute([$order['id'], $method, $order['final_amount'], $transaction_code]);
+        } catch (Exception $e) {}
+
+        // Xóa session giỏ hàng, mã giảm giá
+        unset($_SESSION['cart'], $_SESSION['discount'], $_SESSION['coupon_code'], $_SESSION['coupon_data']);
+
+        // Chuyển hướng đến trang cảm ơn
+        header("Location: index.php?url=thank-you&order_code=$order_code");
+        exit;
+    } else {
+        // Thanh toán thất bại / hủy
+        // Có thể giữ nguyên trạng thái pending để khách thử lại
+        header("Location: index.php?url=checkout&error=payment_failed");
         exit;
     }
 }
@@ -386,7 +501,6 @@ function orderDetail() {
     $GLOBALS['items'] = $items;
     $GLOBALS['statusHistory'] = $statusHistory;
 
-    // Sửa đường dẫn: lên 2 cấp từ app/Controllers đến root
     $view = __DIR__ . '/../../resources/views/pages/order-detail.php';
     $layout = __DIR__ . '/../../resources/views/layouts/layout.php';
     include $layout;
@@ -429,4 +543,3 @@ function cancelOrder() {
     echo json_encode(['success' => true, 'message' => 'Đã hủy đơn hàng']);
     exit;
 }
-?>

@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+
 /**
  * =========================
  * GET PRODUCTS
@@ -47,7 +48,7 @@ function getAllProducts($page = 1, $limit = 10, $filters = []) {
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             $where
-            ORDER BY p.id DESC
+            ORDER BY p.id ASC
             LIMIT $limit OFFSET $offset";
 
     $stmt = $conn->prepare($sql);
@@ -56,7 +57,9 @@ function getAllProducts($page = 1, $limit = 10, $filters = []) {
 
     return [
         'data' => $data,
-        'total' => $total
+        'total' => $total,
+        'totalPages' => ceil($total / $limit),
+        'currentPage' => $page
     ];
 }
 
@@ -123,7 +126,7 @@ function getAllVariants() {
     $sql = "SELECT v.*, p.name as product_name
             FROM product_variants v
             LEFT JOIN products p ON v.product_id = p.id
-            ORDER BY v.id DESC";
+            ORDER BY v.id ASC";
     return $conn->query($sql)->fetchAll();
 }
 
@@ -177,4 +180,83 @@ function handleDeleteVariant() {
     $_SESSION['success'] = "Đã xóa size";
     header("Location: admin.php?url=variants");
     exit;
+}
+
+function handleHardDeleteProduct() {
+    $conn = getDB();
+
+    if (!isset($_GET['id'])) return;
+
+    $id = (int)$_GET['id'];
+
+    try {
+        $conn->beginTransaction();
+
+        // Lấy order_item liên quan
+        $stmt = $conn->prepare("SELECT id FROM order_items WHERE product_id = ?");
+        $stmt->execute([$id]);
+        $orderItemIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($orderItemIds)) {
+            $placeholders = implode(',', array_fill(0, count($orderItemIds), '?'));
+
+            $conn->prepare("DELETE FROM order_item_toppings WHERE order_item_id IN ($placeholders)")
+                 ->execute($orderItemIds);
+        }
+
+        $conn->prepare("DELETE FROM order_items WHERE product_id = ?")->execute([$id]);
+        $conn->prepare("DELETE FROM cart_items WHERE product_id = ?")->execute([$id]);
+        $conn->prepare("DELETE FROM product_variants WHERE product_id = ?")->execute([$id]);
+        $conn->prepare("DELETE FROM product_toppings WHERE product_id = ?")->execute([$id]);
+        $conn->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
+
+        $conn->commit();
+
+        $_SESSION['success'] = "Đã xóa vĩnh viễn sản phẩm";
+
+    } catch (PDOException $e) {
+        $conn->rollBack();
+        $_SESSION['error'] = "Xóa thất bại: " . $e->getMessage();
+    }
+
+    header("Location: admin.php?url=products");
+    exit;
+}
+
+
+function handleEditProduct() {
+    $conn = getDB();
+
+    $id = $_GET['id'] ?? 0;
+
+    // Lấy sản phẩm
+    $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
+    $stmt->execute([$id]);
+    $product = $stmt->fetch();
+
+    // Lấy danh mục
+    $categories = getCategoryOptions();
+
+    // Nếu submit form
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+        $name = $_POST['name'];
+        $price = $_POST['price'];
+        $category_id = $_POST['category_id'];
+
+        $stmt = $conn->prepare("
+            UPDATE products
+            SET name=?, base_price=?, category_id=?
+            WHERE id=?
+        ");
+        $stmt->execute([$name, $price, $category_id, $id]);
+
+        $_SESSION['success'] = "Cập nhật thành công";
+        header("Location: admin.php?url=products");
+        exit;
+    }
+
+    // truyền ra view
+    $GLOBALS['product'] = $product;
+    $GLOBALS['categories'] = $categories;
 }

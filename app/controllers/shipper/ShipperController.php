@@ -59,6 +59,7 @@ function getShipperOrders($shipperId, $statusFilter = 'all') {
  */
 function getAvailableOrders() {
     $conn = getDB();
+
     $sql = "
         SELECT o.*,
                c.full_name AS customer_name,
@@ -68,12 +69,14 @@ function getAvailableOrders() {
         LEFT JOIN customers c ON o.customer_id = c.id
         WHERE o.shipper_id IS NULL
           AND o.order_type = 'delivery'
-          AND o.status = 'confirmed'
+          AND o.status = 'ready_for_delivery'   -- 🔥 FIX
           AND o.delivery_status = 'pending'
         ORDER BY o.created_at ASC
     ";
+
     $stmt = $conn->prepare($sql);
     $stmt->execute();
+
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -143,43 +146,44 @@ function acceptOrder() {
     $shipperId = $_SESSION['user']['id'];
 
     if (!$orderId) {
-        echo json_encode(['success' => false, 'message' => 'Thiếu mã đơn hàng']);
+        echo json_encode(['success' => false, 'message' => 'Thiếu mã đơn']);
         exit;
     }
 
     $conn = getDB();
 
-    // Kiểm tra đơn hàng: đã confirm, chưa có shipper, là giao hàng
     $stmt = $conn->prepare("
-        SELECT id, shipper_id FROM orders
+        SELECT id, shipper_id
+        FROM orders
         WHERE id = ?
-          AND order_type = 'delivery'
-          AND status = 'confirmed'
+          AND status = 'ready_for_delivery'
           AND delivery_status = 'pending'
+          AND shipper_id IS NULL
     ");
     $stmt->execute([$orderId]);
-    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    $order = $stmt->fetch();
 
     if (!$order) {
-        echo json_encode(['success' => false, 'message' => 'Đơn hàng không tồn tại hoặc không khả dụng']);
+        echo json_encode(['success' => false, 'message' => 'Đơn không hợp lệ hoặc đã có người nhận']);
         exit;
     }
 
-    if ($order['shipper_id'] !== null) {
-        echo json_encode(['success' => false, 'message' => 'Đơn hàng đã có shipper khác nhận']);
-        exit;
-    }
-
+    // 🔥 FIX QUAN TRỌNG
     $stmt = $conn->prepare("
         UPDATE orders
         SET shipper_id = ?,
-            delivery_status = 'pending',
+            delivery_status = 'shipping',
+            status = 'delivering',
             updated_at = NOW()
         WHERE id = ?
     ");
-    $result = $stmt->execute([$shipperId, $orderId]);
 
-    echo json_encode(['success' => $result, 'message' => $result ? 'Nhận đơn thành công' : 'Lỗi cập nhật']);
+    $ok = $stmt->execute([$shipperId, $orderId]);
+
+    echo json_encode([
+        'success' => $ok,
+        'message' => $ok ? 'Nhận đơn thành công' : 'Lỗi DB'
+    ]);
     exit;
 }
 
@@ -191,10 +195,10 @@ function updateDeliveryStatus() {
 
     $orderId = $_POST['order_id'] ?? 0;
     $newStatus = $_POST['status'] ?? '';
-    $note = $_POST['note'] ?? '';
     $shipperId = $_SESSION['user']['id'];
 
     $allowed = ['shipping', 'delivered', 'failed'];
+
     if (!$orderId || !in_array($newStatus, $allowed)) {
         echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ']);
         exit;
@@ -203,50 +207,62 @@ function updateDeliveryStatus() {
     $conn = getDB();
 
     $stmt = $conn->prepare("
-        SELECT id, delivery_status, payment_method, note
+        SELECT id, payment_method
         FROM orders
         WHERE id = ? AND shipper_id = ?
     ");
     $stmt->execute([$orderId, $shipperId]);
-    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    $order = $stmt->fetch();
 
     if (!$order) {
-        echo json_encode(['success' => false, 'message' => 'Bạn không có quyền cập nhật đơn này']);
+        echo json_encode(['success' => false, 'message' => 'Không có quyền']);
         exit;
     }
 
-    $updateData = [
+    $update = [
         'delivery_status' => $newStatus,
         'updated_at' => date('Y-m-d H:i:s')
     ];
 
+    // ✅ Giao thành công
     if ($newStatus === 'delivered') {
-        $updateData['status'] = 'completed';
-        $updateData['completed_at'] = date('Y-m-d H:i:s');
+        $update['status'] = 'completed';
+
         if ($order['payment_method'] === 'cash') {
-            $stmt = $conn->prepare("UPDATE payments SET payment_status = 'paid', paid_at = NOW() WHERE order_id = ?");
+            $stmt = $conn->prepare("
+                UPDATE payments
+                SET payment_status = 'paid',
+                    paid_at = NOW()
+                WHERE order_id = ?
+            ");
             $stmt->execute([$orderId]);
-            $updateData['payment_status'] = 'paid';
         }
     }
 
-    if ($newStatus === 'failed' && $note) {
-        $updateData['note'] = $order['note'] ? $order['note'] . "\n[Lỗi giao]: " . $note : "[Lỗi giao]: " . $note;
+    // ❗ FIX QUAN TRỌNG
+    if ($newStatus === 'failed') {
+        $update['status'] = 'cancelled';
     }
 
     $fields = [];
     $params = [];
-    foreach ($updateData as $field => $value) {
-        $fields[] = "$field = ?";
-        $params[] = $value;
+
+    foreach ($update as $k => $v) {
+        $fields[] = "$k = ?";
+        $params[] = $v;
     }
+
     $params[] = $orderId;
 
     $sql = "UPDATE orders SET " . implode(', ', $fields) . " WHERE id = ?";
     $stmt = $conn->prepare($sql);
-    $result = $stmt->execute($params);
 
-    echo json_encode(['success' => $result, 'message' => $result ? 'Cập nhật thành công' : 'Lỗi cập nhật']);
+    $ok = $stmt->execute($params);
+
+    echo json_encode([
+        'success' => $ok,
+        'message' => $ok ? 'Cập nhật thành công' : 'Lỗi DB'
+    ]);
     exit;
 }
 
@@ -280,31 +296,51 @@ function getShipperStats($shipperId) {
     $conn = getDB();
     $today = date('Y-m-d');
 
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE shipper_id = ? AND delivery_status = 'shipping'");
-    $stmt->execute([$shipperId]);
-    $shipping = $stmt->fetchColumn();
+    // 🟡 Đơn chưa có shipper (chờ nhận)
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) FROM orders
+        WHERE shipper_id IS NULL
+        AND status = 'ready_for_delivery'
+        AND delivery_status = 'pending'
+    ");
+    $stmt->execute();
+    $waiting = $stmt->fetchColumn();
 
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE shipper_id = ? AND delivery_status = 'pending'");
+    // 🔵 Đơn mình đã nhận (chờ giao)
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) FROM orders
+        WHERE shipper_id = ?
+        AND delivery_status = 'pending'
+    ");
     $stmt->execute([$shipperId]);
     $pending = $stmt->fetchColumn();
 
+    // 🚚 Đang giao
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) FROM orders
+        WHERE shipper_id = ?
+        AND delivery_status = 'shipping'
+    ");
+    $stmt->execute([$shipperId]);
+    $shipping = $stmt->fetchColumn();
+
+    // ✅ Đã giao hôm nay
     $stmt = $conn->prepare("
         SELECT COUNT(*), COALESCE(SUM(final_amount), 0)
         FROM orders
         WHERE shipper_id = ?
-          AND delivery_status = 'delivered'
-          AND DATE(completed_at) = ?
+        AND delivery_status = 'delivered'
+        AND DATE(completed_at) = ?
     ");
     $stmt->execute([$shipperId, $today]);
     $row = $stmt->fetch(PDO::FETCH_NUM);
-    $deliveredToday = $row[0] ?? 0;
-    $totalCashToday = $row[1] ?? 0;
 
     return [
+        'waiting' => $waiting, // 🔥 thêm cái này
         'pending' => $pending,
         'shipping' => $shipping,
-        'delivered_today' => $deliveredToday,
-        'total_cash_today' => $totalCashToday
+        'delivered_today' => $row[0] ?? 0,
+        'total_cash_today' => $row[1] ?? 0
     ];
 }
 

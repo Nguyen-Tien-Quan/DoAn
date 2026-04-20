@@ -48,5 +48,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
     <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="<?= $base ?>assets/js/main.js" ></script>
+    <!-- Ví dụ đoạn mã nhúng (bạn sẽ nhận được mã thực tế từ nền tảng) -->
+    <script src="https://your-chatbot-platform.com/widget.js?id=YOUR_BOT_ID" async></script>
 </body>
 </html>

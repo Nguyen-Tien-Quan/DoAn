@@ -51,18 +51,12 @@ if (!function_exists('vnd')) {
 ?>
 
 <style>
-.hide {
-    display: none;
-}
-
+/* CSS Modal sửa lỗi ẩn */
+.hide { display: none !important; }
 .modal {
-    display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 999;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
     align-items: center;
     justify-content: center;
 }
@@ -74,10 +68,7 @@ if (!function_exists('vnd')) {
 }
 .modal__overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.5);
     z-index: 1;
 }
@@ -92,6 +83,7 @@ if (!function_exists('vnd')) {
     overflow-y: auto;
 }
 </style>
+
 <main class="checkout-page">
     <div class="container">
         <!-- Search bar -->
@@ -232,19 +224,15 @@ if (!function_exists('vnd')) {
                         </div>
                     </div>
 
-                    <!-- ========== TAB 2: THANH TOÁN KHÁC (ĐÃ LÀM ĐẸP) ========== -->
+                    <!-- ========== TAB 2: THANH TOÁN KHÁC ========== -->
                     <div class="prod-tab__content" id="tab-alternative">
+                        <!-- ... nội dung Tab 2 giữ nguyên ... -->
                         <div class="row gy-xl-3">
-
-                            <!-- LEFT: FORM NHẬP ĐỊA CHỈ -->
                             <div class="col-8 col-xl-8 col-lg-12">
-                                <!-- Shipping Info -->
                                 <div class="cart-info cart-info--shadow">
                                     <div class="cart-info__top">
                                         <h2 class="cart-info__heading cart-info__heading--lv2">1. Giao hàng dự kiến từ <?= date('d/m/Y', strtotime('+3 days')) ?> đến <?= date('d/m/Y', strtotime('+8 days')) ?></h2>
-                                        <a class="cart-info__edit-btn" href="index.php?url=shipping">
-                                            <img class="icon" src="<?= $base ?>assets/icons/edit.svg" alt="" /> Sửa
-                                        </a>
+                                        <a class="cart-info__edit-btn" href="index.php?url=shipping"><img class="icon" src="<?= $base ?>assets/icons/edit.svg" alt="" /> Sửa</a>
                                     </div>
                                     <article class="payment-item payment-item--card">
                                         <div class="payment-item__info">
@@ -262,7 +250,6 @@ if (!function_exists('vnd')) {
                                     </article>
                                 </div>
 
-                                <!-- Shipping Method -->
                                 <div class="cart-info cart-info--shadow">
                                     <h2 class="cart-info__heading cart-info__heading--lv2">2. Phương thức vận chuyển</h2>
                                     <div class="cart-info__separate"></div>
@@ -304,12 +291,9 @@ if (!function_exists('vnd')) {
                                 </div>
                             </div>
 
-                            <!-- RIGHT: TÓM TẮT + PHƯƠNG THỨC THANH TOÁN -->
                             <div class="col-4 col-xl-4 col-lg-12">
                                 <div class="cart-info cart-info--shadow">
                                     <h2 class="cart-info__heading cart-info__heading--lv2">Đơn hàng của bạn</h2>
-
-                                    <!-- Danh sách sản phẩm -->
                                     <div class="cart-info__list">
                                         <?php foreach ($cart as $item): ?>
                                             <div class="cart-info__row">
@@ -318,10 +302,7 @@ if (!function_exists('vnd')) {
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
-
                                     <div class="cart-info__separate"></div>
-
-                                    <!-- Tổng tiền -->
                                     <div class="cart-info__summary">
                                         <div class="cart-info__row"><span>Tạm tính</span><span><?= vnd($subtotal) ?></span></div>
                                         <?php if ($discount > 0): ?>
@@ -331,12 +312,8 @@ if (!function_exists('vnd')) {
                                         <div class="cart-info__separate"></div>
                                         <div class="cart-info__row cart-info__row--highlight"><span>Tổng cộng</span><span><?= vnd($total) ?></span></div>
                                     </div>
-
                                     <div class="cart-info__separate"></div>
-
-                                    <!-- Chọn phương thức thanh toán -->
                                     <h3 class="cart-info__sub-heading">Chọn phương thức thanh toán</h3>
-
                                     <label class="payment-item payment-item--pointer payment-item--card">
                                         <input type="radio" name="alt_payment_method" value="online" checked>
                                         <div class="payment-item__content">
@@ -346,7 +323,6 @@ if (!function_exists('vnd')) {
                                             </div>
                                         </div>
                                     </label>
-
                                     <label class="payment-item payment-item--pointer payment-item--card">
                                         <input type="radio" name="alt_payment_method" value="cod">
                                         <div class="payment-item__content">
@@ -356,90 +332,51 @@ if (!function_exists('vnd')) {
                                             </div>
                                         </div>
                                     </label>
-
-                                    <!-- Đồng ý điều khoản -->
                                     <div class="form__group mt-3">
                                         <label class="form__checkbox">
                                             <input type="checkbox" id="agree-terms" checked>
                                             <span>Tôi đồng ý với <a href="#">Điều khoản dịch vụ</a></span>
                                         </label>
                                     </div>
-
-                                    <button type="button" id="alt-pay-btn" class="cart-info__next-btn btn btn--primary btn--rounded mt-3">
-                                        Xác nhận thanh toán
-                                    </button>
+                                    <button type="button" id="alt-pay-btn" class="cart-info__next-btn btn btn--primary btn--rounded mt-3">Xác nhận thanh toán</button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
 </main>
 
+<!-- ==================== MODALS ==================== -->
 <div id="payment-method-modal" class="modal hide">
-    <div class="modal__content" style="max-width: 860px;">
+    <div class="modal__content" style="max-width: 500px;">
         <div class="modal__header">
             <h2 class="modal__heading">Chọn phương thức thanh toán online</h2>
-            <button class="modal__close js-toggle" toggle-target="#payment-method-modal">&times;</button>
+            <button class="modal__close" onclick="closeModal('payment-method-modal')">&times;</button>
         </div>
-
         <div class="modal__body">
-            <div class="payment-methods-grid">
-                <button type="button" class="payment-method-card" data-method="vnpay">
-                    <div class="payment-method-icon">💳</div>
-                    <h4>VNPAY</h4>
-                    <p>Thanh toán qua ATM / QR VNPAY</p>
-                    <div class="qr-placeholder">
-                        <img src="<?= $base ?>assets/img/qr/vnpay-qr.png" alt="QR VNPAY" style="width:100%; border-radius:16px;">
-                    </div>
-                </button>
-
-                <button type="button" class="payment-method-card" data-method="momo">
-                    <div class="payment-method-icon">💜</div>
-                    <h4>MoMo</h4>
-                    <p>Ví điện tử MoMo</p>
-                    <div class="qr-placeholder">
-                        <img src="<?= $base ?>assets/img/qr/momo-qr.png" alt="QR MoMo" style="width:100%; border-radius:16px;">
-                    </div>
-                </button>
-
-                <button type="button" class="payment-method-card" data-method="zalopay">
-                    <div class="payment-method-icon">🟦</div>
-                    <h4>ZaloPay</h4>
-                    <p>Thanh toán qua ZaloPay</p>
-                    <div class="qr-placeholder">
-                        <img src="<?= $base ?>assets/img/qr/zalopay-qr.png" alt="QR ZaloPay" style="width:100%; border-radius:16px;">
-                    </div>
-                </button>
-
-                <button type="button" class="payment-method-card" data-method="mbbank">
-                    <div class="payment-method-icon">🏦</div>
-                    <h4>MB Bank</h4>
-                    <p>Chuyển khoản ngân hàng</p>
-                    <div class="qr-placeholder">
-                        <img src="<?= $base ?>assets/img/qr/mbbank-qr.png" alt="QR MB Bank" style="width:100%; border-radius:16px;">
-                    </div>
-                </button>
+            <div class="form__group">
+                <label class="form__label form__label--medium">Chọn ứng dụng / ngân hàng</label>
+                <select id="payment-gateway-select" class="form__input" style="width:100%; padding:12px; border-radius:8px;">
+                    <option value="vnpay" data-qr="<?= $base ?>assets/img/qr/vnpay-qr.png" data-desc="Quét mã VNPAY để thanh toán">💳 VNPAY</option>
+                    <option value="momo" data-qr="<?= $base ?>assets/img/qr/momo-qr.png" data-desc="Mở ví Momo quét mã">💜 MoMo</option>
+                    <option value="zalopay" data-qr="<?= $base ?>assets/img/qr/zalopay-qr.png" data-desc="Quét ZaloPay để thanh toán">🟦 ZaloPay</option>
+                    <option value="mbbank" data-qr="<?= $base ?>assets/img/qr/mbbank-qr.png" data-desc="Chuyển khoản qua MB Bank">🏦 MB Bank</option>
+                </select>
             </div>
-
-            <div class="payment-selected-box" id="payment-selected-box" style="display:none; margin-top:18px;">
-                <div class="payment-selected-box__title">Đang chọn: <span id="selected-method-name"></span></div>
-                <div class="payment-selected-box__qr">
-                    <img id="selected-method-qr" src="" alt="QR" style="width:220px; max-width:100%; border-radius:18px;">
-                </div>
-                <p id="selected-method-desc" style="margin-top:10px; color:#666;"></p>
+            <div id="qr-display-area" style="text-align:center; margin-top:24px;">
+                <img id="qr-image" src="<?= $base ?>assets/img/qr/vnpay-qr.png" alt="QR Code" style="max-width:220px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                <p id="qr-description" style="margin-top:12px; color:#666;">Quét mã VNPAY để thanh toán</p>
             </div>
         </div>
-
         <div class="modal__footer">
-            <button class="btn btn--small btn--text js-toggle" toggle-target="#payment-method-modal">Hủy</button>
+            <button class="btn btn--small btn--text" onclick="closeModal('payment-method-modal')">Hủy</button>
             <button class="btn btn--small btn--primary" id="confirm-payment-method">Xác nhận thanh toán</button>
         </div>
     </div>
-    <div class="modal__overlay js-toggle" toggle-target="#payment-method-modal"></div>
+    <div class="modal__overlay" onclick="closeModal('payment-method-modal')"></div>
 </div>
 
 <div id="alert-modal" class="modal hide">
@@ -456,177 +393,272 @@ if (!function_exists('vnd')) {
 </div>
 
 <script>
-// ========== TAB SWITCHING ==========
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('prod-tab__item--current'));
-        document.querySelectorAll('.prod-tab__content').forEach(c => c.classList.remove('prod-tab__content--current'));
-        btn.classList.add('prod-tab__item--current');
-        document.getElementById(btn.dataset.tab).classList.add('prod-tab__content--current');
-    });
-});
-
-function formatVND(amount) {
-    return amount.toLocaleString('vi-VN') + 'đ';
-}
-
-// ========== UPDATE TOTAL ==========
-document.querySelectorAll('input[name="delivery-method-alt"]').forEach(radio => {
-    radio.addEventListener('change', function () {
-        const fee = parseInt(this.dataset.fee) || 0;
-        const subtotalRaw = <?= $subtotal ?>;
-        const discountRaw = <?= $discount ?>;
-        const newTotal = subtotalRaw - discountRaw + fee;
-
-        const totalSpan = document.querySelector('#tab-alternative .cart-info__row--highlight span:last-child');
-        if (totalSpan) totalSpan.innerText = formatVND(newTotal);
-
-        const btn = document.getElementById('alt-pay-btn');
-        if (btn) btn.innerText = 'Xác nhận thanh toán ' + formatVND(newTotal);
-    });
-});
-
-// ========== MODAL ==========
-let selectedOnlineMethod = 'vnpay';
-
-function openModal(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-
-    modal.classList.remove('hide');
-    modal.classList.add('show');
-}
-
-function closeModal(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-
-    modal.classList.remove('show');
-    modal.classList.add('hide');
-}
-
-// ❌ REMOVE js-toggle conflict → FIX
-// chỉ dùng close riêng cho nút close
-document.querySelectorAll('.modal__close').forEach(btn => {
-    btn.addEventListener('click', function () {
-        const target = this.getAttribute('toggle-target');
-        if (target) closeModal(target.replace('#', ''));
-    });
-});
-
-// ✅ overlay chỉ đóng modal cha
-document.querySelectorAll('.modal__overlay').forEach(overlay => {
-    overlay.addEventListener('click', function () {
-        const modal = this.closest('.modal');
-        if (modal) closeModal(modal.id);
-    });
-});
-
-// ❌ chặn bubbling để tránh auto close
-document.querySelectorAll('.modal__content').forEach(content => {
-    content.addEventListener('click', e => e.stopPropagation());
-});
-
-// ========== CHỌN METHOD ==========
-document.querySelectorAll('.payment-method-card').forEach(card => {
-    card.addEventListener('click', function () {
-        document.querySelectorAll('.payment-method-card').forEach(c => c.classList.remove('selected'));
-        this.classList.add('selected');
-        selectedOnlineMethod = this.dataset.method;
-    });
-});
-
-// ========== CONFIRM MODAL ==========
-document.getElementById('confirm-payment-method').addEventListener('click', async function () {
-    closeModal('payment-method-modal');
-    await processOrder(selectedOnlineMethod);
-});
-
-// ========== BUTTON MAIN ==========
-document.getElementById('alt-pay-btn').addEventListener('click', async function () {
-    const agree = document.getElementById('agree-terms').checked;
-
-    if (!agree) {
-        showAlert('Thông báo', 'Vui lòng chấp nhận điều khoản');
-        return;
-    }
-
-    const method = document.querySelector('input[name="alt_payment_method"]:checked')?.value;
-
-    if (method === 'cod') {
-        await processOrder('cash');
+(function() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        // 🔥 FIX: delay nhẹ tránh conflict event
-        setTimeout(() => {
-            openModal('payment-method-modal');
-        }, 50);
+        init();
     }
-});
 
-// ========== PROCESS ORDER ==========
-async function processOrder(paymentMethod) {
-    const selectedShipping = document.querySelector('input[name="delivery-method-alt"]:checked');
-    const shippingFee = selectedShipping ? parseInt(selectedShipping.dataset.fee) || 0 : 0;
-    const shippingMethod = selectedShipping?.value || 'standard';
+    function init() {
+        console.log('✅ Script started');
 
-    const btn = document.getElementById('alt-pay-btn');
-    btn.disabled = true;
-    btn.innerText = 'Đang xử lý...';
+        // ========== TAB SWITCHING ==========
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('prod-tab__item--current'));
+                document.querySelectorAll('.prod-tab__content').forEach(c => c.classList.remove('prod-tab__content--current'));
+                btn.classList.add('prod-tab__item--current');
+                document.getElementById(btn.dataset.tab).classList.add('prod-tab__content--current');
+            });
+        });
 
-    try {
-        const payload = {
-            shipping_method: shippingMethod,
-            shipping_fee: shippingFee,
-            payment_method: paymentMethod
+        window.formatVND = function(amount) {
+            return amount.toLocaleString('vi-VN') + 'đ';
         };
 
-        const res = await fetch('index.php?url=create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        // ========== UPDATE TOTAL (Tab 2) ==========
+        document.querySelectorAll('input[name="delivery-method-alt"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                const fee = parseInt(this.dataset.fee) || 0;
+                const subtotalRaw = <?= $subtotal ?>;
+                const discountRaw = <?= $discount ?>;
+                const newTotal = subtotalRaw - discountRaw + fee;
+
+                const totalSpan = document.querySelector('#tab-alternative .cart-info__row--highlight span:last-child');
+                if (totalSpan) totalSpan.innerText = formatVND(newTotal);
+
+                const btn = document.getElementById('alt-pay-btn');
+                if (btn) btn.innerText = 'Xác nhận thanh toán ' + formatVND(newTotal);
+            });
         });
 
-        const data = await res.json();
-        if (!data.success) throw new Error(data.message);
+        // ========== MODAL FUNCTIONS ==========
+        window.selectedOnlineMethod = 'vnpay';
 
-        if (data.payment_url) {
-            window.location.href = data.payment_url;
-            return;
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('hide');
+            modal.classList.add('show');
+        };
+
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('show');
+            modal.classList.add('hide');
+        };
+
+        document.querySelectorAll('.modal__close').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const target = this.getAttribute('toggle-target');
+                if (target) closeModal(target.replace('#', ''));
+                else {
+                    const modal = this.closest('.modal');
+                    if (modal) closeModal(modal.id);
+                }
+            });
+        });
+
+        document.querySelectorAll('.modal__overlay').forEach(overlay => {
+            overlay.addEventListener('click', function () {
+                const modal = this.closest('.modal');
+                if (modal) closeModal(modal.id);
+            });
+        });
+
+        document.querySelectorAll('.modal__content').forEach(content => {
+            content.addEventListener('click', e => e.stopPropagation());
+        });
+
+        // ========== XỬ LÝ QR ==========
+        const selectEl = document.getElementById('payment-gateway-select');
+        const qrImg = document.getElementById('qr-image');
+        const qrDesc = document.getElementById('qr-description');
+        if (selectEl) {
+            selectEl.addEventListener('change', function () {
+                const selectedOption = this.options[this.selectedIndex];
+                const qrSrc = selectedOption.getAttribute('data-qr');
+                const desc = selectedOption.getAttribute('data-desc');
+                qrImg.src = qrSrc;
+                qrDesc.textContent = desc;
+                window.selectedOnlineMethod = this.value;
+            });
         }
 
-        await fetch('index.php?url=clearCoupon', { method: 'POST' });
-        await fetch('index.php?url=remove-all-cart');
+        // ========== ALERT (đã sửa CSS modal) ==========
+        window.showAlert = function(title, message, callback = null) {
+            const modal = document.getElementById('alert-modal');
+            if (!modal) return;
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            modal.classList.remove('hide');
+            modal.classList.add('show');
 
-        showAlert('Thành công', 'Đặt hàng thành công!', () => {
-            window.location.href = 'index.php?url=orders';
-        });
+            const okBtn = document.getElementById('alert-ok');
+            const handler = () => {
+                modal.classList.remove('show');
+                modal.classList.add('hide');
+                okBtn.removeEventListener('click', handler);
+                if (callback) callback();
+            };
+            okBtn.addEventListener('click', handler, { once: true });
+        };
 
-    } catch (err) {
-        showAlert('Lỗi', err.message);
-        btn.disabled = false;
-        btn.innerText = 'Xác nhận thanh toán';
+        // ========== PROCESS ORDER (dùng chung) ==========
+        async function processOrder(paymentMethod, shippingMethod, shippingFee, email = null) {
+            console.log('🚀 processOrder called', { paymentMethod, shippingMethod, shippingFee });
+            const btn = document.getElementById('alt-pay-btn') || document.getElementById('pay-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Đang xử lý...';
+            }
+
+            try {
+                const defaultFullName = <?= json_encode($defaultAddress['full_name'] ?? '') ?>;
+                const defaultPhone = <?= json_encode($defaultAddress['phone'] ?? '') ?>;
+                const defaultAddress = <?= json_encode($defaultAddress['address'] ?? '') ?>;
+                const defaultCity = <?= json_encode($defaultAddress['city'] ?? '') ?>;
+                const hasDefaultAddress = <?= $defaultAddress ? 'true' : 'false' ?>;
+                const addressId = <?= $defaultAddress['id'] ?? 'null' ?>;
+
+                const payload = {
+                    shipping_method: shippingMethod,
+                    shipping_fee: shippingFee,
+                    payment_method: paymentMethod
+                };
+
+                if (hasDefaultAddress && addressId) {
+                    payload.shipping_address_id = addressId;
+                } else {
+                    payload.custom_address = {
+                        receiver_name: defaultFullName,
+                        receiver_phone: defaultPhone,
+                        receiver_email: email || <?= json_encode($_SESSION['user']['email'] ?? '') ?>,
+                        delivery_address: `${defaultAddress}, ${defaultCity}`
+                    };
+                }
+
+                const res = await fetch('index.php?url=create-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                if (data.payment_url) {
+                    window.location.href = data.payment_url;
+                    return;
+                }
+
+                await fetch('index.php?url=clearCoupon', { method: 'POST' });
+                await fetch('index.php?url=remove-all-cart');
+
+                showAlert('Thành công', 'Đặt hàng thành công!', () => {
+                    window.location.href = 'index.php?url=orders';
+                });
+
+            } catch (err) {
+                console.error('❌ Order error:', err);
+                showAlert('Lỗi', err.message);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = btn.id === 'pay-btn' ? 'Thanh toán <?= vnd($total) ?>' : 'Xác nhận thanh toán';
+                }
+            }
+        }
+
+        // ========== BUTTON TAB 2 (alt-pay-btn) ==========
+        const altPayBtn = document.getElementById('alt-pay-btn');
+        if (altPayBtn) {
+            altPayBtn.addEventListener('click', async function () {
+                const agree = document.getElementById('agree-terms')?.checked;
+                if (!agree) {
+                    showAlert('Thông báo', 'Vui lòng chấp nhận điều khoản');
+                    return;
+                }
+                const method = document.querySelector('input[name="alt_payment_method"]:checked')?.value;
+                const selectedShipping = document.querySelector('input[name="delivery-method-alt"]:checked');
+                const shippingFee = selectedShipping ? parseInt(selectedShipping.dataset.fee) || 0 : 0;
+                const shippingMethod = selectedShipping?.value || 'standard';
+
+                if (method === 'cod') {
+                    await processOrder('cash', shippingMethod, shippingFee);
+                } else {
+                    setTimeout(() => openModal('payment-method-modal'), 50);
+                }
+            });
+        }
+
+        // ========== CONFIRM MODAL ==========
+        const confirmModalBtn = document.getElementById('confirm-payment-method');
+        if (confirmModalBtn) {
+            confirmModalBtn.addEventListener('click', async function () {
+                closeModal('payment-method-modal');
+                const selectedShipping = document.querySelector('input[name="delivery-method-alt"]:checked');
+                const shippingFee = selectedShipping ? parseInt(selectedShipping.dataset.fee) || 0 : 0;
+                const shippingMethod = selectedShipping?.value || 'standard';
+                await processOrder(window.selectedOnlineMethod, shippingMethod, shippingFee);
+            });
+        }
+
+        // ========== BUTTON TAB 1 (pay-btn) ==========
+        const payBtn = document.getElementById('pay-btn');
+        if (payBtn) {
+            payBtn.addEventListener('click', async function (e) {
+                e.preventDefault();
+
+                const email = document.getElementById('email')?.value.trim();
+                const cardHolder = document.getElementById('card-holder')?.value.trim();
+                const cardNumber = document.getElementById('card-details')?.value.trim();
+                const cardExpire = document.getElementById('card-expire')?.value.trim();
+                const cardCvc = document.getElementById('card-cvc')?.value.trim();
+
+                if (!email || !cardHolder || !cardNumber || !cardExpire || !cardCvc) {
+                    showAlert('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin thẻ.');
+                    return;
+                }
+
+                if (!/^\d{16}$/.test(cardNumber.replace(/\s/g, ''))) {
+                    showAlert('Lỗi', 'Số thẻ không hợp lệ (16 chữ số).');
+                    return;
+                }
+                if (!/^\d{2}\/\d{2}$/.test(cardExpire)) {
+                    showAlert('Lỗi', 'Ngày hết hạn không đúng định dạng MM/YY.');
+                    return;
+                }
+                if (!/^\d{3,4}$/.test(cardCvc)) {
+                    showAlert('Lỗi', 'Mã CVC không hợp lệ (3-4 chữ số).');
+                    return;
+                }
+
+                // 🔥 GIẢ LẬP KIỂM TRA SỐ DƯ THẺ
+                const cardBalance = 500000;
+                const totalAmount = <?= $total ?>;
+                if (totalAmount > cardBalance) {
+                    showAlert('Thanh toán thất bại', 'Số dư thẻ không đủ để thanh toán. Vui lòng thử thẻ khác.');
+                    return;
+                }
+
+                const selectedShipping = document.querySelector('input[name="delivery-method"]:checked');
+                const shippingFee = selectedShipping ? parseInt(selectedShipping.dataset.fee) || 0 : 0;
+                const shippingMethod = selectedShipping?.value || 'fedex';
+
+                try {
+                    await processOrder('card', shippingMethod, shippingFee, email);
+                } catch (error) {
+                    console.error('Exception:', error);
+                    showAlert('Lỗi', error.message);
+                }
+            });
+        } else {
+            console.error('❌ pay-btn NOT found!');
+        }
+
+        console.log('✅ All listeners attached');
     }
-}
-
-// ========== ALERT ==========
-function showAlert(title, message, callback = null) {
-    const modal = document.getElementById('alert-modal');
-
-    document.getElementById('alert-title').innerText = title;
-    document.getElementById('alert-message').innerText = message;
-
-    modal.classList.remove('hide');
-    modal.classList.add('show');
-
-    const okBtn = document.getElementById('alert-ok');
-
-    const handler = () => {
-        modal.classList.remove('show');
-        modal.classList.add('hide');
-        okBtn.removeEventListener('click', handler);
-        if (callback) callback();
-    };
-
-    okBtn.addEventListener('click', handler);
-}
+})();
 </script>

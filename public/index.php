@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 if (!function_exists('vnd')) {
@@ -246,40 +247,57 @@ switch ($url) {
         break;
 
     case 'add-favorite':
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $input = json_decode(file_get_contents('php://input'), true);
-            $productId = $input['product_id'] ?? 0;
-
-            if (addFavorite($productId)) {
-                echo json_encode([
-                    'success' => true,
-                    'total_favorites' => favoriteCount(),
-                    'message' => 'Đã thêm vào yêu thích'
-                ]);
-            } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Sản phẩm đã có trong favorites'
-                ]);
-            }
+         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        header('Content-Type: application/json');
+        $input = json_decode(file_get_contents('php://input'), true);
+        $productId = $input['product_id'] ?? 0;
+        if (!$productId || !isset($_SESSION['user'])) {
+            echo json_encode(['success' => false, 'message' => 'Yêu cầu không hợp lệ']);
             exit;
         }
-        // GET (fallback)
-        $productId = $_GET['id'] ?? 0;
-        addFavorite($productId);
+        $userId = $_SESSION['user']['id'];
+        $conn = getDB();
+        // Kiểm tra tồn tại
+        $stmt = $conn->prepare("SELECT id FROM favorites WHERE user_id = ? AND product_id = ?");
+        $stmt->execute([$userId, $productId]);
+        $exists = $stmt->fetch();
+        if ($exists) {
+            $stmt = $conn->prepare("DELETE FROM favorites WHERE user_id = ? AND product_id = ?");
+            $stmt->execute([$userId, $productId]);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO favorites (user_id, product_id, created_at) VALUES (?, ?, NOW())");
+            $stmt->execute([$userId, $productId]);
+        }
+        // Lấy tổng số mới
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM favorites WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+        echo json_encode(['success' => true, 'total_favorites' => (int)$total]);
+        exit;
+    }
+    // fallback GET
+    $productId = $_GET['id'] ?? 0;
+        // Chuyển hướng về trang trước đó
         header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
         exit;
     break;
 
-    case 'remove-favorite':
+        case 'remove-favorite':
+        if (!isset($_SESSION['user'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
+            exit;
+        }
         $productId = $_GET['id'] ?? 0;
-        $success = removeFavoriteByProduct($productId);
+        $userId = $_SESSION['user']['id'];
+        $conn = getDB();
+        $stmt = $conn->prepare("DELETE FROM favorites WHERE user_id = ? AND product_id = ?");
+        $stmt->execute([$userId, $productId]);
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM favorites WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
         header('Content-Type: application/json');
-        echo json_encode([
-            'success' => $success,
-            'total_favorites' => favoriteCount(),
-            'message' => $success ? 'Đã xóa khỏi yêu thích' : 'Xóa thất bại'
-        ]);
+        echo json_encode(['success' => true, 'total_favorites' => (int)$total]);
         exit;
         break;
 
@@ -377,6 +395,7 @@ switch ($url) {
 
     // ==================== PRODUCT ====================
     case 'product':
+        $favIds = getFavoriteIds();
         $product = getProductById($_GET['id'] ?? 0);
         $product['reviews'] = getReviewsByProductId($product['id']);
         $ratingData = getAverageRating($product['id']);
@@ -417,10 +436,6 @@ switch ($url) {
     // ==================== PAGES (Support, Blog, Promotion, About) ====================
     case 'support':
         $view = view('support');
-        break;
-
-    case 'blog':
-        $view = view('blog');
         break;
 
     case 'promotion':

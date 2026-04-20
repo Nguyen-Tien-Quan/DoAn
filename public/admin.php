@@ -49,6 +49,12 @@ switch ($url) {
 
     // ===== DASHBOARD =====
     case 'dashboard':
+        // Xử lý export CSV nếu có
+        if (isset($_GET['export'])) {
+            require_once __DIR__ . '/../resources/views/pages/admin/includes/functions.php';
+            exportReportCSV();
+            exit;
+        }
 
         $data = getDashboardData();
         $totalOrders    = $data['totalOrders'];
@@ -57,9 +63,21 @@ switch ($url) {
         $totalRevenue   = $data['totalRevenue'];
         $pendingOrders  = $data['pendingOrders'];
         $lowStock       = $data['lowStock'];
-        $role           = $_SESSION['user']['role_id']; // 1: admin, 2: staff
+        $role           = $_SESSION['user']['role_id'];
+
+        // Lấy dữ liệu báo cáo
+        require_once __DIR__ . '/../resources/views/pages/admin/includes/functions.php';
+        $reportData = getReportData();
+        $start_date = $reportData['start_date'];
+        $end_date   = $reportData['end_date'];
+        $report_type = $reportData['report_type'];
+        $revenue    = $reportData['revenue'];
+        $orders     = $reportData['orders'];
+        $month      = $reportData['month'];
+        $year       = $reportData['year'];
+
         $view = view('dashboard');
-        break;
+    break;
 
     // ===== CATEGORY =====
     case 'categories':
@@ -85,6 +103,24 @@ switch ($url) {
 
     // ===== PRODUCT =====
     case 'products':
+
+    // ✅ XỬ LÝ ACTION TRƯỚC
+        if (isset($_GET['action'])) {
+            switch ($_GET['action']) {
+                case 'delete':
+                    handleDeleteProduct();
+                    break;
+
+                case 'restore':
+                    handleRestoreProduct();
+                    break;
+
+                case 'hard_delete':
+                    handleHardDeleteProduct();
+                    break;
+            }
+        }
+
         $page = $_GET['page'] ?? 1;
 
         $filters = [
@@ -95,62 +131,113 @@ switch ($url) {
 
         $result = getAllProducts($page, 10, $filters);
 
-        $products = $result['data'];
-        $total = $result['total'];
+        $products     = $result['data'];
+        $totalPages   = $result['totalPages'];
+        $currentPage  = $result['currentPage'];
+
         $categories = getCategoryOptions();
 
+        $is_admin = isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 1;
+
         $view = view('products');
-        break;
+    break;
 
-    case 'product-delete':
-        handleDeleteProduct();
-        break;
+    case 'product-edit':
+    require_once __DIR__ . '/../app/controllers/Admin/ProductController.php';
+    handleEditProduct(); // hoặc tự xử lý
 
-    case 'product-restore':
-        handleRestoreProduct();
-        break;
+    $view = view('product-edit');
+    break;
 
-    // ===== USER =====
+        // ===== USER =====
     case 'users':
-        $users = getUsers();
+        $page = $_GET['page'] ?? 1;
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'role_id' => $_GET['role_id'] ?? 0,
+            'status' => $_GET['status'] ?? -1
+        ];
+        $result = getUsers($page, 10, $filters);
+        $users = $result['data'];
+        $total = $result['total'];
+        $totalPages = $result['totalPages'];
+        $currentPage = $result['currentPage'];
+        $roles = getAllRoles();
+        $search = $filters['search'];
+        $filter_role = $filters['role_id'];
+        $filter_status = $filters['status'];
+        $success = $_SESSION['success'] ?? null;
+        $error = $_SESSION['error'] ?? null;
+        unset($_SESSION['success'], $_SESSION['error']);
+        $current_user_id = $_SESSION['user']['id'] ?? 0;
+        $is_super_admin = ($current_user_id == 1);
+        $current_role = getCurrentUserRole($current_user_id);
         $view = view('users');
+        break;
+
+    case 'user-add':
+        handleAddUser();
+        break;
+
+    case 'user-edit':
+        handleEditUser();
         break;
 
     case 'user-delete':
         handleDeleteUser();
         break;
 
+    case 'user-restore':
+        handleRestoreUser();
+        break;
+
+    case 'user-hard-delete':
+        handleHardDeleteUser();
+        break;
+
 
     // ===== ORDERS =====
     case 'orders':
-        $page = $_GET['page'] ?? 1;
 
-        $filters = [
-            'search' => $_GET['search'] ?? '',
-            'status' => $_GET['status'] ?? ''
-        ];
+    // ✅ AJAX UPDATE STATUS
+    if (isset($_POST['ajax']) && $_POST['ajax'] === 'update_status') {
+        header('Content-Type: application/json');
 
-        $result = getOrders($page, 10, $filters);
+        $order_id = (int)($_POST['order_id'] ?? 0);
+        $new_status = $_POST['new_status'] ?? '';
 
-        $orders = $result['data'];
-        $total = $result['total'];
+        $result = updateOrderStatus($order_id, $new_status);
 
-        $view = view('orders');
-    break;
+        echo json_encode($result);
+        exit; // ❗ BẮT BUỘC phải có
+    }
 
-    // AJAX
-    case 'order-detail':
+    // ✅ AJAX LOAD DETAIL
+    if (isset($_GET['ajax']) && $_GET['ajax'] === 'detail') {
         $id = (int)($_GET['id'] ?? 0);
+        echo renderOrderDetailHTML($id);
+        exit; // ❗ BẮT BUỘC phải có
+    }
 
-        $data = getOrderDetail($id);
+    // ===== NORMAL PAGE =====
+    $page = $_GET['page'] ?? 1;
+    $filters = [
+        'search' => $_GET['search'] ?? '',
+        'status' => $_GET['status'] ?? ''
+    ];
 
-        if (!$data) {
-            echo "Không tìm thấy đơn hàng";
-            exit;
-        }
+    $result = getOrders($page, 10, $filters);
 
-        require __DIR__ . '/../resources/views/pages/admin/order-detail.php';
-    exit;
+    $orders = $result['data'];
+    $total = $result['total'];
+    $totalPages = $result['totalPages'];
+    $currentPage = $page;
+    $search = $filters['search'];
+    $status_filter = $filters['status'];
+
+    $view = view('orders');
+break;
+
 
     case 'variants':
         ensureVariantTable();
@@ -266,6 +353,23 @@ switch ($url) {
     case 'settings':
         $view = view('settings');
         break;
+
+    case 'report':
+    require_once __DIR__ . '/../resources/views/pages/admin/includes/functions.php';
+    if (isset($_GET['export'])) {
+        exportReportCSV();
+        exit;
+    }
+    $reportData = getReportData();
+    $start_date = $reportData['start_date'];
+    $end_date   = $reportData['end_date'];
+    $report_type = $reportData['report_type'];
+    $revenue    = $reportData['revenue'];
+    $orders     = $reportData['orders'];
+    $month      = $reportData['month'];
+    $year       = $reportData['year'];
+    $view = view('report');
+    break;
 
     // ===== LOGOUT =====
     case 'logout':

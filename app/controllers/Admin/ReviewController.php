@@ -53,7 +53,7 @@ function getReviews($page = 1, $limit = 15, $filters = []) {
         LEFT JOIN customers c ON r.customer_id = c.id
         LEFT JOIN products p ON r.product_id = p.id
         $where
-        ORDER BY r.id DESC
+        ORDER BY r.id ASC
         LIMIT $limit OFFSET $offset
     ");
     $stmt->execute($params);

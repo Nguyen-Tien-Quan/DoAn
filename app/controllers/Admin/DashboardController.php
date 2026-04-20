@@ -1,14 +1,19 @@
 <?php
 require_once __DIR__ . '/../../../config/database.php';
-
-
+function getFlash($key) {
+    if (!empty($_SESSION[$key])) {
+        $msg = $_SESSION[$key];
+        unset($_SESSION[$key]);
+        return $msg;
+    }
+    return '';
+}
 function getDashboardData() {
     $pdo = getDB();
-
     return [
         'totalOrders'    => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
         'totalProducts'  => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 1")->fetchColumn(),
-        'totalCustomers' => $pdo->query("SELECT COUNT(*) FROM users WHERE role_id = 3")->fetchColumn(), // chỉ đếm khách hàng
+        'totalCustomers' => $pdo->query("SELECT COUNT(*) FROM users WHERE role_id = 3")->fetchColumn(),
         'totalRevenue'   => $pdo->query("SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'completed'")->fetchColumn(),
         'pendingOrders'  => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
         'lowStock'       => $pdo->query("SELECT COUNT(*) FROM product_variants WHERE stock_quantity < 10 AND stock_quantity > 0")->fetchColumn()
@@ -17,7 +22,6 @@ function getDashboardData() {
 
 function ensureVoucherTable() {
     $conn = getDB();
-
     $conn->exec("CREATE TABLE IF NOT EXISTS vouchers (
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(50) UNIQUE NOT NULL,
@@ -39,14 +43,11 @@ function ensureVoucherTable() {
 function getVouchers($page = 1, $limit = 15, $filters = []) {
     $conn = getDB();
     $offset = ($page - 1) * $limit;
-
     $search = $filters['search'] ?? '';
     $status = isset($filters['status']) ? (int)$filters['status'] : -1;
     $discount_type = $filters['discount_type'] ?? '';
-
     $where = " WHERE 1=1 ";
     $params = [];
-
     if (!empty($search)) {
         $where .= " AND (code LIKE ? OR name LIKE ?) ";
         $params[] = "%$search%";
@@ -60,19 +61,14 @@ function getVouchers($page = 1, $limit = 15, $filters = []) {
         $where .= " AND discount_type = ? ";
         $params[] = $discount_type;
     }
-
-    // Đếm tổng
     $countSql = "SELECT COUNT(*) FROM vouchers $where";
     $stmt = $conn->prepare($countSql);
     $stmt->execute($params);
     $total = $stmt->fetchColumn();
-
-    // Lấy dữ liệu
-    $sql = "SELECT * FROM vouchers $where ORDER BY id DESC LIMIT $limit OFFSET $offset";
+    $sql = "SELECT * FROM vouchers $where ORDER BY id ASC LIMIT $limit OFFSET $offset";
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $vouchers = $stmt->fetchAll();
-
     return [
         'data' => $vouchers,
         'total' => $total,
@@ -80,39 +76,23 @@ function getVouchers($page = 1, $limit = 15, $filters = []) {
     ];
 }
 
-/**
- * Thêm voucher mới
- */
 function handleAddVoucher() {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         header('Location: admin.php?url=vouchers');
         exit;
     }
-
     if (session_status() === PHP_SESSION_NONE) session_start();
-
     $conn = getDB();
-
     $code = trim($_POST['code'] ?? '');
     $name = trim($_POST['name'] ?? '');
     $discount_type = $_POST['discount_type'] ?? 'percent';
     $discount_value = (float)($_POST['discount_value'] ?? 0);
     $min_order_amount = (float)($_POST['min_order_amount'] ?? 0);
     $max_discount_amount = (float)($_POST['max_discount_amount'] ?? 0);
-
-    // ✅ FIX TIME FORMAT (QUAN TRỌNG NHẤT)
-    $start_date = !empty($_POST['start_date'])
-        ? date('Y-m-d H:i:s', strtotime($_POST['start_date']))
-        : null;
-
-    $end_date = !empty($_POST['end_date'])
-        ? date('Y-m-d H:i:s', strtotime($_POST['end_date']))
-        : null;
-
+    $start_date = !empty($_POST['start_date']) ? date('Y-m-d H:i:s', strtotime($_POST['start_date'])) : null;
+    $end_date = !empty($_POST['end_date']) ? date('Y-m-d H:i:s', strtotime($_POST['end_date'])) : null;
     $usage_limit = (int)($_POST['usage_limit'] ?? 0);
     $status = (int)($_POST['status'] ?? 1);
-
-    // Check trùng code
     $check = $conn->prepare("SELECT id FROM vouchers WHERE code = ?");
     $check->execute([$code]);
     if ($check->fetch()) {
@@ -120,38 +100,14 @@ function handleAddVoucher() {
         header('Location: admin.php?url=vouchers');
         exit;
     }
-
-    $sql = "INSERT INTO vouchers (
-                code, name, discount_type, discount_value,
-                min_order_amount, max_discount_amount,
-                start_date, end_date,
-                usage_limit, used_count, status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)";
-
+    $sql = "INSERT INTO vouchers (code, name, discount_type, discount_value, min_order_amount, max_discount_amount, start_date, end_date, usage_limit, used_count, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)";
     $stmt = $conn->prepare($sql);
-
-    $success = $stmt->execute([
-        $code,
-        $name,
-        $discount_type,
-        $discount_value,
-        $min_order_amount,
-        $max_discount_amount,
-        $start_date,
-        $end_date,
-        $usage_limit,
-        $status
-    ]);
-
+    $success = $stmt->execute([$code, $name, $discount_type, $discount_value, $min_order_amount, $max_discount_amount, $start_date, $end_date, $usage_limit, $status]);
     $_SESSION['success'] = $success ? "Thêm mã thành công." : "Thêm thất bại.";
     header('Location: admin.php?url=vouchers');
     exit;
 }
 
-/**
- * Xóa (vô hiệu hóa) voucher
- */
 function handleDeleteVoucher() {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
@@ -164,9 +120,6 @@ function handleDeleteVoucher() {
     exit;
 }
 
-/**
- * Khôi phục voucher
- */
 function handleRestoreVoucher() {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
@@ -179,7 +132,6 @@ function handleRestoreVoucher() {
     exit;
 }
 
-
 function ensureToppingTable() {
     $conn = getDB();
     try { $conn->exec("ALTER TABLE toppings ADD COLUMN status TINYINT DEFAULT 1"); } catch(PDOException $e) {}
@@ -187,7 +139,7 @@ function ensureToppingTable() {
 
 function getAllToppings() {
     $conn = getDB();
-    return $conn->query("SELECT * FROM toppings ORDER BY id DESC")->fetchAll();
+    return $conn->query("SELECT * FROM toppings ORDER BY id ASC")->fetchAll();
 }
 
 function handleAddTopping() {
@@ -244,3 +196,4 @@ function handleRestoreTopping() {
     header("Location: admin.php?url=toppings");
     exit;
 }
+?>

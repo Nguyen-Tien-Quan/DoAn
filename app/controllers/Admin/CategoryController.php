@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 function getCategories() {
     $conn = getDB();
-    return $conn->query("SELECT * FROM categories ORDER BY id DESC")->fetchAll();
+    return $conn->query("SELECT * FROM categories ORDER BY id ASC")->fetchAll();
 }
 
 function handleAddCategory() {

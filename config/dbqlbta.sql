@@ -418,6 +418,8 @@ CREATE TABLE favorites (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
+
+
 -- =============================
 -- ROLES
 -- =============================
@@ -455,7 +457,6 @@ INSERT INTO categories (id, name, slug, description, status) VALUES
 (3, 'Đồ uống', 'do-uong', 'Nước giải khát', 1),
 (4, 'Combo', 'combo', 'Combo tiết kiệm', 1);
 
-USE QlBANTHUCAN;
 UPDATE categories SET image = 'burger.png' WHERE id = 1;
 UPDATE categories SET image = 'ga-ran.png' WHERE id = 2;
 UPDATE categories SET image = 'drink.png' WHERE id = 3;
@@ -591,7 +592,6 @@ INSERT INTO purchase_order_items (purchase_order_id, ingredient_id, quantity, un
 (1, 1, 20, 200000, 4000000),
 (1, 2, 100, 10000, 1000000);
 
-USE QlBANTHUCAN;
 INSERT INTO vouchers (code, name, discount_type, discount_value, max_discount_amount, min_order_amount, start_date, end_date, usage_limit, used_count, status)
 VALUES ('GIAM20K', 'Giảm 20K', 'fixed', 20000, 0, 100000, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 50, 0, 1);
 
