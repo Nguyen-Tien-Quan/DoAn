@@ -361,9 +361,35 @@ switch ($url) {
 
     case 'vouchers':
 
-        // Lấy tham số lọc và phân trang
+        // ✅ đảm bảo có bảng
+        ensureVoucherTable();
+
+        // ✅ xử lý action giống UI cũ
+        if (isset($_GET['soft_delete'])) {
+            $_GET['id'] = $_GET['soft_delete'];
+            handleDeleteVoucher();
+        }
+
+        if (isset($_GET['restore'])) {
+            $_GET['id'] = $_GET['restore'];
+            handleRestoreVoucher();
+        }
+
+        if (isset($_GET['hard_delete'])) {
+            $_GET['id'] = $_GET['hard_delete'];
+            handleHardDeleteVoucher();
+        }
+
+        // ✅ xử lý POST (add + edit)
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+            if ($_POST['action'] === 'add') handleAddVoucher();
+            if ($_POST['action'] === 'edit') handleEditVoucher();
+        }
+
+        // ===== load data =====
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $limit = 15;
+
         $filters = [
             'search' => $_GET['search'] ?? '',
             'status' => isset($_GET['status']) ? (int)$_GET['status'] : -1,
@@ -371,23 +397,21 @@ switch ($url) {
         ];
 
         $result = getVouchers($page, $limit, $filters);
+
         $vouchers = $result['data'];
         $totalPages = $result['totalPages'];
 
         $search = $filters['search'];
         $type_filter = $filters['discount_type'];
         $status_filter = $filters['status'];
+
         $success = $_SESSION['success'] ?? null;
-        $error = $_SESSION['error'] ?? null;
+        $error   = $_SESSION['error'] ?? null;
         unset($_SESSION['success'], $_SESSION['error']);
 
         $view = view('vouchers');
     break;
 
-
-    case 'voucher-add':
-        handleAddVoucher();
-        break;
 
     case 'voucher-delete':
         handleDeleteVoucher();
@@ -395,6 +419,14 @@ switch ($url) {
 
     case 'voucher-restore':
         handleRestoreVoucher();
+        break;
+
+    case 'voucher-hard-delete':
+        handleHardDeleteVoucher();
+        break;
+
+    case 'voucher-edit':
+        handleEditVoucher();
         break;
 
     case 'settings':

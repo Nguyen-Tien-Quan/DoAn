@@ -156,6 +156,73 @@ function handleRestoreVoucher() {
     exit;
 }
 
+function handleEditVoucher() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Location: admin.php?url=vouchers');
+        exit;
+    }
+
+    $conn = getDB();
+
+    $id = (int)$_POST['id'];
+    $code = strtoupper(trim($_POST['code']));
+    $name = trim($_POST['name']);
+    $discount_type = $_POST['discount_type'];
+    $discount_value = (float)$_POST['discount_value'];
+    $min_order_amount = (float)($_POST['min_order_amount'] ?? 0);
+    $max_discount_amount = (float)($_POST['max_discount_amount'] ?? 0);
+    $start_date = !empty($_POST['start_date']) ? date('Y-m-d H:i:s', strtotime($_POST['start_date'])) : null;
+    $end_date = !empty($_POST['end_date']) ? date('Y-m-d H:i:s', strtotime($_POST['end_date'])) : null;
+    $usage_limit = (int)($_POST['usage_limit'] ?? 0);
+    $status = (int)($_POST['status'] ?? 1);
+
+    // check trùng mã
+    $check = $conn->prepare("SELECT id FROM vouchers WHERE code = ? AND id != ?");
+    $check->execute([$code, $id]);
+
+    if ($check->fetch()) {
+        $_SESSION['error'] = "Mã đã tồn tại.";
+    } else {
+        $sql = "UPDATE vouchers SET
+            code=?, name=?, discount_type=?, discount_value=?,
+            min_order_amount=?, max_discount_amount=?,
+            start_date=?, end_date=?, usage_limit=?, status=?
+            WHERE id=?";
+
+        $stmt = $conn->prepare($sql);
+        $ok = $stmt->execute([
+            $code, $name, $discount_type, $discount_value,
+            $min_order_amount, $max_discount_amount,
+            $start_date, $end_date, $usage_limit, $status, $id
+        ]);
+
+        $_SESSION['success'] = $ok ? "Cập nhật thành công" : "Cập nhật thất bại";
+    }
+
+    header('Location: admin.php?url=vouchers');
+    exit;
+}
+
+function handleHardDeleteVoucher() {
+    $id = (int)($_GET['id'] ?? 0);
+    if ($id <= 0) return;
+
+    $conn = getDB();
+
+    // check usage
+    $check = $conn->prepare("SELECT COUNT(*) FROM voucher_usage WHERE voucher_id = ?");
+    $check->execute([$id]);
+
+    if ($check->fetchColumn() > 0) {
+        $_SESSION['error'] = "Không thể xóa vì đã được sử dụng.";
+    } else {
+        $conn->prepare("DELETE FROM vouchers WHERE id = ?")->execute([$id]);
+        $_SESSION['success'] = "Đã xóa vĩnh viễn.";
+    }
+
+    header('Location: admin.php?url=vouchers');
+    exit;
+}
 /**
  * 📈 Lấy dữ liệu biểu đồ doanh thu
  * @param string $type (day | month)
