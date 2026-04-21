@@ -13,14 +13,33 @@ $shipperId = $_SESSION['user']['id'];
 // Xử lý action
 switch ($action) {
     case 'dashboard':
-        $statusFilter = $_GET['status'] ?? 'all';
+        $page = $_GET['page'] ?? 1;
+        $status = $_GET['status'] ?? 'all';
+
+        $result = getShipperOrders($shipperId, $status, $page, 10);
+
+        // ✅ lấy từ result
+        $orders = $result['data'];
+        $totalPages = $result['totalPages'];
+        $currentPage = $result['currentPage'];
+
+        $statusFilter = $status;
+
+        // stats
         $stats = getShipperStats($shipperId);
-        $orders = getShipperOrders($shipperId, $statusFilter);
+
         $view = __DIR__ . '/../resources/views/pages/shipper/dashboard.php';
-        break;
+    break;
 
     case 'available':
-        $orders = getAvailableOrders();
+        $page = $_GET['page'] ?? 1;
+
+        $result = getAvailableOrders($page, 10);
+
+        $orders = $result['data'];
+        $totalPages = $result['totalPages'];
+        $currentPage = $result['currentPage'];
+
         $view = __DIR__ . '/../resources/views/pages/shipper/available.php';
         break;
 

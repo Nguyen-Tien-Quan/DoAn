@@ -101,7 +101,7 @@ function getOrderDetail($id) {
 function updateOrderStatus($order_id, $new_status) {
     $conn = getDB();
 
-    // 🔥 Normalize tránh lỗi DB bẩn
+    // 🔥 Normalize tránh lỗi
     $new_status = trim(strtolower($new_status));
 
     $allowed = [
@@ -127,13 +127,12 @@ function updateOrderStatus($order_id, $new_status) {
         return ['success' => false, 'message' => 'Không tìm thấy đơn #' . $order_id];
     }
 
-    // 🔥 Normalize luôn DB
     $old = trim(strtolower($order['status']));
 
-    // DEBUG (rất quan trọng)
+    // DEBUG (có thể bỏ sau)
     error_log("ORDER #$order_id | OLD: [$old] -> NEW: [$new_status]");
 
-    // RULE FLOW CHUẨN
+    // FLOW chuẩn
     $valid = [
         'pending' => ['confirmed', 'cancelled'],
         'confirmed' => ['preparing', 'cancelled'],
@@ -154,12 +153,35 @@ function updateOrderStatus($order_id, $new_status) {
     try {
         $conn->beginTransaction();
 
-        $stmt = $conn->prepare("
-            UPDATE orders
-            SET status = ?, updated_at = NOW()
-            WHERE id = ?
-        ");
-        $stmt->execute([$new_status, $order_id]);
+        // 🔥 FIX QUAN TRỌNG: map delivery_status
+        $delivery_status = null;
+
+        if ($new_status === 'ready_for_delivery') {
+            $delivery_status = 'pending';
+        } elseif ($new_status === 'delivering') {
+            $delivery_status = 'shipping';
+        } elseif ($new_status === 'completed') {
+            $delivery_status = 'delivered';
+        } elseif ($new_status === 'cancelled') {
+            $delivery_status = 'failed';
+        }
+
+        // UPDATE
+        if ($delivery_status !== null) {
+            $stmt = $conn->prepare("
+                UPDATE orders
+                SET status = ?, delivery_status = ?, updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->execute([$new_status, $delivery_status, $order_id]);
+        } else {
+            $stmt = $conn->prepare("
+                UPDATE orders
+                SET status = ?, updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->execute([$new_status, $order_id]);
+        }
 
         $conn->commit();
 
@@ -179,7 +201,6 @@ function updateOrderStatus($order_id, $new_status) {
         ];
     }
 }
-
 /**
  * Render chi tiết đơn
  */

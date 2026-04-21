@@ -8,6 +8,9 @@ $totalCustomers = $data['totalCustomers'] ?? 0;
 $totalRevenue = $data['totalRevenue'] ?? 0;
 $pendingOrders = $data['pendingOrders'] ?? 0;
 $lowStock = $data['lowStock'] ?? 0;
+
+$today = $compare['today'] ?? 0;
+$yesterday = $compare['yesterday'] ?? 0;
 ?>
 
 <div id="content-wrapper" class="d-flex flex-column">
@@ -91,3 +94,101 @@ $lowStock = $data['lowStock'] ?? 0;
     </div>
     </div>
 </div>
+
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-success">🔥 Sản phẩm bán chạy</h6>
+    </div>
+    <div class="card-body">
+        <?php foreach ($topProducts as $p): ?>
+            <div class="d-flex justify-content-between border-bottom py-2">
+                <span><?= $p['name'] ?></span>
+                <span class="badge badge-success"><?= $p['total_sold'] ?> đã bán</span>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+
+<div class="card shadow mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">
+            📊 Biểu đồ doanh thu
+        </h6>
+
+        <!-- FILTER -->
+        <div>
+            <a href="?url=dashboard&type=day" class="btn btn-sm <?= ($_GET['type'] ?? 'day')=='day' ? 'btn-primary' : 'btn-outline-primary' ?>">Ngày</a>
+            <a href="?url=dashboard&type=week" class="btn btn-sm <?= ($_GET['type'] ?? '')=='week' ? 'btn-primary' : 'btn-outline-primary' ?>">Tuần</a>
+            <a href="?url=dashboard&type=month" class="btn btn-sm <?= ($_GET['type'] ?? '')=='month' ? 'btn-primary' : 'btn-outline-primary' ?>">Tháng</a>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <canvas id="revenueChart" height="100"></canvas>
+    </div>
+</div>
+<?php
+$today = $compare['today'];
+$yesterday = $compare['yesterday'];
+
+$percent = $yesterday > 0
+    ? (($today - $yesterday) / $yesterday) * 100
+    : 100;
+?>
+
+<div class="card border-left-success shadow mb-4">
+    <div class="card-body">
+        <div class="text-xs font-weight-bold text-success mb-1">
+            Doanh thu hôm nay
+        </div>
+
+        <div class="h5 font-weight-bold">
+            <?= number_format($today) ?>đ
+        </div>
+
+        <small class="<?= $percent >= 0 ? 'text-success' : 'text-danger' ?>">
+            <?= $percent >= 0 ? '▲' : '▼' ?>
+            <?= number_format(abs($percent),1) ?>% so với hôm qua
+        </small>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctx = document.getElementById('revenueChart').getContext('2d');
+
+const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+gradient.addColorStop(0, 'rgba(78, 115, 223, 0.5)');
+gradient.addColorStop(1, 'rgba(78, 115, 223, 0)');
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: <?= json_encode(array_column($chartData ?? [], 'label')) ?>,
+        datasets: [{
+            label: 'Doanh thu',
+            data: <?= json_encode(array_column($chartData ?? [], 'revenue')) ?>,
+            borderColor: '#4e73df',
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: '#4e73df'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true }
+        },
+        scales: {
+            y: {
+                ticks: {
+                    callback: value => value.toLocaleString() + 'đ'
+                }
+            }
+        }
+    }
+});
+</script>

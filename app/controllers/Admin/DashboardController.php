@@ -8,15 +8,39 @@ function getFlash($key) {
     }
     return '';
 }
+
 function getDashboardData() {
     $pdo = getDB();
+
     return [
-        'totalOrders'    => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
-        'totalProducts'  => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 1")->fetchColumn(),
-        'totalCustomers' => $pdo->query("SELECT COUNT(*) FROM users WHERE role_id = 3")->fetchColumn(),
-        'totalRevenue'   => $pdo->query("SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'completed'")->fetchColumn(),
-        'pendingOrders'  => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
-        'lowStock'       => $pdo->query("SELECT COUNT(*) FROM product_variants WHERE stock_quantity < 10 AND stock_quantity > 0")->fetchColumn()
+        'totalOrders' => $pdo->query("
+            SELECT COUNT(*) FROM orders
+        ")->fetchColumn(),
+
+        'totalProducts' => $pdo->query("
+            SELECT COUNT(*) FROM products WHERE status = 1
+        ")->fetchColumn(),
+
+        'totalCustomers' => $pdo->query("
+            SELECT COUNT(*) FROM users WHERE role_id = 3
+        ")->fetchColumn(),
+
+        // ✅ FIX: dùng chung 1 field total_amount
+        'totalRevenue' => $pdo->query("
+            SELECT COALESCE(SUM(total_amount), 0)
+            FROM orders
+            WHERE status = 'completed'
+        ")->fetchColumn(),
+
+        'pendingOrders' => $pdo->query("
+            SELECT COUNT(*) FROM orders WHERE status = 'pending'
+        ")->fetchColumn(),
+
+        'lowStock' => $pdo->query("
+            SELECT COUNT(*)
+            FROM product_variants
+            WHERE stock_quantity < 10 AND stock_quantity > 0
+        ")->fetchColumn()
     ];
 }
 
@@ -132,68 +156,82 @@ function handleRestoreVoucher() {
     exit;
 }
 
-function ensureToppingTable() {
+/**
+ * 📈 Lấy dữ liệu biểu đồ doanh thu
+ * @param string $type (day | month)
+ */
+function getRevenueChart($type = 'day') {
     $conn = getDB();
-    try { $conn->exec("ALTER TABLE toppings ADD COLUMN status TINYINT DEFAULT 1"); } catch(PDOException $e) {}
-}
 
-function getAllToppings() {
-    $conn = getDB();
-    return $conn->query("SELECT * FROM toppings ORDER BY id ASC")->fetchAll();
-}
+    switch ($type) {
 
-function handleAddTopping() {
-    if ($_SERVER['REQUEST_METHOD'] != 'POST' || !isset($_POST['action']) || $_POST['action'] != 'add') return;
-    $conn = getDB();
-    $name = trim($_POST['name']);
-    $price = (float)$_POST['price'];
-    $status = (int)$_POST['status'];
-    if (!empty($name) && $price > 0) {
-        $stmt = $conn->prepare("INSERT INTO toppings (name, price, status) VALUES (?,?,?)");
-        $stmt->execute([$name, $price, $status]);
-        $_SESSION['success'] = "Thêm topping thành công";
-    } else {
-        $_SESSION['error'] = "Vui lòng nhập đầy đủ thông tin";
+        case 'week':
+            $sql = "
+                SELECT YEARWEEK(created_at, 1) as label,
+                       SUM(final_amount) as revenue
+                FROM orders
+                WHERE status = 'completed'
+                GROUP BY YEARWEEK(created_at, 1)
+                ORDER BY label ASC
+                LIMIT 6
+            ";
+        break;
+
+        case 'month':
+            $sql = "
+                SELECT DATE_FORMAT(created_at, '%Y-%m') as label,
+                       SUM(final_amount) as revenue
+                FROM orders
+                WHERE status = 'completed'
+                GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+                ORDER BY label ASC
+                LIMIT 6
+            ";
+        break;
+
+        default: // day
+            $sql = "
+                SELECT DATE(created_at) as label,
+                       SUM(final_amount) as revenue
+                FROM orders
+                WHERE status = 'completed'
+                GROUP BY DATE(created_at)
+                ORDER BY label ASC
+                LIMIT 7
+            ";
     }
-    header("Location: admin.php?url=toppings");
-    exit;
+
+    return $conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function handleUpdateTopping() {
-    if ($_SERVER['REQUEST_METHOD'] != 'POST' || !isset($_POST['action']) || $_POST['action'] != 'edit') return;
+function getRevenueCompare() {
     $conn = getDB();
-    $id = (int)$_POST['id'];
-    $name = trim($_POST['name']);
-    $price = (float)$_POST['price'];
-    $status = (int)$_POST['status'];
-    if ($id > 0 && !empty($name) && $price > 0) {
-        $stmt = $conn->prepare("UPDATE toppings SET name=?, price=?, status=? WHERE id=?");
-        $stmt->execute([$name, $price, $status, $id]);
-        $_SESSION['success'] = "Cập nhật thành công";
-    } else {
-        $_SESSION['error'] = "Dữ liệu không hợp lệ";
-    }
-    header("Location: admin.php?url=toppings");
-    exit;
+
+    $sql = "
+        SELECT
+        COALESCE(SUM(CASE WHEN DATE(created_at)=CURDATE() THEN final_amount END),0) as today,
+        COALESCE(SUM(CASE WHEN DATE(created_at)=CURDATE()-1 THEN final_amount END),0) as yesterday
+        FROM orders
+        WHERE status = 'completed'
+    ";
+
+    return $conn->query($sql)->fetch(PDO::FETCH_ASSOC);
 }
 
-function handleDeleteTopping() {
-    if (!isset($_GET['id'])) return;
-    $id = (int)$_GET['id'];
+function getTopProducts($limit = 5) {
     $conn = getDB();
-    $conn->prepare("UPDATE toppings SET status = 0 WHERE id = ?")->execute([$id]);
-    $_SESSION['success'] = "Đã vô hiệu hóa topping";
-    header("Location: admin.php?url=toppings");
-    exit;
+
+    return $conn->query("
+        SELECT
+            p.id,
+            p.name,
+            SUM(oi.quantity) as total_sold
+        FROM order_items oi
+        JOIN products p ON p.id = oi.product_id
+        GROUP BY p.id
+        ORDER BY total_sold DESC
+        LIMIT $limit
+    ")->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function handleRestoreTopping() {
-    if (!isset($_GET['id'])) return;
-    $id = (int)$_GET['id'];
-    $conn = getDB();
-    $conn->prepare("UPDATE toppings SET status = 1 WHERE id = ?")->execute([$id]);
-    $_SESSION['success'] = "Đã khôi phục topping";
-    header("Location: admin.php?url=toppings");
-    exit;
-}
 ?>

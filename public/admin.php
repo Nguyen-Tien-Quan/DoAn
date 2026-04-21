@@ -75,12 +75,28 @@ switch ($url) {
         $orders     = $reportData['orders'];
         $month      = $reportData['month'];
         $year       = $reportData['year'];
+        $type = $_GET['type'] ?? 'day';
+        $chartData = getRevenueChart($type);
+        $topProducts = getTopProducts();
+        $compare = getRevenueCompare();
 
         $view = view('dashboard');
     break;
 
     // ===== CATEGORY =====
+        // ===== CATEGORY =====
     case 'categories':
+        // XỬ LÝ CÁC HÀNH ĐỘNG TRƯỚC KHI LOAD DANH SÁCH
+        if (isset($_GET['soft_delete'])) {
+            handleSoftDeleteCategory();
+        }
+        if (isset($_GET['restore'])) {
+            handleRestoreCategory();
+        }
+        if (isset($_GET['hard_delete'])) {
+            handleHardDeleteCategory();
+        }
+
         $categories = getCategories();
         $view = view('categories');
         break;
@@ -91,14 +107,6 @@ switch ($url) {
 
     case 'category-update':
         handleUpdateCategory();
-        break;
-
-    case 'category-delete':
-        handleDeleteCategory();
-        break;
-
-    case 'category-restore':
-        handleRestoreCategory();
         break;
 
     // ===== PRODUCT =====
@@ -142,11 +150,12 @@ switch ($url) {
         $view = view('products');
     break;
 
-    case 'product-edit':
-    require_once __DIR__ . '/../app/controllers/Admin/ProductController.php';
-    handleEditProduct(); // hoặc tự xử lý
+    case 'product-add':
+    handleAddProduct();
+    break;
 
-    $view = view('product-edit');
+    case 'product-edit':
+    editProduct();   // Dùng hàm mới, KHÔNG dùng handleEditProduct()
     break;
 
         // ===== USER =====
@@ -199,96 +208,134 @@ switch ($url) {
     // ===== ORDERS =====
     case 'orders':
 
-    // ✅ AJAX UPDATE STATUS
-    if (isset($_POST['ajax']) && $_POST['ajax'] === 'update_status') {
-        header('Content-Type: application/json');
+        // ✅ AJAX UPDATE STATUS
+        if (isset($_POST['ajax']) && $_POST['ajax'] === 'update_status') {
+            header('Content-Type: application/json');
 
-        $order_id = (int)($_POST['order_id'] ?? 0);
-        $new_status = $_POST['new_status'] ?? '';
+            $order_id = (int)($_POST['order_id'] ?? 0);
+            $new_status = $_POST['new_status'] ?? '';
 
-        $result = updateOrderStatus($order_id, $new_status);
+            $result = updateOrderStatus($order_id, $new_status);
 
-        echo json_encode($result);
-        exit; // ❗ BẮT BUỘC phải có
-    }
-
-    // ✅ AJAX LOAD DETAIL
-    if (isset($_GET['ajax']) && $_GET['ajax'] === 'detail') {
-        $id = (int)($_GET['id'] ?? 0);
-        echo renderOrderDetailHTML($id);
-        exit; // ❗ BẮT BUỘC phải có
-    }
-
-    // ===== NORMAL PAGE =====
-    $page = $_GET['page'] ?? 1;
-    $filters = [
-        'search' => $_GET['search'] ?? '',
-        'status' => $_GET['status'] ?? ''
-    ];
-
-    $result = getOrders($page, 10, $filters);
-
-    $orders = $result['data'];
-    $total = $result['total'];
-    $totalPages = $result['totalPages'];
-    $currentPage = $page;
-    $search = $filters['search'];
-    $status_filter = $filters['status'];
-
-    $view = view('orders');
-break;
-
-
-    case 'variants':
-        ensureVariantTable();
-
-        // Xử lý các action
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            if ($_POST['action'] === 'add') handleAddVariant();
-            elseif ($_POST['action'] === 'edit') handleUpdateVariant();
+            echo json_encode($result);
+            exit; // ❗ BẮT BUỘC phải có
         }
-        if (isset($_GET['id']) && isset($_GET['delete'])) handleDeleteVariant();
 
-        // Lấy dữ liệu cho view
-        $variants = getAllVariants();
-        $products = getAllProductsForVariant();
-        $success = $_SESSION['success'] ?? null;
-        $error = $_SESSION['error'] ?? null;
-        unset($_SESSION['success'], $_SESSION['error']);
+        // ✅ AJAX LOAD DETAIL
+        if (isset($_GET['ajax']) && $_GET['ajax'] === 'detail') {
+            $id = (int)($_GET['id'] ?? 0);
+            echo renderOrderDetailHTML($id);
+            exit; // ❗ BẮT BUỘC phải có
+        }
 
-        $view = view('variants');
-        break;
+        // ===== NORMAL PAGE =====
+        $page = $_GET['page'] ?? 1;
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'status' => $_GET['status'] ?? ''
+        ];
 
-    case 'variant-delete':
-        require_once __DIR__ . '/../app/controllers/Admin/VariantController.php';
-        handleDeleteVariant();
+        $result = getOrders($page, 10, $filters);
+
+        $orders = $result['data'];
+        $total = $result['total'];
+        $totalPages = $result['totalPages'];
+        $currentPage = $page;
+        $search = $filters['search'];
+        $status_filter = $filters['status'];
+
+        $view = view('orders');
     break;
 
-    case 'toppings':
-        ensureToppingTable();
 
-        // Xử lý POST
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            if ($_POST['action'] === 'add') handleAddTopping();
-            elseif ($_POST['action'] === 'edit') handleUpdateTopping();
-        }
+        // ===== VARIANTS (SIZE / BIẾN THỂ) =====
+    case 'variants':
+    // Xử lý các action GET (vô hiệu hóa - khôi phục - xóa vĩnh viễn)
+    if (isset($_GET['soft_delete'])) {
+        handleSoftDeleteVariant();
+    }
+    if (isset($_GET['restore'])) {
+        handleRestoreVariant();
+    }
+    if (isset($_GET['hard_delete'])) {
+        handleHardDeleteVariant();
+    }
 
-        // Lấy dữ liệu
-        $toppings = getAllToppings();
-        $success = $_SESSION['success'] ?? null;
-        $error = $_SESSION['error'] ?? null;
-        unset($_SESSION['success'], $_SESSION['error']);
+    // Xử lý POST (thêm / sửa)
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+        if ($_POST['action'] === 'add')  handleAddVariant();
+        if ($_POST['action'] === 'edit') handleUpdateVariant();
+    }
 
-        $view = view('toppings');
+    ensureVariantTable();
+
+    // --- Phân trang và filter ---
+    $page  = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $limit = 10;
+    $filters = [
+        'search'     => $_GET['search'] ?? '',
+        'product_id' => isset($_GET['product_id']) ? (int)$_GET['product_id'] : 0,
+        'status'     => isset($_GET['status']) ? (int)$_GET['status'] : -1
+    ];
+
+    $variantsData = getVariantsPaginated($page, $limit, $filters);
+    $variants     = $variantsData['data'];
+    $totalPages   = $variantsData['totalPages'];
+    $currentPage  = $variantsData['currentPage'];
+
+    // Danh sách sản phẩm cho modal
+    $products = getAllProductsForVariant();
+
+    // Flash messages
+    $success = $_SESSION['success'] ?? null;
+    $error   = $_SESSION['error']   ?? null;
+    unset($_SESSION['success'], $_SESSION['error']);
+
+    $view = view('variants');
+    break;
+
+    // Nếu bạn vẫn muốn giữ case riêng cho delete
+    case 'variant-delete':
+        require_once __DIR__ . '/../app/controllers/Admin/VariantController.php';
+        handleHardDeleteVariant();
         break;
 
-    case 'topping-delete':
-        require_once __DIR__ . '/../app/controllers/Admin/ToppingController.php';
+    case 'toppings':
+    ensureToppingTable();
+
+    // ✅ XỬ LÝ GET (QUAN TRỌNG)
+    if (isset($_GET['delete'])) {
         handleDeleteTopping();
+    }
+
+    if (isset($_GET['restore'])) {
+        handleRestoreTopping();
+    }
+
+    if (isset($_GET['hard_delete'])) {
+        handleHardDeleteTopping();
+    }
+
+    // ✅ XỬ LÝ POST
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+        if ($_POST['action'] === 'add') handleAddTopping();
+        elseif ($_POST['action'] === 'edit') handleUpdateTopping();
+    }
+
+    $toppings = getAllToppings();
+
+    $success = $_SESSION['success'] ?? null;
+    $error   = $_SESSION['error'] ?? null;
+    unset($_SESSION['success'], $_SESSION['error']);
+
+    $view = view('toppings');
+    break;
+
+    case 'topping-hard-delete':
+        handleHardDeleteTopping();
         break;
 
     case 'topping-restore':
-        require_once __DIR__ . '/../app/controllers/Admin/ToppingController.php';
         handleRestoreTopping();
         break;
 

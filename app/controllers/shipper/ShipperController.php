@@ -31,8 +31,31 @@ function checkShipperAuth() {
 /**
  * Lấy danh sách đơn hàng được giao cho shipper hiện tại
  */
-function getShipperOrders($shipperId, $statusFilter = 'all') {
+function getShipperOrders($shipperId, $statusFilter = 'all', $page = 1, $limit = 10) {
     $conn = getDB();
+
+    $offset = ($page - 1) * $limit;
+
+    $where = "WHERE o.shipper_id = ?";
+    $params = [$shipperId];
+
+    // FILTER STATUS
+    if ($statusFilter !== 'all' && in_array($statusFilter, ['pending', 'shipping', 'delivered', 'failed'])) {
+        $where .= " AND o.delivery_status = ?";
+        $params[] = $statusFilter;
+    }
+
+    // ================= COUNT =================
+    $countSql = "
+        SELECT COUNT(*)
+        FROM orders o
+        $where
+    ";
+    $stmt = $conn->prepare($countSql);
+    $stmt->execute($params);
+    $total = $stmt->fetchColumn();
+
+    // ================= DATA =================
     $sql = "
         SELECT o.*,
                c.full_name AS customer_name,
@@ -40,26 +63,52 @@ function getShipperOrders($shipperId, $statusFilter = 'all') {
                c.address AS customer_address
         FROM orders o
         LEFT JOIN customers c ON o.customer_id = c.id
-        WHERE o.shipper_id = ?
+        $where
+
+        -- 🔥 SORT XỊN CHO SHIPPER
+        ORDER BY
+            CASE
+                WHEN o.delivery_status = 'shipping' THEN 0
+                WHEN o.delivery_status = 'pending' THEN 1
+                ELSE 2
+            END,
+            o.updated_at DESC
+
+        LIMIT $limit OFFSET $offset
     ";
-    $params = [$shipperId];
-    if ($statusFilter !== 'all' && in_array($statusFilter, ['pending', 'shipping', 'delivered', 'failed'])) {
-        $sql .= " AND o.delivery_status = ?";
-        $params[] = $statusFilter;
-    }
-    $sql .= " ORDER BY o.created_at DESC";
+
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return [
+        'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+        'total' => $total,
+        'totalPages' => ceil($total / $limit),
+        'currentPage' => $page
+    ];
 }
 
 /**
  * Lấy danh sách đơn hàng sẵn sàng cho shipper nhận
  * Chỉ lấy đơn đã được xác nhận (status = 'confirmed') và chưa có shipper
  */
-function getAvailableOrders() {
+function getAvailableOrders($page = 1, $limit = 10) {
     $conn = getDB();
 
+    $offset = ($page - 1) * $limit;
+
+    // COUNT
+    $countSql = "
+        SELECT COUNT(*)
+        FROM orders o
+        WHERE o.shipper_id IS NULL
+          AND o.order_type = 'delivery'
+          AND o.status = 'ready_for_delivery'
+          AND o.delivery_status = 'pending'
+    ";
+    $total = $conn->query($countSql)->fetchColumn();
+
+    // DATA
     $sql = "
         SELECT o.*,
                c.full_name AS customer_name,
@@ -69,15 +118,21 @@ function getAvailableOrders() {
         LEFT JOIN customers c ON o.customer_id = c.id
         WHERE o.shipper_id IS NULL
           AND o.order_type = 'delivery'
-          AND o.status = 'ready_for_delivery'   -- 🔥 FIX
+          AND o.status = 'ready_for_delivery'
           AND o.delivery_status = 'pending'
+
         ORDER BY o.created_at ASC
+        LIMIT $limit OFFSET $offset
     ";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute();
+    $stmt = $conn->query($sql);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return [
+        'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+        'total' => $total,
+        'totalPages' => ceil($total / $limit),
+        'currentPage' => $page
+    ];
 }
 
 /**
