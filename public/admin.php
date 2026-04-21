@@ -208,43 +208,112 @@ switch ($url) {
     // ===== ORDERS =====
     case 'orders':
 
-        // ✅ AJAX UPDATE STATUS
-        if (isset($_POST['ajax']) && $_POST['ajax'] === 'update_status') {
-            header('Content-Type: application/json');
+    header('Content-Type: text/html; charset=utf-8');
 
-            $order_id = (int)($_POST['order_id'] ?? 0);
-            $new_status = $_POST['new_status'] ?? '';
+    // ================= UPDATE STATUS =================
+    if (isset($_POST['ajax']) && $_POST['ajax'] === 'update_status') {
+        header('Content-Type: application/json');
 
-            $result = updateOrderStatus($order_id, $new_status);
+        $order_id = (int)($_POST['order_id'] ?? 0);
+        $new_status = trim($_POST['new_status'] ?? '');
 
-            echo json_encode($result);
-            exit; // ❗ BẮT BUỘC phải có
+        if ($order_id <= 0 || $new_status === '') {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Thiếu dữ liệu'
+            ]);
+            exit;
         }
 
-        // ✅ AJAX LOAD DETAIL
-        if (isset($_GET['ajax']) && $_GET['ajax'] === 'detail') {
-            $id = (int)($_GET['id'] ?? 0);
-            echo renderOrderDetailHTML($id);
-            exit; // ❗ BẮT BUỘC phải có
+        $result = updateOrderStatus($order_id, $new_status);
+
+        echo json_encode($result);
+        exit;
+    }
+
+    // ================= CANCEL ORDER =================
+    if (isset($_POST['ajax']) && $_POST['ajax'] === 'cancel') {
+        header('Content-Type: application/json');
+
+        $order_id = (int)($_POST['order_id'] ?? 0);
+        $reason = trim($_POST['reason'] ?? '');
+
+        if ($order_id <= 0 || $reason === '') {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Thiếu dữ liệu'
+            ]);
+            exit;
         }
 
-        // ===== NORMAL PAGE =====
-        $page = $_GET['page'] ?? 1;
-        $filters = [
-            'search' => $_GET['search'] ?? '',
-            'status' => $_GET['status'] ?? ''
-        ];
+        try {
+            $conn = getDB();
+            $conn->beginTransaction();
 
-        $result = getOrders($page, 10, $filters);
+            $stmt = $conn->prepare("
+                UPDATE orders
+                SET status = 'cancelled',
+                    updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->execute([$order_id]);
 
-        $orders = $result['data'];
-        $total = $result['total'];
-        $totalPages = $result['totalPages'];
-        $currentPage = $page;
-        $search = $filters['search'];
-        $status_filter = $filters['status'];
+            $affected = $stmt->rowCount();
 
-        $view = view('orders');
+            if ($affected === 0) {
+                $conn->rollBack();
+
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Không tìm thấy đơn hoặc không thể cập nhật'
+                ]);
+                exit;
+            }
+
+            $conn->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Hủy đơn thành công'
+            ]);
+        } catch (Exception $e) {
+            $conn->rollBack();
+
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+
+        exit;
+    }
+
+    // ================= ORDER DETAIL =================
+    if (isset($_GET['ajax']) && $_GET['ajax'] === 'detail') {
+        $id = (int)($_GET['id'] ?? 0);
+        echo renderOrderDetailHTML($id);
+        exit;
+    }
+
+    // ================= NORMAL PAGE =================
+    $page = $_GET['page'] ?? 1;
+
+    $filters = [
+        'search' => $_GET['search'] ?? '',
+        'status' => $_GET['status'] ?? ''
+    ];
+
+    $result = getOrders($page, 10, $filters);
+
+    $orders = $result['data'];
+    $total = $result['total'];
+    $totalPages = $result['totalPages'];
+    $currentPage = $page;
+
+    $search = $filters['search'];
+    $status_filter = $filters['status'];
+
+    $view = view('orders');
     break;
 
 

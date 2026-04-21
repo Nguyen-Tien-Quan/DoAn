@@ -231,95 +231,182 @@
     </div>
 </div>
 
+<div id="toast" style="
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 99999;
+    padding: 12px 18px;
+    border-radius: 8px;
+    color: white;
+    display: none;
+    min-width: 220px;
+    font-weight: 500;
+"></div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div class="modal-body" id="confirmMessage">
+                Bạn có chắc không?
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-dismiss="modal">Huỷ</button>
+                <button class="btn btn-danger" id="confirmOkBtn">Đồng ý</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <!-- SCRIPT -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-<script>
-$(document).ready(function() {
 
-    // ========== XEM CHI TIẾT ==========
-    $('.btn-view-detail').click(function() {
+<script>
+$(document).ready(function () {
+
+    // ================= CONFIRM MODAL =================
+    function showConfirm(message, callback) {
+        $('#confirmMessage').text(message);
+        $('#confirmModal').modal('show');
+
+        $('#confirmOkBtn').off('click').on('click', function () {
+            $('#confirmModal').modal('hide');
+            callback();
+        });
+    }
+
+    // ================= TOAST =================
+    function showToast(message, type = 'success') {
+        let toast = $('#toast');
+
+        let bg = type === 'success' ? '#28a745' : '#dc3545';
+
+        toast.stop(true, true)
+            .css('background', bg)
+            .text(message)
+            .fadeIn(200);
+
+        setTimeout(() => {
+            toast.fadeOut(300);
+        }, 2000);
+    }
+
+    // ================= XEM CHI TIẾT =================
+    $(document).on('click', '.btn-view-detail', function () {
         let orderId = $(this).data('id');
+
         $('#orderDetailContent').html('Đang tải...');
         $('#orderDetailModal').modal('show');
 
         $.ajax({
             url: 'admin.php?url=orders&ajax=detail&id=' + orderId,
             method: 'GET',
-            success: function(html) {
+            success: function (html) {
                 $('#orderDetailContent').html(html);
             },
-            error: function() {
-                $('#orderDetailContent').html('<div class="alert alert-danger">Không thể tải chi tiết đơn hàng.</div>');
+            error: function () {
+                showToast('Không thể tải chi tiết đơn hàng', 'error');
             }
         });
     });
 
-    // ========== CẬP NHẬT TRẠNG THÁI ==========
-    $('.btn-update-status').click(function() {
-        let orderId = $(this).data('order-id');
-        let newStatus = $(this).data('new-status');
+    // ================= UPDATE STATUS =================
+    $(document).on('click', '.btn-update-status', function () {
 
-        if (!confirm("Xác nhận đổi trạng thái?")) return;
+        let btn = $(this);
+        let orderId = btn.data('order-id');
+        let newStatus = btn.data('new-status');
 
-        $.ajax({
-            url: 'admin.php?url=orders',
-            method: 'POST',
-            data: {
-                ajax: 'update_status',
-                order_id: orderId,
-                new_status: newStatus
-            },
-            success: function(res) {
-                console.log("RES:", res);
-                location.reload();
-            },
-            error: function(xhr) {
-                console.log("ERROR:", xhr.responseText);
-                alert('Có lỗi xảy ra!');
-            }
+        showConfirm("Xác nhận đổi trạng thái đơn này?", function () {
+
+            $.ajax({
+                url: 'admin.php?url=orders',
+                method: 'POST',
+                dataType: 'json',
+                data: {
+                    ajax: 'update_status',
+                    order_id: orderId,
+                    new_status: newStatus
+                },
+                success: function (res) {
+                    if (res.success) {
+                        showToast("Cập nhật thành công", "success");
+                        setTimeout(() => location.reload(), 500);
+                    } else {
+                        showToast(res.message || "Cập nhật thất bại", "error");
+                    }
+                },
+                error: function (xhr) {
+                    console.log(xhr.responseText);
+                    showToast("Lỗi server", "error");
+                }
+            });
+
         });
     });
 
-    // ========== HỦY ĐƠN (mở modal) ==========
-    $('.btn-cancel-order').click(function() {
+    // ================= OPEN CANCEL MODAL =================
+    $(document).on('click', '.btn-cancel-order', function () {
         let orderId = $(this).data('order-id');
+
         $('#cancelOrderId').val(orderId);
         $('#cancelReason').val('');
         $('#cancelOrderModal').modal('show');
     });
 
-    // ========== XÁC NHẬN HỦY ==========
-    $('#confirmCancelBtn').click(function() {
+    // ================= CONFIRM CANCEL =================
+    $('#confirmCancelBtn').on('click', function () {
+
+        let btn = $(this);
+
         let orderId = $('#cancelOrderId').val();
         let reason = $('#cancelReason').val().trim();
 
         if (!reason) {
-            alert('Vui lòng nhập lý do hủy đơn.');
+            showToast('Vui lòng nhập lý do hủy đơn', 'error');
             return;
         }
 
-        if (!confirm('Bạn chắc chắn muốn hủy đơn hàng này?')) return;
+        showConfirm("Bạn chắc chắn muốn hủy đơn này?", function () {
 
-        $.ajax({
-            url: 'admin.php?url=orders',
-            method: 'POST',
-            data: {
-                ajax: 'cancel',
-                order_id: orderId,
-                reason: reason
-            },
-            success: function(res) {
-                console.log("Cancel response:", res);
-                // Giả sử server trả về JSON có success: true
-                // Nếu thành công thì reload trang
-                location.reload();
-            },
-            error: function(xhr) {
-                console.log("ERROR:", xhr.responseText);
-                alert('Hủy đơn thất bại!');
-            }
+            btn.prop('disabled', true);
+
+            $.ajax({
+                url: 'admin.php?url=orders',
+                method: 'POST',
+                dataType: 'json',
+                data: {
+                    ajax: 'cancel',
+                    order_id: orderId,
+                    reason: reason
+                },
+                success: function (res) {
+                    if (res.success) {
+                        showToast('Hủy đơn thành công', 'success');
+                        setTimeout(() => location.reload(), 500);
+                    } else {
+                        showToast(res.message || 'Hủy thất bại', 'error');
+                    }
+                },
+                error: function (xhr) {
+                    console.log(xhr.responseText);
+                    showToast('Lỗi server', 'error');
+                },
+                complete: function () {
+                    btn.prop('disabled', false);
+                }
+            });
+
         });
     });
 

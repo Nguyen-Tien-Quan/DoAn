@@ -5,6 +5,7 @@ if (!isset($currentUser) && isset($GLOBALS['currentUser'])) {
 }
 if (!isset($currentUser) && isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/db.php';
+
     $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $currentUser = $stmt->fetch();

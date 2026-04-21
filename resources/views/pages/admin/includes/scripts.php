@@ -29,9 +29,6 @@ $base = '/DoAn/DoAnTotNghiep/';
 <script src="<?= $base ?>vendor/jquery/jquery.min.js"></script>
 <script src="<?= $base ?>vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="<?= $base ?>vendor/jquery-easing/jquery.easing.min.js"></script>
-<script src="<?= $base ?>js/sb-admin-2.min.js"></script>
 
 <!-- Chart JS (nếu cần) -->
 <script src="<?= $base ?>vendor/chart.js/Chart.min.js"></script>
-<script src="<?= $base ?>js/demo/chart-area-demo.js"></script>
-<script src="<?= $base ?>js/demo/chart-pie-demo.js"></script>

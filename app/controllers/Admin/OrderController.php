@@ -235,3 +235,24 @@ function renderOrderDetailHTML($id) {
     <?php
     return ob_get_clean();
 }
+
+function cancelOrder($order_id) {
+    $conn = getDB();
+
+    try {
+        $stmt = $conn->prepare("
+            UPDATE orders
+            SET status = 'cancelled',
+                delivery_status = 'failed',
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $stmt->execute([$order_id]);
+
+        return ['success' => true];
+
+    } catch (Exception $e) {
+        return ['success' => false];
+    }
+}

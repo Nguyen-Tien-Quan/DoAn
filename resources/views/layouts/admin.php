@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     <title>Admin - TrQShop</title>
     <link href="/DoAn/DoAnTotNghiep/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?= $base ?>assets/css/sb-admin-2.css">
-    <script src="<?= $base ?>assets/js/sb-admin-2"></script>
+    <!-- <script src="<?= $base ?>assets/js/sb-admin-2"></script> -->
 </head>
 <body id="page-top">
 <div id="wrapper">
@@ -36,6 +36,5 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 </div>
 <!-- Chỉ include scripts.php MỘT LẦN ở đây -->
 <?php include __DIR__ . '/../pages/admin/includes/scripts.php'; ?>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
