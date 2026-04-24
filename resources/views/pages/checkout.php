@@ -26,7 +26,7 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
     <div class="container">
         <div class="checkout-container">
             <div class="search-bar d-none d-md-flex">
-                <input type="text" placeholder="Search for item" class="search-bar__input" />
+                <input type="text" placeholder="Tìm kiếm sản phẩm" class="search-bar__input" />
                 <button class="search-bar__submit">
                     <img src="<?= $base ?>assets/icons/search.svg" class="search-bar__icon icon" />
                 </button>
@@ -37,12 +37,12 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
             <ul class="breadcrumbs checkout-page__breadcrumbs">
                 <li>
                     <a href="<?= $base ?>" class="breadcrumbs__link">
-                        Home
+                        Trang chủ
                         <img src="<?= $base ?>assets/icons/arrow-right.svg" />
                     </a>
                 </li>
                 <li>
-                    <a href="#!" class="breadcrumbs__link breadcrumbs__link--current">Checkout</a>
+                    <a href="#!" class="breadcrumbs__link breadcrumbs__link--current">Thanh toán</a>
                 </li>
             </ul>
         </div>
@@ -69,14 +69,14 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
                                                     </a>
                                                 </h3>
                                                 <?php if (!empty($item['variant']) && !empty($item['variant']['name'])): ?>
-                                                    <p>Size: <?= $item['variant']['name'] ?></p>
+                                                    <p>Kích cỡ: <?= $item['variant']['name'] ?></p>
                                                 <?php endif; ?>
                                                 <?php if (!empty($item['toppings'])): ?>
                                                     <p>Topping: <?= implode(', ', array_column($item['toppings'], 'name')) ?></p>
                                                 <?php endif; ?>
                                                 <p class="cart-item__price-wrap">
                                                     <?= vnd($item['price']) ?> |
-                                                    <span class="cart-item__status">In Stock</span>
+                                                    <span class="cart-item__status">Còn hàng</span>
                                                 </p>
                                                 <div class="cart-item__ctrl cart-item__ctrl--md-block">
                                                     <div class="cart-item__input">
@@ -96,10 +96,10 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
                                                 </p>
                                                 <div class="cart-item__ctrl">
                                                     <button class="cart-item__ctrl-btn btn-save" data-id="<?= $key ?>">
-                                                        <img src="<?= $base ?>assets/icons/heart-2.svg" /> Save
+                                                        <img src="<?= $base ?>assets/icons/heart-2.svg" /> Lưu
                                                     </button>
                                                     <button type="button" class="cart-item__ctrl-btn btn-delete js-toggle" data-id="<?= $key ?>" toggle-target="#delete-confirm">
-                                                        <img src="<?= $base ?>assets/icons/trash.svg" /> Delete
+                                                        <img src="<?= $base ?>assets/icons/trash.svg" /> Xóa
                                                     </button>
                                                 </div>
                                             </div>
@@ -108,7 +108,7 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <p class="text-center py-5 fs-4 cart-info__list--empty">
-                                    <img src="<?= $base ?>assets/img/empty-cart.png" alt="Empty cart" class="mb-4" />
+                                    <img src="<?= $base ?>assets/img/empty-cart.png" alt="Giỏ hàng trống" class="mb-4" />
                                     <a href="<?= $base ?>" class="btn btn--primary mt-3">Tiếp tục mua sắm</a>
                                 </p>
                             <?php endif; ?>
@@ -120,15 +120,15 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
                                     <div class="cart-info__continue">
                                         <a href="<?= $base ?>" class="cart-info__continue-link">
                                             <img class="cart-info__continue-icon icon" src="<?= $base ?>assets/icons/arrow-down-2.svg" alt="" />
-                                            Continue Shopping
+                                            Tiếp tục mua sắm
                                         </a>
                                     </div>
                                     <div class="d-flex">
                                         <button class="cart-info__checkout-all btn btn--danger btn--rounded js-toggle btn-delete-all" toggle-target="#delete-all-confirm">
-                                            Delete All
+                                            Xóa tất cả
                                         </button>
                                         <a href="<?= $base ?>index.php?url=checkout" class="cart-info__checkout-all btn btn--primary btn--rounded">
-                                            All Check Out
+                                            Thanh toán tất cả
                                         </a>
                                     </div>
                                 </div>
@@ -141,21 +141,21 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
                 <div class="col-4 col-xl-12">
                     <div class="cart-info">
                         <div class="cart-info__row">
-                            <span>Subtotal (items)</span>
+                            <span>Tạm tính (số món)</span>
                             <span id="cart-count"><?= $itemCount ?></span>
                         </div>
                         <div class="cart-info__row">
-                            <span>Price (Total)</span>
+                            <span>Giá (Tổng)</span>
                             <span id="cart-subtotal"><?= vnd($subtotal) ?></span>
                         </div>
                         <div class="cart-info__row">
-                            <span>Shipping</span>
+                            <span>Phí vận chuyển</span>
                             <span id="cart-shipping"><?= vnd($shipping) ?></span>
                         </div>
 
                         <!-- Dòng giảm giá (ẩn nếu chưa có) -->
                         <div id="discount-row" class="cart-info__row" style="<?= $discount > 0 ? '' : 'display: none;' ?>">
-                            <span>Discount (<?= htmlspecialchars($couponCode) ?>)</span>
+                            <span>Giảm giá (<?= htmlspecialchars($couponCode) ?>)</span>
                             <span id="cart-discount">-<?= vnd($discount) ?></span>
                         </div>
 
@@ -171,11 +171,11 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
 
                         <div class="cart-info__separate"></div>
                         <div class="cart-info__row">
-                            <span>Estimated Total</span>
+                            <span>Tổng ước tính</span>
                             <span id="cart-total"><?= vnd($totalAfterDiscount) ?></span>
                         </div>
                         <a href="<?= $base ?>index.php?url=shipping" class="cart-info__next-btn btn btn--primary btn--rounded">
-                            Continue to checkout
+                            Tiếp tục thanh toán
                         </a>
                     </div>
                 </div>
@@ -189,8 +189,8 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
         <div class="modal__content">
             <p class="modal__text">Bạn có muốn xóa sản phẩm này khỏi giỏ hàng không?</p>
             <div class="modal__bottom">
-                <button class="btn btn--small btn--outline modal__btn js-toggle" toggle-target="#delete-confirm">Cancel</button>
-                <button id="confirm-delete-btn" class="btn btn--small btn--danger btn--primary modal__btn btn--no-margin">Delete</button>
+                <button class="btn btn--small btn--outline modal__btn js-toggle" toggle-target="#delete-confirm">Hủy</button>
+                <button id="confirm-delete-btn" class="btn btn--small btn--danger btn--primary modal__btn btn--no-margin">Xóa</button>
             </div>
         </div>
         <div class="modal__overlay js-toggle" toggle-target="#delete-confirm"></div>
@@ -201,8 +201,8 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
         <div class="modal__content">
             <p class="modal__text">Xóa toàn bộ sản phẩm trong giỏ hàng?</p>
             <div class="modal__bottom">
-                <button class="btn btn--small btn--outline modal__btn js-toggle" toggle-target="#delete-all-confirm">Cancel</button>
-                <button id="confirm-delete-all" class="btn btn--small btn--danger btn--primary modal__btn btn--no-margin">Delete All</button>
+                <button class="btn btn--small btn--outline modal__btn js-toggle" toggle-target="#delete-all-confirm">Hủy</button>
+                <button id="confirm-delete-all" class="btn btn--small btn--danger btn--primary modal__btn btn--no-margin">Xóa tất cả</button>
             </div>
         </div>
         <div class="modal__overlay js-toggle" toggle-target="#delete-all-confirm"></div>
@@ -310,8 +310,8 @@ if (confirmDeleteAllBtn) {
                     const list = document.querySelector(".cart-info__list");
                     if (list) {
                         list.innerHTML = `<p class="text-center py-5 fs-4 cart-info__list--empty">
-                            <img src="/DoAn/DoAnTotNghiep/assets/img/empty-cart.png" class="mb-4" />
-                            <a href="/index.php" class="btn btn--primary mt-3">Tiếp tục mua sắm</a>
+                            <img src="/DoAn/DoAnTotNghiep/public/assets/img/empty-cart.png" class="mb-4" alt="Giỏ hàng trống" />
+                            <a href="<?= $base ?>" class="btn btn--primary mt-3">Tiếp tục mua sắm</a>
                         </p>`;
                     }
                     document.getElementById("cart-count").innerText = 0;
@@ -395,12 +395,12 @@ if (applyBtn) {
                     const newRow = document.createElement('div');
                     newRow.className = 'cart-info__row';
                     newRow.id = 'discount-row';
-                    newRow.innerHTML = `<span>Discount (${code})</span><span id="cart-discount">-${data.formatted_discount}</span>`;
+                    newRow.innerHTML = `<span>Giảm giá (${code})</span><span id="cart-discount">-${data.formatted_discount}</span>`;
                     separator.parentNode.insertBefore(newRow, separator);
                 } else {
                     discountRow.style.display = 'flex';
                     document.getElementById('cart-discount').innerText = '-' + data.formatted_discount;
-                    discountRow.querySelector('span:first-child').innerText = `Discount (${code})`;
+                    discountRow.querySelector('span:first-child').innerText = `Giảm giá (${code})`;
                 }
                 document.getElementById('cart-total').innerText = data.formatted_new_total;
                 couponMsg.innerText = 'Áp dụng thành công!';

@@ -4,10 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../../config/database.php';
-require_once __DIR__ . '/../../../vendor/autoload.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
+require_once __DIR__ . '/../../../app/services/MailService.php';
 
 $conn = getDB();
 
@@ -42,9 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
             // ⏱ 2 phút
             $_SESSION['otp_expire'] = time() + 120;
 
+            // Xóa OTP cũ
             $conn->prepare("DELETE FROM password_resets WHERE email=?")
                  ->execute([$email]);
 
+            // Lưu OTP mới
             $stmt = $conn->prepare("
                 INSERT INTO password_resets (email, otp, expire_at)
                 VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))
@@ -53,37 +52,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
 
             $_SESSION['reset_email'] = $email;
 
-            $mail = new PHPMailer(true);
+            // ================= GỬI MAIL =================
+            $body = "
+                <div style='font-family:Arial'>
+                    <h2>Mã OTP của bạn</h2>
+                    <h1 style='color:#4f46e5'>$otp</h1>
+                    <p>Hiệu lực: 2 phút</p>
+                </div>
+            ";
 
-            try {
-                $mail->isSMTP();
-                $mail->Host = 'smtp.gmail.com';
-                $mail->SMTPAuth = true;
-                $mail->Username = 'nguyentienquan1st@gmail.com';
-                $mail->Password = 'nrlaktvinfboqyfc';
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port = 587;
+            $result = MailService::send($email, 'Mã xác minh OTP', $body);
 
-                $mail->setFrom('nguyentienquan1st@gmail.com', 'TRQShop');
-                $mail->addAddress($email);
-
-                $mail->isHTML(true);
-                $mail->Subject = 'Ma Xac Minh OTP';
-                $mail->Body = "
-                    <div style='font-family:Arial'>
-                        <h2>Mã OTP của bạn</h2>
-                        <h1 style='color:#4f46e5'>$otp</h1>
-                        <p>Hiệu lực: 2 phút</p>
-                    </div>
-                ";
-
-                $mail->send();
-
+            if ($result === true) {
                 $message = "✅ OTP đã được gửi!";
                 $showOtpModal = true;
-
-            } catch (Exception $e) {
-                $error = "❌ Lỗi gửi mail: " . $mail->ErrorInfo;
+            } else {
+                $error = "❌ Lỗi gửi mail: " . $result;
             }
         }
     }
@@ -95,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
     $otp = $_POST['otp'] ?? '';
     $email = $_SESSION['reset_email'] ?? '';
 
-    // check hết hạn PHP session
+    // check hết hạn session
     if (time() > ($_SESSION['otp_expire'] ?? 0)) {
         $error = "❌ OTP đã hết hạn, vui lòng gửi lại";
         $showOtpModal = false;

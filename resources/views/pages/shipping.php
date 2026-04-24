@@ -17,7 +17,6 @@ $total = $subtotal + 10000;
 
 $addresses = getShippingAddresses($user['id']);
 
-// Hàm định dạng tiền Việt Nam (nếu chưa có)
 if (!function_exists('vnd')) {
     function vnd($amount) {
         return number_format($amount, 0, ',', '.') . 'đ';
@@ -26,14 +25,11 @@ if (!function_exists('vnd')) {
 ?>
 
 <style>
-    .text-muted {
-        margin-top: 20px;
-    }
+    .text-muted { margin-top: 20px; }
 </style>
 
 <main class="checkout-page">
     <div class="container">
-        <!-- Breadcrumbs -->
         <div class="checkout-container">
             <ul class="breadcrumbs checkout-page__breadcrumbs">
                 <li><a href="<?= $base ?>" class="breadcrumbs__link">Trang chủ</a></li>
@@ -44,26 +40,24 @@ if (!function_exists('vnd')) {
 
         <div class="checkout-container">
             <div class="row gy-xl-3">
-                <!-- LEFT -->
                 <div class="col-8 col-xl-12">
                     <div class="cart-info">
                         <h1 class="cart-info__heading">1. Thông tin giao hàng</h1>
 
-                        <!-- Shipping Address -->
                         <div class="user-address">
                             <div class="user-address__top">
                                 <h2 class="user-address__title">Địa chỉ giao hàng</h2>
                                 <button class="user-address__btn btn btn--primary btn--rounded btn--small js-toggle"
                                         toggle-target="#add-new-address">
-                                        <img src="./assets/icons/plus.svg" alt="" />
+                                    <img src="./assets/icons/plus.svg" alt="" />
                                     Thêm địa chỉ mới
                                 </button>
                             </div>
 
-                           <div class="user-address__list">
+                            <div class="user-address__list">
                                 <?php if (count($addresses) > 0): ?>
                                     <?php foreach ($addresses as $addr): ?>
-                                        <article class="address-card <?= $addr['is_default'] ? 'address-card--default' : '' ?>">
+                                        <article class="address-card <?= $addr['is_default'] == 1 ? 'address-card--default' : '' ?>">
                                             <div class="address-card__left">
                                                 <div class="address-card__choose">
                                                     <label class="cart-info__checkbox">
@@ -71,7 +65,7 @@ if (!function_exists('vnd')) {
                                                             type="radio"
                                                             name="shipping_address_id"
                                                             value="<?= $addr['id'] ?>"
-                                                            <?= $addr['is_default'] ? 'checked' : '' ?>
+                                                            checked="<?= $addr['is_default'] == 1 ? 'checked' : '' ?>"
                                                             class="cart-info__checkbox-input"
                                                         />
                                                     </label>
@@ -80,7 +74,7 @@ if (!function_exists('vnd')) {
                                                     <h3 class="address-card__title">Tên khách hàng: <?= htmlspecialchars($addr['full_name']) ?></h3>
                                                     <p class="address-card__phone">Số điện thoại: 📞 <?= htmlspecialchars($addr['phone']) ?></p>
                                                     <p class="address-card__desc">Địa chỉ: <?= htmlspecialchars($addr['address']) ?>, Thành phố <?= htmlspecialchars($addr['city']) ?></p>
-                                                    <?php if ($addr['is_default']): ?>
+                                                    <?php if ($addr['is_default'] == 1): ?>
                                                         <span class="address-card__default">Mặc định</span>
                                                     <?php endif; ?>
                                                 </div>
@@ -135,7 +129,6 @@ if (!function_exists('vnd')) {
                     </div>
                 </div>
 
-                <!-- RIGHT -->
                 <div class="col-4 col-xl-12">
                     <div class="cart-info">
                         <div class="cart-info__row">
@@ -165,76 +158,55 @@ if (!function_exists('vnd')) {
     </div>
 </main>
 
-<!-- ==================== MODAL THÊM ĐỊA CHỈ GIAO HÀNG MỚI ==================== -->
+<!-- Modal thêm/sửa địa chỉ -->
 <div id="add-new-address" class="modal hide" style="--content-width: 650px">
     <div class="modal__content">
-        <form id="add-address-form" class="form">
-            <h2 class="modal__heading">
-                Thêm địa chỉ giao hàng mới
-            </h2>
-
+        <form id="add-address-form" class="form" action="index.php?url=add-shipping-address" method="POST">
+            <h2 class="modal__heading">Thêm địa chỉ giao hàng mới</h2>
             <div class="modal__body">
-                <!-- Row: Họ tên + Số điện thoại -->
+                <input type="hidden" name="address_id" value="">
                 <div class="form__row">
                     <div class="form__group">
                         <label for="name" class="form__label form__label--small">Họ và tên <span class="text-danger">*</span></label>
                         <div class="form__text-input form__text-input--small">
-                            <input type="text" name="recipient_name" id="name"
-                                   placeholder="Nhập họ và tên" class="form__input" required />
+                            <input type="text" name="recipient_name" id="name" placeholder="Nhập họ và tên" class="form__input" required />
                             <img src="./assets/icons/form-error.svg" alt="" class="form__input-icon-error" />
                         </div>
                         <p class="form__error">Họ tên phải có ít nhất 2 ký tự</p>
                     </div>
-
                     <div class="form__group">
                         <label for="phone" class="form__label form__label--small">Số điện thoại <span class="text-danger">*</span></label>
                         <div class="form__text-input form__text-input--small">
-                            <input type="tel" name="phone" id="phone"
-                                   placeholder="0123 456 789" class="form__input" required />
+                            <input type="tel" name="phone" id="phone" placeholder="0123 456 789" class="form__input" required />
                             <img src="./assets/icons/form-error.svg" alt="" class="form__input-icon-error" />
                         </div>
                         <p class="form__error">Số điện thoại phải có ít nhất 10 ký tự</p>
                     </div>
                 </div>
-
-                <!-- Địa chỉ chi tiết -->
                 <div class="form__group">
                     <label for="address" class="form__label form__label--small">Địa chỉ chi tiết <span class="text-danger">*</span></label>
                     <div class="form__text-area">
-                        <textarea name="address" id="address"
-                                  placeholder="Số nhà, tên đường, phường/xã..." class="form__text-area-input" required></textarea>
+                        <textarea name="address" id="address" placeholder="Số nhà, tên đường, phường/xã..." class="form__text-area-input" required></textarea>
                         <img src="./assets/icons/form-error.svg" alt="" class="form__input-icon-error" />
                     </div>
                     <p class="form__error">Địa chỉ không được để trống</p>
                 </div>
-
-                <!-- Thành phố / Quận / Huyện -->
                 <div class="form__group">
                     <label class="form__label form__label--small">Tỉnh/Thành phố <span class="text-danger">*</span></label>
                     <div class="form__text-input form__text-input--small">
-                        <input type="text" id="city-input" name="city" readonly
-                            placeholder="Chọn tỉnh/thành phố" class="form__input js-toggle"
-                            toggle-target="#city-dialog" />
+                        <input type="text" id="city-input" name="city" readonly placeholder="Chọn tỉnh/thành phố" class="form__input js-toggle" toggle-target="#city-dialog" />
                         <img src="./assets/icons/form-error.svg" alt="" class="form__input-icon-error" />
                     </div>
-
-                    <!-- Dialog chọn thành phố -->
                     <div id="city-dialog" class="form__select-dialog hide d-flex">
                         <h2 class="form__dialog-heading">Chọn Tỉnh/Thành phố</h2>
                         <button class="form__close-dialog js-toggle" toggle-target="#city-dialog">&times;</button>
-
                         <div class="form__search">
-                            <input type="text"  id="city-search" placeholder="Tìm kiếm..." class="form__search-input" />
+                            <input type="text" id="city-search" placeholder="Tìm kiếm..." class="form__search-input" />
                             <img src="./assets/icons/search.svg" alt="" class="form__search-icon icon" />
                         </div>
-
-                        <ul id="city-list" class="form__options-list">
-                            <!-- Danh sách sẽ được JS render động -->
-                        </ul>
+                        <ul id="city-list" class="form__options-list"></ul>
                     </div>
                 </div>
-
-                <!-- Đặt làm mặc định -->
                 <div class="form__group form__group--inline">
                     <label class="form__checkbox">
                         <input type="checkbox" name="is_default" class="form__checkbox-input d-none" />
@@ -242,15 +214,9 @@ if (!function_exists('vnd')) {
                     </label>
                 </div>
             </div>
-
             <div class="modal__bottom">
-                <button type="button" class="btn btn--small btn--text modal__btn js-toggle"
-                        toggle-target="#add-new-address">
-                    Hủy
-                </button>
-                <button type="submit" class="btn btn--small btn--primary modal__btn">
-                    Lưu địa chỉ
-                </button>
+                <button type="button" class="btn btn--small btn--text modal__btn js-toggle" toggle-target="#add-new-address">Hủy</button>
+                <button type="submit" class="btn btn--small btn--primary modal__btn">Lưu địa chỉ</button>
             </div>
         </form>
     </div>
@@ -258,31 +224,35 @@ if (!function_exists('vnd')) {
 </div>
 
 <script>
-    // Chọn address → lưu vào hidden input
-    document.querySelectorAll('input[name="shipping_address_id"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            document.getElementById('selected_address').value = this.value;
-        });
-    });
-    // Set giá trị mặc định ban đầu
-    const defaultChecked = document.querySelector('input[name="shipping_address_id"]:checked');
-    if (defaultChecked) {
-        document.getElementById('selected_address').value = defaultChecked.value;
+document.addEventListener('DOMContentLoaded', function() {
+    // Tự động chọn địa chỉ mặc định và gán vào hidden input
+    const defaultRadio = document.querySelector('input[name="shipping_address_id"]:checked');
+    const hiddenInput = document.getElementById('selected_address');
+    if (defaultRadio && hiddenInput) {
+        hiddenInput.value = defaultRadio.value;
     }
 
+    // Cập nhật hidden input khi chọn radio khác
+    document.querySelectorAll('input[name="shipping_address_id"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (hiddenInput) hiddenInput.value = this.value;
+        });
+    });
+
     // Toggle modal
-    document.querySelectorAll(".js-toggle").forEach(btn => {
-        btn.addEventListener("click", function () {
-            const target = this.getAttribute("toggle-target");
+    document.querySelectorAll('.js-toggle').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = this.getAttribute('toggle-target');
             const modal = document.querySelector(target);
             if (modal) {
-                modal.classList.toggle("hide");
-                modal.classList.toggle("show");
+                modal.classList.toggle('hide');
+                modal.classList.toggle('show');
             }
         });
     });
 
-    // Danh sách tỉnh/thành phố Việt Nam
+    // Danh sách thành phố
     const vietnamCities = [
         "Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ",
         "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu",
@@ -314,65 +284,57 @@ if (!function_exists('vnd')) {
         });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const cityDialog = document.getElementById('city-dialog');
-        const searchInput = document.getElementById('city-search');
-        if (cityDialog) {
-            renderCityList(vietnamCities);
-            searchInput.addEventListener('input', function () {
-                const term = this.value.toLowerCase().trim();
-                const filtered = vietnamCities.filter(city =>
-                    city.toLowerCase().includes(term)
-                );
-                renderCityList(filtered.length ? filtered : vietnamCities);
-            });
-        }
-    });
+    const cityDialog = document.getElementById('city-dialog');
+    const searchInput = document.getElementById('city-search');
+    if (cityDialog) {
+        renderCityList(vietnamCities);
+        searchInput.addEventListener('input', function() {
+            const term = this.value.toLowerCase().trim();
+            const filtered = vietnamCities.filter(city => city.toLowerCase().includes(term));
+            renderCityList(filtered.length ? filtered : vietnamCities);
+        });
+    }
 
-    // Bấm nút Sửa → fill form
+    // Xử lý nút Sửa
     document.querySelectorAll('.edit-address-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const name = this.dataset.name || '';
-            const phone = this.dataset.phone || '';
-            const address = this.dataset.address || '';
-            const city = this.dataset.city || '';
-            const is_default = this.dataset.is_default === '1';
-            const address_id = this.dataset.id;
-
-            document.querySelector('#add-address-form [name="recipient_name"]').value = name;
-            document.querySelector('#add-address-form [name="phone"]').value = phone;
-            document.querySelector('#add-address-form [name="address"]').value = address;
-            document.querySelector('#add-address-form [name="city"]').value = city;
-            document.querySelector('#add-address-form [name="is_default"]').checked = is_default;
-
-            let hiddenId = document.querySelector('#add-address-form [name="address_id"]');
-            if (!hiddenId) {
-                hiddenId = document.createElement('input');
-                hiddenId.type = 'hidden';
-                hiddenId.name = 'address_id';
-                document.querySelector('#add-address-form').appendChild(hiddenId);
-            }
-            hiddenId.value = address_id;
-
-            const heading = document.querySelector('#add-new-address .modal__heading');
-            heading.textContent = address_id ? 'Cập nhật địa chỉ' : 'Thêm địa chỉ mới';
-
-            const modal = document.querySelector('#add-new-address');
-            modal.classList.remove('hide');
-            modal.classList.add('show');
+        btn.addEventListener('click', function() {
+            const form = document.getElementById('add-address-form');
+            form.querySelector('[name="address_id"]').value = this.dataset.id || '';
+            form.querySelector('[name="recipient_name"]').value = this.dataset.name || '';
+            form.querySelector('[name="phone"]').value = this.dataset.phone || '';
+            form.querySelector('[name="address"]').value = this.dataset.address || '';
+            form.querySelector('[name="city"]').value = this.dataset.city || '';
+            form.querySelector('[name="is_default"]').checked = (this.dataset.is_default === '1');
+            document.querySelector('#add-new-address .modal__heading').textContent = 'Cập nhật địa chỉ';
         });
     });
 
-    // Nút Thêm mới reset form
+    // Reset form khi mở modal thêm mới
     document.querySelectorAll('.user-address__btn, .user-address__link.js-toggle').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const form = document.querySelector('#add-address-form');
+        btn.addEventListener('click', function() {
+            const form = document.getElementById('add-address-form');
             form.reset();
-            const hiddenId = form.querySelector('[name="address_id"]');
-            if (hiddenId) hiddenId.remove();
-
-            const heading = document.querySelector('#add-new-address .modal__heading');
-            heading.textContent = 'Thêm địa chỉ mới';
+            form.querySelector('[name="address_id"]').value = '';
+            document.querySelector('#add-new-address .modal__heading').textContent = 'Thêm địa chỉ mới';
         });
     });
+
+    // Submit form bằng AJAX
+    document.getElementById('add-address-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch(this.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                location.reload();
+            }
+        })
+        .catch(err => alert('Lỗi kết nối'));
+    });
+});
 </script>

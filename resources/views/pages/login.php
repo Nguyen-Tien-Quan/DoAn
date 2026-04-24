@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $error = '';
 $conn = getDB(); // kết nối PDO
 
-// --- Auto login nếu có cookie remember_me ---
+// --- Tự động đăng nhập nếu có cookie remember_me ---
 if (!isset($_SESSION['user']) && isset($_COOKIE['remember_me'])) {
     $token = $_COOKIE['remember_me'];
     $stmt = $conn->prepare("SELECT * FROM users WHERE remember_token = ? AND status = 1");
@@ -15,7 +15,7 @@ if (!isset($_SESSION['user']) && isset($_COOKIE['remember_me'])) {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($user) {
         $_SESSION['user'] = $user;
-        // refresh cookie 30 ngày
+        // gia hạn cookie 30 ngày
         setcookie('remember_me', $token, time() + 30*24*60*60, '/', '', false, true);
         header("Location: index.php");
         exit;
@@ -25,7 +25,7 @@ if (!isset($_SESSION['user']) && isset($_COOKIE['remember_me'])) {
     }
 }
 
-// --- Xử lý form login ---
+// --- Xử lý form đăng nhập ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
@@ -46,13 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $update->execute([$token, $user['id']]);
             setcookie('remember_me', $token, time() + 30*24*60*60, '/', '', false, true);
         } else {
-            // xóa cookie và token nếu không tick remember
+            // xóa cookie và token nếu không tích ghi nhớ
             setcookie('remember_me', '', time() - 3600, '/', '', false, true);
             $update = $conn->prepare("UPDATE users SET remember_token = NULL WHERE id = ?");
             $update->execute([$user['id']]);
         }
 
-        header("Location: index.php"); // redirect sau login
+        header("Location: index.php"); // chuyển hướng sau đăng nhập
         exit;
     } else {
         $error = '❌ Email hoặc mật khẩu không đúng';
@@ -64,7 +64,7 @@ $rememberedEmail = '';
 if (isset($_SESSION['user'])) {
     $rememberedEmail = $_SESSION['user']['email'];
 } elseif (isset($_COOKIE['remember_me'])) {
-    // optional: nếu muốn lấy email từ DB theo token
+    // tùy chọn: lấy email từ DB theo token
     $token = $_COOKIE['remember_me'];
     $stmt = $conn->prepare("SELECT email FROM users WHERE remember_token = ? AND status = 1");
     $stmt->execute([$token]);
@@ -77,7 +77,7 @@ if (isset($_SESSION['user'])) {
     <div class="auth__intro d-md-none">
         <img src="<?= $base ?>assets/img/auth/intro.svg" alt="" class="auth__intro-img" />
         <p class="auth__intro-text">
-            The best of luxury brand values, high quality products, and innovative services
+            Giá trị thương hiệu cao cấp, sản phẩm chất lượng và dịch vụ đổi mới
         </p>
     </div>
 
@@ -88,9 +88,9 @@ if (isset($_SESSION['user'])) {
                 <h2 class="logo__title">grocerymart</h2>
             </a>
 
-            <h1 class="auth__heading">Hello Again!</h1>
+            <h1 class="auth__heading">Xin chào trở lại!</h1>
             <p class="auth__desc">
-                Welcome back to sign in. As a returning customer, you have access to your previously saved all information.
+                Chào mừng bạn quay lại đăng nhập. Là khách hàng thân thiết, bạn có thể truy cập tất cả thông tin đã lưu trước đó.
             </p>
 
             <form action="" method="POST" class="form auth__form">
@@ -107,7 +107,7 @@ if (isset($_SESSION['user'])) {
                         />
                         <img src="<?= $base ?>assets/icons/message.svg" class="form__input-icon" />
                     </div>
-                    <p class="form__error">Email is not in correct format</p>
+                    <p class="form__error">Email không đúng định dạng</p>
                 </div>
 
                 <div class="form__group">
@@ -115,29 +115,29 @@ if (isset($_SESSION['user'])) {
                         <input
                             type="password"
                             name="password"
-                            placeholder="Password"
+                            placeholder="Mật khẩu"
                             class="form__input"
                             required
                             minlength="6"
                         />
                         <img src="<?= $base ?>assets/icons/lock.svg" class="form__input-icon" />
                     </div>
-                    <p class="form__error">Password must be at least 6 characters</p>
+                    <p class="form__error">Mật khẩu phải ít nhất 6 ký tự</p>
                 </div>
 
                 <div class="form__group form__group--inline">
                     <label class="form__checkbox">
                         <input type="checkbox" name="remember" class="form__checkbox-input d-none"
                         <?= isset($_COOKIE['remember_me']) ? 'checked' : '' ?> />
-                        <span class="form__checkbox-label">Remember me</span>
+                        <span class="form__checkbox-label">Ghi nhớ đăng nhập</span>
                     </label>
 
-                    <a href="<?= $base ?>index.php?url=forgot-password" class="auth__link form__pull-right">Forgot password?</a>
+                    <a href="<?= $base ?>index.php?url=forgot-password" class="auth__link form__pull-right">Quên mật khẩu?</a>
                 </div>
 
                 <div class="form__group auth__btn-group">
                     <button type="submit" class="btn btn--primary auth__btn form__submit-btn">
-                        Sign In
+                        Đăng nhập
                     </button>
                 </div>
 
@@ -147,9 +147,9 @@ if (isset($_SESSION['user'])) {
             </form>
 
             <p class="auth__text">
-                Don’t have an account yet?
+                Chưa có tài khoản?
                 <a href="<?= $base ?>index.php?url=register" class="auth__link auth__text-link">
-                    Sign Up
+                    Đăng ký
                 </a>
             </p>
         </div>

@@ -700,4 +700,28 @@ INSERT INTO purchase_order_items (purchase_order_id, ingredient_id, quantity, un
 (1,1,20,200000,4000000),
 (1,2,100,10000,1000000);
 
+use qlbthucan;
+-- Xóa menu Blog
+SET SQL_SAFE_UPDATES = 0;
+
+DELETE FROM menu_items WHERE url = 'index.php?url=blog';
+
+
+
+-- Xóa bảng blog luôn (nếu không dùng nữa)
+DROP TABLE IF EXISTS blog_posts;
+
+INSERT INTO menu_items (parent_id, title, url, position, sort_order, status, created_at)
+VALUES (0, 'Liên hệ', 'index.php?url=contact', 'header', 5, 1, NOW());
+
+INSERT INTO pages (title, slug, content, status, created_at)
+VALUES (
+    'Liên hệ',
+    'contact',
+    '<p>Vui lòng liên hệ với chúng tôi qua form bên dưới hoặc thông tin cửa hàng.</p>',
+    1,
+    NOW()
+);
+SET SQL_SAFE_UPDATES = 1;
+
 SET FOREIGN_KEY_CHECKS=1;

@@ -33,7 +33,7 @@ html.dark {
 .filter-pro {
     position: sticky;
     top: 80px;
-    z-index: 50;
+    z-index: 2;
 
     display: flex;
     flex-wrap: wrap;
@@ -241,6 +241,53 @@ html.dark {
         flex: 0 0 auto;
         padding: 6px 10px;
         font-size: 12px;
+    }
+}
+
+/* ================= TABLET: 769px - 1024px (chỉ áp dụng cho tablet, giữ nguyên PC) ================= */
+@media (min-width: 769px) and (max-width: 1198.98px) {
+    .filter-pro {
+        flex-wrap: nowrap;               /* Không cho filter xuống dòng */
+        overflow-x: auto;                /* Cuộn ngang khi cần */
+        -webkit-overflow-scrolling: touch;
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .filter-pro::-webkit-scrollbar {
+        display: none;                   /* Ẩn thanh cuộn cho gọn */
+    }
+
+    .filter-search {
+        flex: 0 0 auto;
+        width: 200px;                    /* Chiều rộng cố định cho ô tìm kiếm */
+        min-width: 160px;
+    }
+
+    .filter-scroll {
+        flex: 1 1 auto;                 /* Chiếm phần còn lại */
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;               /* Cuộn ngang nếu filter quá dài */
+        white-space: nowrap;
+    }
+
+    .filter-scroll::-webkit-scrollbar {
+        display: none;                   /* Ẩn thanh cuộn của vùng filter */
+    }
+
+    .filter-group {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .clear-filter {
+        flex-shrink: 0;                  /* Không co lại */
+    }
+
+    /* Ẩn label để tiết kiệm diện tích nếu muốn (tuỳ chọn) */
+    .label {
+        display: none;
     }
 }
 

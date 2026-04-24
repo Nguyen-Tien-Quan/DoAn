@@ -181,7 +181,7 @@ function handleLogout() {
         VALUES (?, ?, ?, ?, 1, NOW(), NOW())
     ");
 
-    $roleId = 2;
+    $roleId = 1;
 
     if ($stmt->execute([$name, $email, $hashedPassword, $roleId])) {
         return "✅ Đăng ký thành công!";

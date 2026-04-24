@@ -87,31 +87,40 @@ function getLowStockIngredientsCount() {
 // ========== BÁO CÁO ==========
 function getReportData() {
     $pdo = getDB();
-    $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d');
-    $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
-    $report_type = isset($_GET['type']) ? $_GET['type'] : 'daily';
+    $report_type = $_GET['type'] ?? 'daily';
 
-    if ($report_type == 'monthly') {
-        $month = isset($_GET['month']) ? $_GET['month'] : date('m');
-        $year = isset($_GET['year']) ? $_GET['year'] : date('Y');
+    if ($report_type === 'daily') {
+        $start_date = $_GET['start_date'] ?? date('Y-m-d', strtotime('-7 days'));
+        $end_date   = $_GET['end_date']   ?? date('Y-m-d');
+        $start_datetime = $start_date . ' 00:00:00';
+        $end_datetime   = $end_date . ' 23:59:59';
+        $month = $year = null;
+    } else {
+        $month = $_GET['month'] ?? date('m');
+        $year  = $_GET['year']  ?? date('Y');
         $start_date = "$year-$month-01";
-        $end_date = date('Y-m-t', strtotime($start_date));
+        $end_date   = date('Y-m-t', strtotime("$year-$month-01"));
+        $start_datetime = $start_date . ' 00:00:00';
+        $end_datetime   = $end_date . ' 23:59:59';
     }
 
-    $revenue = getRevenueByDateRange($start_date, $end_date);
-    $orders = getOrdersByDateRange($start_date, $end_date);
+    // Tính tổng doanh thu (chỉ đơn completed)
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(final_amount), 0) FROM orders
+                            WHERE status = 'completed' AND created_at BETWEEN ? AND ?");
+    $stmt->execute([$start_datetime, $end_datetime]);
+    $revenue = $stmt->fetchColumn();
 
-    return [
-        'start_date' => $start_date,
-        'end_date' => $end_date,
-        'report_type' => $report_type,
-        'revenue' => $revenue,
-        'orders' => $orders,
-        'month' => $month ?? date('m'),
-        'year' => $year ?? date('Y')
-    ];
+    // Lấy danh sách đơn hàng
+    $stmt = $pdo->prepare("SELECT o.*, c.full_name, c.phone
+                            FROM orders o
+                            LEFT JOIN customers c ON o.customer_id = c.id
+                            WHERE o.created_at BETWEEN ? AND ?
+                            ORDER BY o.created_at DESC");
+    $stmt->execute([$start_datetime, $end_datetime]);
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return compact('start_date', 'end_date', 'report_type', 'revenue', 'orders', 'month', 'year');
 }
-
 function exportReportCSV() {
     $pdo = getDB();
     $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d');

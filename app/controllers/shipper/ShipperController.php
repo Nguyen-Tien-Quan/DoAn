@@ -39,33 +39,26 @@ function getShipperOrders($shipperId, $statusFilter = 'all', $page = 1, $limit =
     $where = "WHERE o.shipper_id = ?";
     $params = [$shipperId];
 
-    // FILTER STATUS
     if ($statusFilter !== 'all' && in_array($statusFilter, ['pending', 'shipping', 'delivered', 'failed'])) {
         $where .= " AND o.delivery_status = ?";
         $params[] = $statusFilter;
     }
 
-    // ================= COUNT =================
-    $countSql = "
-        SELECT COUNT(*)
-        FROM orders o
-        $where
-    ";
+    // COUNT
+    $countSql = "SELECT COUNT(*) FROM orders o $where";
     $stmt = $conn->prepare($countSql);
     $stmt->execute($params);
     $total = $stmt->fetchColumn();
 
-    // ================= DATA =================
+    // DATA
     $sql = "
         SELECT o.*,
                c.full_name AS customer_name,
                c.phone AS customer_phone,
-               c.address AS customer_address
+               COALESCE(o.delivery_address, c.address) AS customer_address
         FROM orders o
         LEFT JOIN customers c ON o.customer_id = c.id
         $where
-
-        -- 🔥 SORT XỊN CHO SHIPPER
         ORDER BY
             CASE
                 WHEN o.delivery_status = 'shipping' THEN 0
@@ -73,7 +66,6 @@ function getShipperOrders($shipperId, $statusFilter = 'all', $page = 1, $limit =
                 ELSE 2
             END,
             o.updated_at DESC
-
         LIMIT $limit OFFSET $offset
     ";
 
@@ -94,10 +86,8 @@ function getShipperOrders($shipperId, $statusFilter = 'all', $page = 1, $limit =
  */
 function getAvailableOrders($page = 1, $limit = 10) {
     $conn = getDB();
-
     $offset = ($page - 1) * $limit;
 
-    // COUNT
     $countSql = "
         SELECT COUNT(*)
         FROM orders o
@@ -108,19 +98,17 @@ function getAvailableOrders($page = 1, $limit = 10) {
     ";
     $total = $conn->query($countSql)->fetchColumn();
 
-    // DATA
     $sql = "
         SELECT o.*,
                c.full_name AS customer_name,
                c.phone AS customer_phone,
-               c.address AS customer_address
+               COALESCE(o.delivery_address, c.address) AS customer_address
         FROM orders o
         LEFT JOIN customers c ON o.customer_id = c.id
         WHERE o.shipper_id IS NULL
           AND o.order_type = 'delivery'
           AND o.status = 'ready_for_delivery'
           AND o.delivery_status = 'pending'
-
         ORDER BY o.created_at ASC
         LIMIT $limit OFFSET $offset
     ";

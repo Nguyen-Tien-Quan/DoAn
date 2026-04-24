@@ -430,73 +430,84 @@ switch ($url) {
 
     case 'vouchers':
 
-        // ✅ đảm bảo có bảng
-        ensureVoucherTable();
+    ensureVoucherTable();
 
-        // ✅ xử lý action giống UI cũ
-        if (isset($_GET['soft_delete'])) {
-            $_GET['id'] = $_GET['soft_delete'];
-            handleDeleteVoucher();
-        }
+    // ===== XỬ LÝ GET ACTION (delete, restore, hard_delete) =====
+    $action = $_GET['action'] ?? '';
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-        if (isset($_GET['restore'])) {
-            $_GET['id'] = $_GET['restore'];
-            handleRestoreVoucher();
-        }
-
-        if (isset($_GET['hard_delete'])) {
-            $_GET['id'] = $_GET['hard_delete'];
-            handleHardDeleteVoucher();
-        }
-
-        // ✅ xử lý POST (add + edit)
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-            if ($_POST['action'] === 'add') handleAddVoucher();
-            if ($_POST['action'] === 'edit') handleEditVoucher();
-        }
-
-        // ===== load data =====
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $limit = 15;
-
-        $filters = [
-            'search' => $_GET['search'] ?? '',
-            'status' => isset($_GET['status']) ? (int)$_GET['status'] : -1,
-            'discount_type' => $_GET['discount_type'] ?? ''
-        ];
-
-        $result = getVouchers($page, $limit, $filters);
-
-        $vouchers = $result['data'];
-        $totalPages = $result['totalPages'];
-
-        $search = $filters['search'];
-        $type_filter = $filters['discount_type'];
-        $status_filter = $filters['status'];
-
-        $success = $_SESSION['success'] ?? null;
-        $error   = $_SESSION['error'] ?? null;
-        unset($_SESSION['success'], $_SESSION['error']);
-
-        $view = view('vouchers');
-    break;
-
-
-    case 'voucher-delete':
+    if ($action === 'delete' && $id > 0) {
+        $_GET['id'] = $id; // controller dùng $_GET['id']
         handleDeleteVoucher();
-        break;
-
-    case 'voucher-restore':
+        exit;
+    }
+    if ($action === 'restore' && $id > 0) {
+        $_GET['id'] = $id;
         handleRestoreVoucher();
-        break;
-
-    case 'voucher-hard-delete':
+        exit;
+    }
+    if ($action === 'hard_delete' && $id > 0) {
+        $_GET['id'] = $id;
         handleHardDeleteVoucher();
-        break;
+        exit;
+    }
 
-    case 'voucher-edit':
-        handleEditVoucher();
-        break;
+    // (Giữ lại hỗ trợ link kiểu cũ nếu có: soft_delete=, restore=, hard_delete=)
+    if (isset($_GET['soft_delete'])) {
+        $_GET['id'] = (int)$_GET['soft_delete'];
+        handleDeleteVoucher();
+        exit;
+    }
+    if (isset($_GET['restore'])) {
+        $_GET['id'] = (int)$_GET['restore'];
+        handleRestoreVoucher();
+        exit;
+    }
+    if (isset($_GET['hard_delete'])) {
+        $_GET['id'] = (int)$_GET['hard_delete'];
+        handleHardDeleteVoucher();
+        exit;
+    }
+
+    // ===== XỬ LÝ POST (add, edit) =====
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $postAction = $_POST['action'] ?? '';
+        if ($postAction === 'add') {
+            handleAddVoucher();
+            exit;
+        }
+        if ($postAction === 'edit') {
+            handleEditVoucher();
+            exit;
+        }
+    }
+
+    // ===== HIỂN THỊ DANH SÁCH =====
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $limit = 15;
+
+    $filters = [
+        'search'        => $_GET['search'] ?? '',
+        'status'        => isset($_GET['status']) ? (int)$_GET['status'] : -1,
+        'discount_type' => $_GET['discount_type'] ?? ''
+    ];
+
+    $result = getVouchers($page, $limit, $filters);
+
+    $vouchers      = $result['data'];
+    $totalPages    = $result['totalPages'];
+    $search        = $filters['search'];
+    $status_filter = $filters['status'];
+    $type_filter   = $filters['discount_type'];
+
+    $is_admin = ($_SESSION['user']['role_id'] ?? 0) == 1;
+
+    $success = $_SESSION['success'] ?? null;
+    $error   = $_SESSION['error']   ?? null;
+    unset($_SESSION['success'], $_SESSION['error']);
+
+    $view = view('vouchers');
+    break;
 
     case 'settings':
         $view = view('settings');

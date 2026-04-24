@@ -46,6 +46,7 @@ function getDashboardData() {
 
 function ensureVoucherTable() {
     $conn = getDB();
+    // Bảng vouchers
     $conn->exec("CREATE TABLE IF NOT EXISTS vouchers (
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(50) UNIQUE NOT NULL,
@@ -54,14 +55,23 @@ function ensureVoucherTable() {
         discount_value DECIMAL(12,2) NOT NULL,
         min_order_amount DECIMAL(12,2) DEFAULT 0,
         max_discount_amount DECIMAL(12,2) DEFAULT 0,
-        start_date DATETIME,
-        end_date DATETIME,
+        start_date DATETIME NULL,
+        end_date DATETIME NULL,
         usage_limit INT DEFAULT 0,
-        used_count INT DEFAULT 0,
         status TINYINT DEFAULT 1,
-        created_at TIMESTAMP NULL,
-        updated_at TIMESTAMP NULL
-    )");
+        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    // Bảng voucher_usage
+    $conn->exec("CREATE TABLE IF NOT EXISTS voucher_usage (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        voucher_id BIGINT UNSIGNED NOT NULL,
+        order_id BIGINT UNSIGNED NOT NULL,
+        user_id BIGINT UNSIGNED NOT NULL,
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 }
 
 function getVouchers($page = 1, $limit = 15, $filters = []) {
@@ -70,8 +80,10 @@ function getVouchers($page = 1, $limit = 15, $filters = []) {
     $search = $filters['search'] ?? '';
     $status = isset($filters['status']) ? (int)$filters['status'] : -1;
     $discount_type = $filters['discount_type'] ?? '';
+
     $where = " WHERE 1=1 ";
     $params = [];
+
     if (!empty($search)) {
         $where .= " AND (code LIKE ? OR name LIKE ?) ";
         $params[] = "%$search%";
@@ -85,17 +97,28 @@ function getVouchers($page = 1, $limit = 15, $filters = []) {
         $where .= " AND discount_type = ? ";
         $params[] = $discount_type;
     }
+
+    // Đếm tổng
     $countSql = "SELECT COUNT(*) FROM vouchers $where";
     $stmt = $conn->prepare($countSql);
     $stmt->execute($params);
     $total = $stmt->fetchColumn();
-    $sql = "SELECT * FROM vouchers $where ORDER BY id ASC LIMIT $limit OFFSET $offset";
+
+    // Lấy dữ liệu kèm used_count
+    $sql = "SELECT v.*,
+                COALESCE((SELECT COUNT(*) FROM voucher_usage WHERE voucher_id = v.id), 0) as used_count
+            FROM vouchers v
+            $where
+            ORDER BY v.id asc
+            LIMIT $limit OFFSET $offset";
+
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
-    $vouchers = $stmt->fetchAll();
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     return [
-        'data' => $vouchers,
-        'total' => $total,
+        'data'       => $data,
+        'total'      => $total,
         'totalPages' => ceil($total / $limit)
     ];
 }

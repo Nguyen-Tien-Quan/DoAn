@@ -123,30 +123,41 @@ switch ($url) {
         break;
 
     case 'shipping':
-        require_once __DIR__ . '/../app/controllers/OrderController.php';
-        $addresses = [];
-        if (isset($_SESSION['user'])) {
-            $addresses = getShippingAddresses($_SESSION['user']['id']);
-        }
-        $view = view('shipping');
-        break;
+    $addresses = [];
+    if (isset($_SESSION['user'])) {
+        $addresses = getShippingAddresses($_SESSION['user']['id']);
+    }
+    $view = view('shipping');
+    break;
 
-    case 'add-shipping-address':
-        require_once __DIR__ . '/../app/controllers/OrderController.php';
+case 'add-shipping-address':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        header('Content-Type: application/json; charset=utf-8');
+        addShippingAddress();   // hàm này trả về JSON và exit
+        exit;
+    }
+    break;
 
+    case 'delete-shipping-address':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json; charset=utf-8');
-            try {
-                addShippingAddress();
-            } catch (\Throwable $e) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Lỗi server: ' . $e->getMessage()
-                ]);
-            }
+            $id = $_POST['id'] ?? 0;
+            $userId = $_SESSION['user']['id'];
+            $conn = getDB();
+            // Xóa địa chỉ của user
+            $stmt = $conn->prepare("DELETE FROM shipping_addresses WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $userId]);
+            echo json_encode(['success' => true]);
             exit;
         }
         break;
+
+    case 'get-shipping-addresses':
+
+        header('Content-Type: application/json');
+        $addresses = getShippingAddresses($_SESSION['user']['id']);
+        echo json_encode($addresses);
+        exit;
 
     case 'payment':
         // Nếu có action (AJAX)
@@ -440,6 +451,10 @@ switch ($url) {
 
     case 'promotion':
         $view = view('promotion');
+        break;
+
+    case 'contact':
+        $view = view('contact');
         break;
 
     case 'about':

@@ -11,7 +11,7 @@
         <img src="<?= $base ?>assets/img/auth/intro.svg" class="auth__intro-img" />
 
         <p class="auth__intro-text">
-            The best of luxury brand values, high quality products, and innovative services
+            Giá trị thương hiệu cao cấp, sản phẩm chất lượng và dịch vụ đổi mới
         </p>
 
         <button class="auth__intro-next d-none d-md-flex js-toggle" toggle-target="#auth-content">
@@ -27,12 +27,12 @@
                 <h1 class="logo__title">TRQShop</h1>
             </a>
 
-            <h1 class="auth__heading">Sign Up</h1>
+            <h1 class="auth__heading">Đăng ký</h1>
             <p class="auth__desc">
-                Let’s create your account and Shop like a pro and save money.
+                Hãy tạo tài khoản của bạn, mua sắm thông minh và tiết kiệm hơn.
             </p>
 
-            <!-- FORM REGISTER -->
+            <!-- FORM ĐĂNG KÝ -->
             <form action="<?= $base ?>index.php?url=register" method="POST" class="form auth__form">
 
                 <!-- Email -->
@@ -43,42 +43,42 @@
                     </div>
                 </div>
 
-                <!-- Password -->
+                <!-- Mật khẩu -->
                 <div class="form__group">
                     <div class="form__text-input">
-                        <input type="password" name="password" placeholder="Password"
+                        <input type="password" name="password" placeholder="Mật khẩu"
                                class="form__input" required minlength="6" />
                         <img src="<?= $base ?>assets/icons/lock.svg" class="form__input-icon" />
                     </div>
                 </div>
 
-                <!-- Confirm Password -->
+                <!-- Xác nhận mật khẩu -->
                 <div class="form__group">
                     <div class="form__text-input">
                         <input type="password" name="password_confirmation"
-                               placeholder="Confirm password"
+                               placeholder="Xác nhận mật khẩu"
                                class="form__input" required minlength="6" />
                         <img src="<?= $base ?>assets/icons/lock.svg" class="form__input-icon" />
                     </div>
                 </div>
 
-                <!-- Checkbox -->
+                <!-- Đồng ý điều khoản -->
                 <div class="form__group form__group--inline">
                     <label class="form__checkbox">
                         <input type="checkbox" name="agree" class="form__checkbox-input d-none" required />
-                        <span class="form__checkbox-label">Agree to terms</span>
+                        <span class="form__checkbox-label">Tôi đồng ý với điều khoản</span>
                     </label>
                 </div>
 
-                <!-- Buttons -->
+                <!-- Nút bấm -->
                 <div class="form__group auth__btn-group">
                     <button type="submit" class="btn btn--primary auth__btn form__submit-btn">
-                        Sign Up
+                        Đăng ký
                     </button>
 
                     <button type="button" class="btn btn--outline auth__btn btn--no-margin">
                         <img src="<?= $base ?>assets/icons/google.svg" class="btn__icon icon" />
-                        Sign in with Google
+                        Đăng nhập với Google
                     </button>
                 </div>
                 <?php if (!empty($error)): ?>
@@ -87,9 +87,9 @@
             </form>
 
             <p class="auth__text">
-                You already have an account?
+                Bạn đã có tài khoản?
                 <a href="<?= $base ?>index.php?url=login" class="auth__link auth__text-link">
-                    Sign In
+                    Đăng nhập
                 </a>
             </p>
         </div>

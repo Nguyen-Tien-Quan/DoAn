@@ -3,7 +3,7 @@
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Định nghĩa getDB nếu chưa có (phòng khi config/database.php không tồn tại)
+// Hàm kết nối DB
 if (!function_exists('getDB')) {
     function getDB() {
         static $conn = null;
@@ -23,9 +23,7 @@ if (!function_exists('getDB')) {
     }
 }
 
-// Nếu có file config thì bỏ comment dòng dưới
-// require_once __DIR__ . '/../../config/database.php';
-
+// ---------- ĐỊA CHỈ GIAO HÀNG ----------
 function getShippingAddresses($user_id) {
     $conn = getDB();
     $stmt = $conn->prepare("
@@ -40,7 +38,6 @@ function getShippingAddresses($user_id) {
 function addShippingAddress() {
     header('Content-Type: application/json; charset=utf-8');
 
-    if (session_status() === PHP_SESSION_NONE) session_start();
     if (!isset($_SESSION['user'])) {
         echo json_encode(['success'=>false,'message'=>'Vui lòng đăng nhập']);
         exit;
@@ -94,6 +91,7 @@ function addShippingAddress() {
     }
 }
 
+// ---------- ĐẶT HÀNG (từ form shipping → payment) ----------
 function placeOrder() {
     if (!isset($_SESSION['user'])) {
         header("Location: index.php?url=login");
@@ -122,7 +120,7 @@ function placeOrder() {
         $total = $subtotal + $shipping_fee;
 
         $stmt = $conn->prepare("
-            INSERT INTO orders (user_id, shipping_address_id, subtotal, shipping_fee, total, payment_method, status)
+            INSERT INTO orders (user_id, shipping_address_id, total_amount, shipping_fee, final_amount, payment_method, status)
             VALUES (?, ?, ?, ?, ?, ?, 'pending')
         ");
         $stmt->execute([$user_id, $shipping_address_id, $subtotal, $shipping_fee, $total, $payment_method]);
@@ -130,7 +128,7 @@ function placeOrder() {
 
         foreach ($_SESSION['cart'] ?? [] as $item) {
             $stmt = $conn->prepare("
-                INSERT INTO order_items (order_id, product_id, quantity, price)
+                INSERT INTO order_items (order_id, product_id, quantity, unit_price)
                 VALUES (?, ?, ?, ?)
             ");
             $stmt->execute([$order_id, $item['id'], $item['quantity'], $item['price']]);
@@ -151,6 +149,7 @@ function placeOrder() {
     }
 }
 
+// ---------- API TẠO ĐƠN HÀNG (dùng cho AJAX) ----------
 function createOrderAPI() {
     header('Content-Type: application/json');
     if (session_status() === PHP_SESSION_NONE) session_start();
@@ -171,8 +170,7 @@ function createOrderAPI() {
     $shipping_method = $input['shipping_method'] ?? 'fedex';
     $shipping_fee = intval($input['shipping_fee'] ?? 0);
     $payment_method = $input['payment_method'] ?? 'card';
-    // ===== SỬA LỖI order_type =====
-    $order_type = $input['order_type'] ?? 'delivery'; // mặc định giao hàng
+    $order_type = $input['order_type'] ?? 'delivery';
 
     $cart = $_SESSION['cart'] ?? [];
     if (empty($cart)) {
@@ -190,6 +188,8 @@ function createOrderAPI() {
     if ($total < 0) $total = 0;
 
     $conn = getDB();
+
+    // Kiểm tra địa chỉ giao hàng
     $stmt = $conn->prepare("SELECT * FROM shipping_addresses WHERE id = ? AND user_id = ?");
     $stmt->execute([$shipping_address_id, $user_id]);
     $address = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -201,39 +201,62 @@ function createOrderAPI() {
     $conn->beginTransaction();
     try {
         $order_code = 'ORD' . date('Ymd') . '_' . strtoupper(uniqid());
-
-        // ===== ĐÃ THÊM order_type VÀ payment_status =====
+    $delivery_address = $address['address'] . ', ' . $address['city'];
+        // Tạo đơn hàng
         $stmt = $conn->prepare("
             INSERT INTO orders
-            (order_code, user_id, shipping_address_id, order_type, total_amount, discount_amount, shipping_fee, final_amount, payment_method, payment_status, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', NOW(), NOW())
+            (order_code, user_id, shipping_address_id, order_type, total_amount, discount_amount, shipping_fee, final_amount, payment_method, payment_status, status, delivery_address, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, NOW(), NOW())
         ");
         $stmt->execute([
-            $order_code,
-            $user_id,
-            $shipping_address_id,
-            $order_type,       // thêm order_type
-            $subtotal,
-            $discount,
-            $shipping_fee,
-            $total,
-            $payment_method
-        ]);
+        $order_code,
+        $user_id,
+        $shipping_address_id,
+        $order_type,
+        $subtotal,
+        $discount,
+        $shipping_fee,
+        $total,
+        $payment_method,
+        $delivery_address   // <== THÊM VÀO ĐÂY
+    ]);
         $order_id = $conn->lastInsertId();
 
+        // Chuẩn bị câu lệnh INSERT order_items và UPDATE tồn kho
         $stmtItem = $conn->prepare("
             INSERT INTO order_items (order_id, product_id, variant_id, quantity, unit_price, topping_price, subtotal)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
+        $stmtStock = $conn->prepare("
+            UPDATE product_variants
+            SET stock_quantity = stock_quantity - ?
+            WHERE id = ? AND stock_quantity >= ?
+        ");
+
         foreach ($cart as $item) {
+            // Lấy variant_id (bắt buộc phải có)
             $variant_id = $item['variant']['id'] ?? null;
+            if (!$variant_id) {
+                // Thử lấy variant mặc định từ DB
+                $stmtVar = $conn->prepare("SELECT id FROM product_variants WHERE product_id = ? AND variant_name = 'Mặc định'");
+                $stmtVar->execute([$item['id']]);
+                $variant_id = $stmtVar->fetchColumn();
+            }
+            if (!$variant_id) {
+                throw new Exception("Sản phẩm '{$item['name']}' không có biến thể hợp lệ.");
+            }
+
+            // Tính topping_price
             $topping_price = 0;
             if (!empty($item['toppings'])) {
                 foreach ($item['toppings'] as $topping) {
                     $topping_price += $topping['price'];
                 }
             }
+
             $subtotal_item = $item['price'] * $item['quantity'];
+
+            // Thêm vào order_items
             $stmtItem->execute([
                 $order_id,
                 $item['id'],
@@ -245,6 +268,7 @@ function createOrderAPI() {
             ]);
             $order_item_id = $conn->lastInsertId();
 
+            // Thêm toppings của item
             if (!empty($item['toppings'])) {
                 $stmtTopping = $conn->prepare("
                     INSERT INTO order_item_toppings (order_item_id, topping_id, price)
@@ -255,59 +279,58 @@ function createOrderAPI() {
                 }
             }
 
-            // Cập nhật tồn kho
-            if ($variant_id) {
-                $stmtStock = $conn->prepare("UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?");
-                $stmtStock->execute([$item['quantity'], $variant_id, $item['quantity']]);
-                if ($stmtStock->rowCount() == 0) {
-                    throw new Exception("Sản phẩm '{$item['name']}' không đủ số lượng tồn kho.");
-                }
-            } else {
-                $stmtStock = $conn->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?");
-                $stmtStock->execute([$item['quantity'], $item['id'], $item['quantity']]);
-                if ($stmtStock->rowCount() == 0) {
-                    throw new Exception("Sản phẩm '{$item['name']}' không đủ số lượng tồn kho.");
-                }
+            // Cập nhật tồn kho trong product_variants
+            $stmtStock->execute([$item['quantity'], $variant_id, $item['quantity']]);
+            if ($stmtStock->rowCount() == 0) {
+                throw new Exception("Sản phẩm '{$item['name']}' không đủ số lượng tồn kho.");
             }
         }
 
-        // Ghi log trạng thái (nếu có bảng order_statuses)
-        try {
-            $stmtLog = $conn->prepare("INSERT INTO order_statuses (order_id, status, note) VALUES (?, 'pending', ?)");
-            $stmtLog->execute([$order_id, 'Đơn hàng được tạo từ thanh toán']);
-        } catch (Exception $e) {}
-
-        // Xử lý voucher
+        // Xử lý voucher (nếu có)
         if (!empty($_SESSION['coupon_data']) && !empty($_SESSION['coupon_code'])) {
             $voucher_code = $_SESSION['coupon_code'];
             $stmtVoucher = $conn->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ?");
             $stmtVoucher->execute([$voucher_code]);
 
-            try {
-                $voucher_id = $_SESSION['coupon_data']['id'] ?? null;
-                if ($voucher_id) {
-                    $stmtUsage = $conn->prepare("INSERT INTO voucher_usage (voucher_id, customer_id, order_id, used_at) VALUES (?, ?, ?, NOW())");
-                    $stmtUsage->execute([$voucher_id, $user_id, $order_id]);
-                }
-            } catch (Exception $e) {}
+            $voucher_id = $_SESSION['coupon_data']['id'] ?? null;
+            if ($voucher_id) {
+                $stmtUsage = $conn->prepare("
+                    INSERT INTO voucher_usage (voucher_id, customer_id, order_id, used_at)
+                    VALUES (?, ?, ?, NOW())
+                ");
+                $stmtUsage->execute([$voucher_id, $user_id, $order_id]);
+            }
         }
 
         $conn->commit();
 
-        // ===== TRẢ VỀ payment_url NẾU THANH TOÁN ONLINE =====
-        $payment_url = null;
-        if (in_array($payment_method, ['vnpay', 'momo', 'zalopay'])) {
-            // Tạo URL thanh toán (giả định bạn có class PaymentGateway)
-            // $payment_url = PaymentGateway::create($order_code, $total, $payment_method);
-            // Ở đây tạm thời trả về URL giả để minh họa
-            $payment_url = "index.php?url=payment-return&method=$payment_method&order_code=$order_code";
+        // Gửi mail cho admin (nếu có MailService)
+        if (file_exists(__DIR__ . '/../services/MailService.php')) {
+            require_once __DIR__ . '/../services/MailService.php';
+            $stmtUser = $conn->prepare("SELECT name, email, phone FROM users WHERE id = ?");
+            $stmtUser->execute([$user_id]);
+            $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+            $html = "<h2>📦 Đơn hàng mới</h2>";
+            $html .= "<p><b>Mã đơn:</b> {$order_code}</p>";
+            $html .= "<p><b>Khách:</b> {$user['name']}</p>";
+            $html .= "<p><b>SĐT:</b> {$address['phone']}</p>";
+            $html .= "<p><b>Địa chỉ:</b> {$address['address']}, {$address['city']}</p>";
+            $html .= "<p><b>Tổng tiền:</b> " . number_format($total) . "đ</p>";
+
+            $stmtAdmin = $conn->prepare("SELECT email FROM users WHERE role_id = 1 AND status = 1");
+            $stmtAdmin->execute();
+            $admins = $stmtAdmin->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($admins as $email) {
+                MailService::send($email, 'Đơn hàng mới', $html);
+            }
         }
 
+        // Trả về kết quả thành công
         echo json_encode([
             'success' => true,
             'order_id' => $order_id,
-            'order_code' => $order_code,
-            'payment_url' => $payment_url
+            'order_code' => $order_code
         ]);
         exit;
 
@@ -317,7 +340,6 @@ function createOrderAPI() {
         exit;
     }
 }
-
 /**
  * Xử lý callback từ cổng thanh toán (VNPAY, MoMo, ZaloPay...)
  * Được gọi khi khách hoàn tất thanh toán hoặc bị hủy

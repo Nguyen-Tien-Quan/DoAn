@@ -638,4 +638,8 @@ INSERT INTO purchase_order_items (purchase_order_id, ingredient_id, quantity, un
 (1, 1, 20, 200000, 4000000),
 (1, 2, 100, 10000, 1000000);
 
+use qlb
+DELETE FROM menu_items WHERE url = 'index.php?url=blog';
+DROP TABLE blog_posts;
+
 SET FOREIGN_KEY_CHECKS=1;

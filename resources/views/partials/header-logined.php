@@ -85,7 +85,105 @@
     $favorites = $user ? getFavorites() : [];
     $totalFav = count($favorites);
 ?>
-<header id="header" class="header">
+<style>
+    @media (min-width: 992.98px) and (max-width: 1199.98px) {
+         .navbar {
+            margin-left: 20px;
+        }
+
+        .navbar__link{
+            gap: 0;
+            padding: 0 8px;
+        }
+
+
+    }
+
+.search-full {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+}
+
+.search-full.active {
+    display: block;
+}
+
+/* overlay blur */
+.search-full__overlay {
+    position: absolute;
+    height: 100vh;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+}
+
+/* content */
+.search-full__content {
+    position: relative;
+    max-width: 800px;
+    margin: 100px auto;
+    padding: 20px;
+}
+
+/* input */
+.search-full__top {
+    display: flex;
+    gap: 10px;
+}
+
+.search-full__top input {
+    flex: 1;
+    padding: 18px 20px;
+    font-size: 20px;
+    border-radius: 999px;
+    border: none;
+    outline: none;
+}
+
+.search-full__top button {
+    background: #ff6b00;
+    border: none;
+    color: #fff;
+    width: 50px;
+    height: 50px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+/* history */
+.search-full__history {
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 15px;
+}
+
+.search-full__history-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+#historyList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#historyList li {
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+#historyList li:hover {
+    background: #f3f3f3;
+}
+</style>
+
+<header id="header" class="header header__fixed">
     <div class="container">
         <div class="top-bar">
             <!-- More -->
@@ -220,6 +318,12 @@
                             Giới thiệu
                         </a>
                     </li>
+
+                    <li class="navbar__item">
+                        <a href="<?= $base ?>index.php?url=contact" class="navbar__link">
+                            Liên hệ
+                        </a>
+                    </li>
                 </ul>
             </nav>
 
@@ -227,15 +331,75 @@
 
             <!-- Actions (giữ nguyên phần tìm kiếm, giỏ hàng, user) -->
             <div class="top-act">
-                <div class="top-act__group d-md-none top-act__group--single search-box">
+                <!-- <div class="top-act__group d-md-none top-act__group--single search-box">
                     <button class="top-act__btn search-toggle">
                         <img src="<?= $base ?>assets/icons/search.svg" class="icon top-act__icon" />
                     </button>
                     <input type="text" class="top-act__search search-input" placeholder="Tìm sản phẩm..." />
                     <div class="search-suggest"></div>
+                </div> -->
+
+                <button class="top-act__group d-md-none top-act__group--single search-box" id="openSearch">
+                    <img src="<?= $base ?>assets/icons/search.svg" class="icon top-act__icon" />
+                </button>
+
+                <!-- SEARCH FULL SCREEN -->
+                <div class="search-full" id="searchFull">
+                    <div class="search-full__overlay"></div>
+
+                    <div class="search-full__content">
+                        <!-- Input -->
+                        <div class="search-full__top">
+                            <input type="text" id="searchInputFull"
+                                placeholder="Bạn tìm gì hôm nay..."
+                                autocomplete="off" />
+
+                            <button id="closeSearch">✕</button>
+                        </div>
+
+                        <!-- History -->
+                        <div class="search-full__history">
+                            <div class="search-full__history-head">
+                                <span>Lịch sử tìm kiếm</span>
+                                <button id="clearHistory">Xóa tất cả</button>
+                            </div>
+
+                            <ul id="historyList"></ul>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="top-act__group d-md-none top-act__group--bell">
+                <!-- ========== SEARCH BOX MỚI (ĐẸP) ========== -->
+                <!-- <div class="top-act__group search-box">
+                    <button class="top-act__btn search-toggle">
+                        <img src="<?= $base ?>assets/icons/search.svg" class="icon" alt="Tìm kiếm">
+                    </button>
+
+                    <div class="search-dropdown">
+                        <div class="search-input-wrapper">
+                            <img src="<?= $base ?>assets/icons/search.svg" class="search-input-icon" alt="">
+                            <input type="text" id="search-input" class="search-input"
+                                placeholder="Bạn tìm gì hôm nay..." autocomplete="off">
+                        </div>
+
+                        <div class="search-suggest">
+
+                            <div class="search-history">
+                                <div class="search-history-header">
+                                    <span class="search-history-title">🔍 Tìm kiếm gần đây</span>
+                                    <button id="clear-all-history" class="search-history-clear-all">Xóa tất cả</button>
+                                </div>
+                                <ul id="history-list" class="search-history-list"></ul>
+                            </div>
+
+                            <div id="suggest-products" class="search-suggest-products" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div> -->
+
+                <div class="search-overlay"></div>
+
+                <div class="top-act__group d-xl-none d-lg-none d-md-none d-sm-none top-act__group--bell">
                     <div class="top-act__btn-wrap">
                         <button class="top-act__btn js-toggle" toggle-target="#noti-dropdown">
                             <img src="<?= $base ?>assets/icons/bell.svg" class="icon top-act__icon" />
@@ -371,6 +535,7 @@
         </div>
     </div>
 </header>
+
 <script>
     window.dispatchEvent(new Event("template-loaded"));
     // Hàm cập nhật số lượng yêu thích trên header (gọi từ mọi nơi)
@@ -396,5 +561,72 @@ window.updateFavoriteBadge = function(newCount = null) {
         })
         .catch(err => console.error('Lỗi lấy số lượng yêu thích:', err));
     }
+};
+
+const openBtn = document.getElementById('openSearch');
+const searchFull = document.getElementById('searchFull');
+const closeBtn = document.getElementById('closeSearch');
+const input = document.getElementById('searchInputFull');
+const historyList = document.getElementById('historyList');
+const clearBtn = document.getElementById('clearHistory');
+
+const KEY = 'search_history';
+
+// mở
+openBtn.onclick = () => {
+    searchFull.classList.add('active');
+    input.focus();
+    renderHistory();
+};
+
+// đóng
+closeBtn.onclick = () => {
+    searchFull.classList.remove('active');
+};
+
+// enter search
+input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        const val = input.value.trim();
+        if (!val) return;
+
+        saveHistory(val);
+        window.location.href = `index.php?url=search&q=${encodeURIComponent(val)}`;
+    }
+});
+
+// lưu history
+function saveHistory(val) {
+    let arr = JSON.parse(localStorage.getItem(KEY)) || [];
+    arr = arr.filter(i => i !== val);
+    arr.unshift(val);
+    if (arr.length > 10) arr.pop();
+
+    localStorage.setItem(KEY, JSON.stringify(arr));
+}
+
+// render history
+function renderHistory() {
+    let arr = JSON.parse(localStorage.getItem(KEY)) || [];
+
+    if (arr.length === 0) {
+        historyList.innerHTML = "<li>Chưa có lịch sử</li>";
+        return;
+    }
+
+    historyList.innerHTML = arr.map(item =>
+        `<li onclick="selectHistory('${item}')">${item}</li>`
+    ).join('');
+}
+
+// click history
+window.selectHistory = function(val) {
+    window.location.href = `index.php?url=search&q=${encodeURIComponent(val)}`;
+}
+
+// clear
+clearBtn.onclick = () => {
+    localStorage.removeItem(KEY);
+    renderHistory();
 };
 </script>
