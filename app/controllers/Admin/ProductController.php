@@ -234,7 +234,7 @@ function handleAddProduct() {
 
             if (move_uploaded_file($_FILES['image_file']['tmp_name'], $dest)) {
                 // 📌 LƯU PATH CHUẨN (KHÔNG có public)
-                $image_path = 'assets/img/product/' . $newName;
+                $image_path = $newName;
             }
         }
     }
@@ -552,7 +552,6 @@ function ensureToppingTable() {
     $conn = getDB();
     try { $conn->exec("ALTER TABLE toppings ADD COLUMN status TINYINT DEFAULT 1"); } catch(PDOException $e) {}
 }
-
 
 /* ================== GET ALL ================== */
 function getAllToppings() {

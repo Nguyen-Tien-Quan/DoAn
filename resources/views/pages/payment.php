@@ -6,50 +6,76 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
+$_SESSION['selected_address_id'] = $_POST['shipping_address_id'] ?? null;
+
 $user_id = $_SESSION['user']['id'];
 $conn = getDB();
 
-// Lấy giỏ hàng từ session
+// ===================== GIỎ HÀNG =====================
 $cart = $_SESSION['cart'] ?? [];
 $subtotal = 0;
 $itemCount = 0;
+
 foreach ($cart as $item) {
     $itemCount += $item['quantity'];
     $subtotal += $item['price'] * $item['quantity'];
 }
 
-// Lấy mã giảm giá đã lưu
+// ===================== DISCOUNT =====================
 $discount = $_SESSION['discount'] ?? 0;
 $couponCode = $_SESSION['coupon_code'] ?? '';
 
-// Lấy địa chỉ giao hàng mặc định
+// ===================== ADDRESS =====================
 $defaultAddress = null;
-$stmt = $conn->prepare("SELECT * FROM shipping_addresses WHERE user_id = ? AND is_default = 1 LIMIT 1");
-$stmt->execute([$user_id]);
-$defaultAddress = $stmt->fetch(PDO::FETCH_ASSOC);
 
+$selectedAddressId = $_POST['shipping_address_id']
+    ?? $_SESSION['selected_address_id']
+    ?? null;
+
+// lấy theo address user chọn
+if ($selectedAddressId) {
+    $stmt = $conn->prepare("
+        SELECT * FROM shipping_addresses
+        WHERE id = ? AND user_id = ?
+    ");
+    $stmt->execute([$selectedAddressId, $user_id]);
+    $defaultAddress = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// fallback default
 if (!$defaultAddress) {
-    $stmt = $conn->prepare("SELECT * FROM shipping_addresses WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+    $stmt = $conn->prepare("
+        SELECT * FROM shipping_addresses
+        WHERE user_id = ? AND is_default = 1
+        LIMIT 1
+    ");
     $stmt->execute([$user_id]);
     $defaultAddress = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+// nếu vẫn không có địa chỉ
 if (!$defaultAddress) {
     header("Location: index.php?url=shipping");
     exit;
 }
 
+// ===================== FIX QUAN TRỌNG Ở ĐÂY =====================
+// đảm bảo key tồn tại
+$phone = $defaultAddress['phone'] ?? '';
+$hasPhone = !empty(trim($phone));
+
+// ===================== TOTAL =====================
 $shipping_fee = 10000;
 $total = $subtotal - $discount + $shipping_fee;
 if ($total < 0) $total = 0;
 
+// ===================== FORMAT =====================
 if (!function_exists('vnd')) {
     function vnd($number) {
         return number_format($number, 0, ',', '.') . 'đ';
     }
 }
 ?>
-
 <style>
 /* CSS Modal sửa lỗi ẩn */
 .hide { display: none !important; }
@@ -110,122 +136,14 @@ if (!function_exists('vnd')) {
         <div class="checkout-container">
             <div class="prod-tab js-tabs">
                 <ul class="prod-tab__list">
-                    <li class="prod-tab__item tab-btn prod-tab__item--current" data-tab="tab-card">💳 Thanh toán thẻ</li>
-                    <li class="prod-tab__item tab-btn" data-tab="tab-alternative">📦 Thanh toán khác (COD / VNPAY)</li>
+                    <li class="prod-tab__item tab-btn prod-tab__item--current" data-tab="tab-alternative">📦 Thanh toán khác (COD / Online)</li>
+                    <li class="prod-tab__item tab-btn" data-tab="tab-card">💳 Thanh toán thẻ</li>
                 </ul>
 
                 <div class="prod-tab__contents">
 
-                    <!-- ========== TAB 1: THANH TOÁN THẺ ========== -->
-                    <div class="prod-tab__content prod-tab__content--current" id="tab-card">
-                        <div class="row gy-xl-3">
-                            <div class="col-8 col-xl-8 col-lg-12">
-                                <!-- Shipping Info -->
-                                <div class="cart-info cart-info--shadow">
-                                    <div class="cart-info__top">
-                                        <h2 class="cart-info__heading cart-info__heading--lv2">1. Giao hàng dự kiến từ <?= date('d/m/Y', strtotime('+3 days')) ?> đến <?= date('d/m/Y', strtotime('+8 days')) ?></h2>
-                                        <a class="cart-info__edit-btn" href="index.php?url=shipping"><img class="icon" src="<?= $base ?>assets/icons/edit.svg" alt="" /> Sửa</a>
-                                    </div>
-                                    <article class="payment-item payment-item--card">
-                                        <div class="payment-item__info">
-                                            <h3 class="payment-item__title">Họ và tên: <?= htmlspecialchars($defaultAddress['full_name'] ?? '') ?></h3>
-                                            <p class="payment-item__desc">Địa chỉ: <?= htmlspecialchars($defaultAddress['address'] ?? '') ?>, Thành phố: <?= htmlspecialchars($defaultAddress['city'] ?? '') ?></p>
-                                            <?php if ($defaultAddress['is_default'] ?? 0): ?><span class="payment-item__badge">Mặc định</span><?php endif; ?>
-                                        </div>
-                                    </article>
-                                    <article class="payment-item payment-item--card">
-                                        <div class="payment-item__info">
-                                            <h3 class="payment-item__title">Chi tiết sản phẩm</h3>
-                                            <p class="payment-item__desc"><?= $itemCount ?> sản phẩm</p>
-                                        </div>
-                                        <a href="index.php?url=checkout" class="payment-item__detail">Xem chi tiết</a>
-                                    </article>
-                                </div>
-
-                                <!-- Shipping Method -->
-                                <div class="cart-info cart-info--shadow">
-                                    <h2 class="cart-info__heading cart-info__heading--lv2">2. Phương thức vận chuyển</h2>
-                                    <div class="cart-info__separate"></div>
-                                    <h3 class="cart-info__sub-heading">Các phương thức có sẵn</h3>
-                                    <div id="shipping-methods">
-                                        <label>
-                                            <article class="payment-item payment-item--pointer payment-item--highlight">
-                                                <img src="<?= $base ?>assets/img/payment/delivery-1.png" class="payment-item__thumb" />
-                                                <div class="payment-item__content">
-                                                    <div class="payment-item__info">
-                                                        <h3 class="payment-item__title">Giao hàng tiêu chuẩn</h3>
-                                                        <p class="payment-item__desc payment-item__desc--low">Giao trong 2-3 ngày làm việc</p>
-                                                        <small class="payment-item__note">Miễn phí vận chuyển cho đơn hàng trên <?= vnd(100000) ?></small>
-                                                    </div>
-                                                    <span class="cart-info__checkbox payment-item__checkbox">
-                                                        <input type="radio" name="delivery-method" value="fedex" data-fee="0" checked />
-                                                        <span class="payment-item__cost">Miễn phí</span>
-                                                    </span>
-                                                </div>
-                                            </article>
-                                        </label>
-                                        <label>
-                                            <article class="payment-item payment-item--pointer">
-                                                <img src="<?= $base ?>assets/img/payment/delivery-2.png" class="payment-item__thumb" />
-                                                <div class="payment-item__content">
-                                                    <div class="payment-item__info">
-                                                        <h3 class="payment-item__title">Giao hàng nhanh</h3>
-                                                        <p class="payment-item__desc payment-item__desc--low">Giao trong 1-2 ngày làm việc</p>
-                                                        <small class="payment-item__note">Giao hàng hỏa tốc</small>
-                                                    </div>
-                                                    <span class="cart-info__checkbox payment-item__checkbox">
-                                                        <input type="radio" name="delivery-method" value="dhl" data-fee="12000" />
-                                                        <span class="payment-item__cost"><?= vnd(12000) ?></span>
-                                                    </span>
-                                                </div>
-                                            </article>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Right Column: Payment Details -->
-                            <div class="col-4 col-xl-4 col-lg-12">
-                                <div class="cart-info cart-info--shadow">
-                                    <h2 class="cart-info__heading cart-info__heading--lv2">Chi tiết thanh toán</h2>
-                                    <p class="cart-info__desc">Hoàn tất mua hàng bằng cách cung cấp thông tin thẻ của bạn.</p>
-                                    <form id="payment-form" class="form cart-info__form">
-                                        <div class="form__group">
-                                            <label class="form__label form__label--medium">Địa chỉ Email</label>
-                                            <div class="form__text-input"><input type="email" id="email" value="<?= htmlspecialchars($_SESSION['user']['email'] ?? '') ?>" class="form__input" required /></div>
-                                        </div>
-                                        <div class="form__group">
-                                            <label class="form__label form__label--medium">Chủ thẻ</label>
-                                            <div class="form__text-input"><input type="text" id="card-holder" placeholder="Tên chủ thẻ" class="form__input" required /></div>
-                                        </div>
-                                        <div class="form__group">
-                                            <label class="form__label form__label--medium">Số thẻ</label>
-                                            <div class="form__text-input"><input type="text" id="card-details" placeholder="Số thẻ" class="form__input" required /></div>
-                                        </div>
-                                        <div class="form__row cart-info__form-row">
-                                            <div class="form__group form__group--flex">
-                                                <input type="text" id="card-expire" placeholder="MM/YY" class="form__input" required />
-                                                <input type="text" id="card-cvc" placeholder="CVC" class="form__input" required />
-                                            </div>
-                                        </div>
-                                    </form>
-                                    <div class="cart-info__summary">
-                                        <div class="cart-info__row"><span>Tạm tính (<?= $itemCount ?> sản phẩm)</span><span id="subtotal"><?= vnd($subtotal) ?></span></div>
-                                        <?php if ($discount > 0): ?>
-                                        <div class="cart-info__row"><span>Giảm giá (<?= htmlspecialchars($couponCode) ?>)</span><span id="discount">-<?= vnd($discount) ?></span></div>
-                                        <?php endif; ?>
-                                        <div class="cart-info__row"><span>Vận chuyển</span><span id="shipping-cost"><?= vnd($shipping_fee) ?></span></div>
-                                        <div class="cart-info__separate"></div>
-                                        <div class="cart-info__row cart-info__row--highlight"><span>Tổng cộng</span><span id="estimated-total"><?= vnd($total) ?></span></div>
-                                    </div>
-                                    <button type="button" id="pay-btn" class="cart-info__next-btn btn btn--primary btn--rounded">Thanh toán <?= vnd($total) ?></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ========== TAB 2: THANH TOÁN KHÁC ========== -->
-                    <div class="prod-tab__content" id="tab-alternative">
+                    <!-- ========== TAB 1: THANH TOÁN KHÁC ========== -->
+                    <div class="prod-tab__content prod-tab__content--current" id="tab-alternative">
                         <!-- ... nội dung Tab 2 giữ nguyên ... -->
                         <div class="row gy-xl-3">
                             <div class="col-8 col-xl-8 col-lg-12">
@@ -248,6 +166,12 @@ if (!function_exists('vnd')) {
                                         </div>
                                         <a href="index.php?url=checkout" class="payment-item__detail">Xem chi tiết</a>
                                     </article>
+
+                                    <?php if (!$hasPhone): ?>
+                                        <p style="color:red; margin-top:10px;">
+                                            ⚠ Vui lòng thêm số điện thoại trước khi thanh toán
+                                        </p>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="cart-info cart-info--shadow">
@@ -338,11 +262,141 @@ if (!function_exists('vnd')) {
                                             <span>Tôi đồng ý với <a href="#">Điều khoản dịch vụ</a></span>
                                         </label>
                                     </div>
-                                    <button type="button" id="alt-pay-btn" class="cart-info__next-btn btn btn--primary btn--rounded mt-3">Xác nhận thanh toán</button>
+                                    <button
+                                        type="button"
+                                        id="alt-pay-btn"
+                                        class="cart-info__next-btn btn btn--primary btn--rounded mt-3"
+                                        <?= !$hasPhone ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '' ?>
+                                    >
+                                        Xác nhận thanh toán
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- ========== TAB 2: THANH TOÁN THẺ ========== -->
+                    <div class="prod-tab__content " id="tab-card">
+                        <div class="row gy-xl-3">
+                            <div class="col-8 col-xl-8 col-lg-12">
+                                <!-- Shipping Info -->
+                                <div class="cart-info cart-info--shadow">
+                                    <div class="cart-info__top">
+                                        <h2 class="cart-info__heading cart-info__heading--lv2">1. Giao hàng dự kiến từ <?= date('d/m/Y', strtotime('+3 days')) ?> đến <?= date('d/m/Y', strtotime('+8 days')) ?></h2>
+                                        <a class="cart-info__edit-btn" href="index.php?url=shipping"><img class="icon" src="<?= $base ?>assets/icons/edit.svg" alt="" /> Sửa</a>
+                                    </div>
+                                    <article class="payment-item payment-item--card">
+                                        <div class="payment-item__info">
+                                            <h3 class="payment-item__title">Họ và tên: <?= htmlspecialchars($defaultAddress['full_name'] ?? '') ?></h3>
+                                            <p class="payment-item__desc">Địa chỉ: <?= htmlspecialchars($defaultAddress['address'] ?? '') ?>, Thành phố: <?= htmlspecialchars($defaultAddress['city'] ?? '') ?></p>
+                                            <?php if ($defaultAddress['is_default'] ?? 0): ?><span class="payment-item__badge">Mặc định</span><?php endif; ?>
+                                        </div>
+                                    </article>
+                                    <article class="payment-item payment-item--card">
+                                        <div class="payment-item__info">
+                                            <h3 class="payment-item__title">Chi tiết sản phẩm</h3>
+                                            <p class="payment-item__desc"><?= $itemCount ?> sản phẩm</p>
+                                        </div>
+                                        <a href="index.php?url=checkout" class="payment-item__detail">Xem chi tiết</a>
+                                    </article>
+
+                                    <?php if (!$hasPhone): ?>
+                                        <p style="color:red; margin-top:10px;">
+                                            ⚠ Vui lòng thêm số điện thoại trước khi thanh toán
+                                        </p>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Shipping Method -->
+                                <div class="cart-info cart-info--shadow">
+                                    <h2 class="cart-info__heading cart-info__heading--lv2">2. Phương thức vận chuyển</h2>
+                                    <div class="cart-info__separate"></div>
+                                    <h3 class="cart-info__sub-heading">Các phương thức có sẵn</h3>
+                                    <div id="shipping-methods">
+                                        <label>
+                                            <article class="payment-item payment-item--pointer payment-item--highlight">
+                                                <img src="<?= $base ?>assets/img/payment/delivery-1.png" class="payment-item__thumb" />
+                                                <div class="payment-item__content">
+                                                    <div class="payment-item__info">
+                                                        <h3 class="payment-item__title">Giao hàng tiêu chuẩn</h3>
+                                                        <p class="payment-item__desc payment-item__desc--low">Giao trong 2-3 ngày làm việc</p>
+                                                        <small class="payment-item__note">Miễn phí vận chuyển cho đơn hàng trên <?= vnd(100000) ?></small>
+                                                    </div>
+                                                    <span class="cart-info__checkbox payment-item__checkbox">
+                                                        <input type="radio" name="delivery-method" value="fedex" data-fee="0" checked />
+                                                        <span class="payment-item__cost">Miễn phí</span>
+                                                    </span>
+                                                </div>
+                                            </article>
+                                        </label>
+                                        <label>
+                                            <article class="payment-item payment-item--pointer">
+                                                <img src="<?= $base ?>assets/img/payment/delivery-2.png" class="payment-item__thumb" />
+                                                <div class="payment-item__content">
+                                                    <div class="payment-item__info">
+                                                        <h3 class="payment-item__title">Giao hàng nhanh</h3>
+                                                        <p class="payment-item__desc payment-item__desc--low">Giao trong 1-2 ngày làm việc</p>
+                                                        <small class="payment-item__note">Giao hàng hỏa tốc</small>
+                                                    </div>
+                                                    <span class="cart-info__checkbox payment-item__checkbox">
+                                                        <input type="radio" name="delivery-method" value="dhl" data-fee="12000" />
+                                                        <span class="payment-item__cost"><?= vnd(12000) ?></span>
+                                                    </span>
+                                                </div>
+                                            </article>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Payment Details -->
+                            <div class="col-4 col-xl-4 col-lg-12">
+                                <div class="cart-info cart-info--shadow">
+                                    <h2 class="cart-info__heading cart-info__heading--lv2">Chi tiết thanh toán</h2>
+                                    <p class="cart-info__desc">Hoàn tất mua hàng bằng cách cung cấp thông tin thẻ của bạn.</p>
+                                    <form id="payment-form" class="form cart-info__form">
+                                        <div class="form__group">
+                                            <label class="form__label form__label--medium">Địa chỉ Email</label>
+                                            <div class="form__text-input"><input type="email" id="email" value="<?= htmlspecialchars($_SESSION['user']['email'] ?? '') ?>" class="form__input" required /></div>
+                                        </div>
+                                        <div class="form__group">
+                                            <label class="form__label form__label--medium">Chủ thẻ</label>
+                                            <div class="form__text-input"><input type="text" id="card-holder" placeholder="Tên chủ thẻ" class="form__input" required /></div>
+                                        </div>
+                                        <div class="form__group">
+                                            <label class="form__label form__label--medium">Số thẻ</label>
+                                            <div class="form__text-input"><input type="text" id="card-details" placeholder="Số thẻ" class="form__input" required /></div>
+                                        </div>
+                                        <div class="form__row cart-info__form-row">
+                                            <div class="form__group form__group--flex">
+                                                <input type="text" id="card-expire" placeholder="MM/YY" class="form__input" required />
+                                                <input type="text" id="card-cvc" placeholder="CVC" class="form__input" required />
+                                            </div>
+                                        </div>
+                                    </form>
+                                    <div class="cart-info__summary">
+                                        <div class="cart-info__row"><span>Tạm tính (<?= $itemCount ?> sản phẩm)</span><span id="subtotal"><?= vnd($subtotal) ?></span></div>
+                                        <?php if ($discount > 0): ?>
+                                        <div class="cart-info__row"><span>Giảm giá (<?= htmlspecialchars($couponCode) ?>)</span><span id="discount">-<?= vnd($discount) ?></span></div>
+                                        <?php endif; ?>
+                                        <div class="cart-info__row"><span>Vận chuyển</span><span id="shipping-cost"><?= vnd($shipping_fee) ?></span></div>
+                                        <div class="cart-info__separate"></div>
+                                        <div class="cart-info__row cart-info__row--highlight"><span>Tổng cộng</span><span id="estimated-total"><?= vnd($total) ?></span></div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        id="pay-btn"
+                                        class="cart-info__next-btn btn btn--primary btn--rounded"
+                                        <?= !$hasPhone ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '' ?>
+                                    >
+                                        Thanh toán <?= vnd($total) ?>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
                 </div>
             </div>
         </div>
@@ -366,12 +420,9 @@ if (!function_exists('vnd')) {
                     <option value="mbbank" data-qr="<?= $base ?>assets/img/qr/mbbank-qr.png" data-desc="Chuyển khoản qua MB Bank">🏦 MB Bank</option>
                 </select>
             </div>
-            <div id="qr-display-area" style="text-align:center; margin-top:24px;">
-                <img id="qr-image" src="<?= $base ?>assets/img/qr/vnpay-qr.png" alt="QR Code" style="max-width:220px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-                <p id="qr-description" style="margin-top:12px; color:#666;">Quét mã VNPAY để thanh toán</p>
-            </div>
+
         </div>
-        <div class="modal__footer">
+        <div class="modal__footer d-flex mt-3">
             <button class="btn btn--small btn--text" onclick="closeModal('payment-method-modal')">Hủy</button>
             <button class="btn btn--small btn--primary" id="confirm-payment-method">Xác nhận thanh toán</button>
         </div>
@@ -508,7 +559,6 @@ if (!function_exists('vnd')) {
 
         // ========== PROCESS ORDER (dùng chung) ==========
         async function processOrder(paymentMethod, shippingMethod, shippingFee, email = null) {
-            console.log('🚀 processOrder called', { paymentMethod, shippingMethod, shippingFee });
             const btn = document.getElementById('alt-pay-btn') || document.getElementById('pay-btn');
             if (btn) {
                 btn.disabled = true;
@@ -516,29 +566,12 @@ if (!function_exists('vnd')) {
             }
 
             try {
-                const defaultFullName = <?= json_encode($defaultAddress['full_name'] ?? '') ?>;
-                const defaultPhone = <?= json_encode($defaultAddress['phone'] ?? '') ?>;
-                const defaultAddress = <?= json_encode($defaultAddress['address'] ?? '') ?>;
-                const defaultCity = <?= json_encode($defaultAddress['city'] ?? '') ?>;
-                const hasDefaultAddress = <?= $defaultAddress ? 'true' : 'false' ?>;
-                const addressId = <?= $defaultAddress['id'] ?? 'null' ?>;
-
                 const payload = {
                     shipping_method: shippingMethod,
                     shipping_fee: shippingFee,
-                    payment_method: paymentMethod
+                    payment_method: paymentMethod,
+                    shipping_address_id: <?= $defaultAddress['id'] ?? 'null' ?>
                 };
-
-                if (hasDefaultAddress && addressId) {
-                    payload.shipping_address_id = addressId;
-                } else {
-                    payload.custom_address = {
-                        receiver_name: defaultFullName,
-                        receiver_phone: defaultPhone,
-                        receiver_email: email || <?= json_encode($_SESSION['user']['email'] ?? '') ?>,
-                        delivery_address: `${defaultAddress}, ${defaultCity}`
-                    };
-                }
 
                 const res = await fetch('index.php?url=create-order', {
                     method: 'POST',
@@ -547,26 +580,40 @@ if (!function_exists('vnd')) {
                 });
 
                 const data = await res.json();
-                if (!data.success) throw new Error(data.message);
 
-                if (data.payment_url) {
-                    window.location.href = data.payment_url;
-                    return;
+                if (!data.success) {
+                    throw new Error(data.message || 'Không thể tạo đơn hàng');
                 }
 
-                await fetch('index.php?url=clearCoupon', { method: 'POST' });
-                await fetch('index.php?url=remove-all-cart');
+                // === XỬ LÝ THEO PHƯƠNG THỨC THANH TOÁN ===
+                if (paymentMethod === 'cod') {
+                    // Thanh toán khi nhận hàng
+                    await fetch('index.php?url=clearCoupon', { method: 'POST' });
+                    await fetch('index.php?url=remove-all-cart');
 
-                showAlert('Thành công', 'Đặt hàng thành công!', () => {
-                    window.location.href = 'index.php?url=orders';
-                });
+                    showAlert('Đặt hàng thành công!', 'Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ xác nhận sớm nhất.', () => {
+                        window.location.href = `index.php?url=orders`;
+                    });
+                }
+                else {
+                    // Thanh toán Online → Redirect sang cổng thanh toán
+                    if (data.payment_url) {
+                        window.location.href = data.payment_url;
+                    } else {
+                        // Nếu chưa có payment_url → fallback QR
+                        showAlert('Chuyển sang thanh toán online', 'Đang chuyển hướng đến cổng thanh toán...', () => {
+                            window.location.href = `index.php?url=payment-return&method=${paymentMethod}&order_code=${data.order_code}`;
+                        });
+                    }
+                }
 
             } catch (err) {
-                console.error('❌ Order error:', err);
-                showAlert('Lỗi', err.message);
+                console.error(err);
+                showAlert('Lỗi', err.message || 'Đặt hàng thất bại. Vui lòng thử lại.');
+
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerText = btn.id === 'pay-btn' ? 'Thanh toán <?= vnd($total) ?>' : 'Xác nhận thanh toán';
+                    btn.innerText = btn.id === 'pay-btn' ? `Thanh toán <?= vnd($total) ?>` : 'Xác nhận thanh toán';
                 }
             }
         }

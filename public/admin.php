@@ -34,7 +34,8 @@ require_once __DIR__ . '/../app/controllers/Admin/ReviewController.php';
 // ======================
 // HELPER VIEW
 // ======================
-function view($name) {
+function view($name, $data = []) {
+    extract($data);
     return __DIR__ . "/../resources/views/pages/admin/$name.php";
 }
 
@@ -158,30 +159,53 @@ switch ($url) {
     editProduct();   // Dùng hàm mới, KHÔNG dùng handleEditProduct()
     break;
 
+    // ===== USER =====
         // ===== USER =====
     case 'users':
-        $page = $_GET['page'] ?? 1;
-        $filters = [
-            'search' => $_GET['search'] ?? '',
-            'role_id' => $_GET['role_id'] ?? 0,
-            'status' => $_GET['status'] ?? -1
-        ];
-        $result = getUsers($page, 10, $filters);
-        $users = $result['data'];
-        $total = $result['total'];
-        $totalPages = $result['totalPages'];
+
+        $search        = $_GET['search'] ?? '';
+        $filter_role   = $_GET['role_id'] ?? 0;
+        $filter_status = $_GET['status'] ?? -1;
+        $page          = $_GET['page'] ?? 1;
+
+        $roles = getAllRoles() ?? [];
+
+        $result = getUsers($page, 10, [
+            'search'   => $search,
+            'role_id'  => $filter_role,
+            'status'   => $filter_status
+        ]);
+
+        $users       = $result['data'];
+        $totalPages  = $result['totalPages'];
         $currentPage = $result['currentPage'];
-        $roles = getAllRoles();
-        $search = $filters['search'];
-        $filter_role = $filters['role_id'];
-        $filter_status = $filters['status'];
-        $success = $_SESSION['success'] ?? null;
-        $error = $_SESSION['error'] ?? null;
-        unset($_SESSION['success'], $_SESSION['error']);
+
         $current_user_id = $_SESSION['user']['id'] ?? 0;
-        $is_super_admin = ($current_user_id == 1);
-        $current_role = getCurrentUserRole($current_user_id);
-        $view = view('users');
+        $is_super_admin  = ($current_user_id == 1);
+        $base            = $base ?? '/DoAn/DoAnTotNghiep/public/';
+
+        // Flash messages
+        $success = $_SESSION['success'] ?? null;
+        $error   = $_SESSION['error']   ?? null;
+        unset($_SESSION['success'], $_SESSION['error']);
+
+        // Truyền tất cả biến vào view
+        $data = [
+            'users'          => $users,
+            'roles'          => $roles,
+            'search'         => $search,
+            'filter_role'    => $filter_role,
+            'filter_status'  => $filter_status,
+            'totalPages'     => $totalPages,
+            'currentPage'    => $currentPage,
+            'current_user_id'=> $current_user_id,
+            'is_super_admin' => $is_super_admin,
+            'base'           => $base,
+            'success'        => $success,
+            'error'          => $error,
+        ];
+
+        $view = view('users', $data);
         break;
 
     case 'user-add':

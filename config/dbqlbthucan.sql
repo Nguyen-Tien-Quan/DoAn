@@ -184,13 +184,6 @@ CREATE TABLE orders (
     FOREIGN KEY (shipping_address_id) REFERENCES shipping_addresses(id)
 );
 
-
-ALTER TABLE orders 
-MODIFY status ENUM('pending','confirmed','preparing','ready_for_delivery','delivering','completed','cancelled') DEFAULT 'pending';
-UPDATE orders 
-SET status = 'pending'
-WHERE id > 0;
-
 USE qlbthucan;
 SELECT id, status, LENGTH(status) FROM orders;
 
@@ -404,6 +397,7 @@ CREATE TABLE shipping_addresses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
 
 -- =========================================
 -- 26. MENU_ITEMS

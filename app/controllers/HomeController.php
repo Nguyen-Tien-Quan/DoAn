@@ -219,38 +219,50 @@ function getCategories() {
 function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
     $conn = getDB();
     $offset = ($page - 1) * $limit;
-    $limit = (int)$limit;
-    $offset = (int)$offset;
 
     $sql = "SELECT p.*, COALESCE(AVG(r.rating), 0) as rating
             FROM products p
             LEFT JOIN reviews r ON p.id = r.product_id
             WHERE p.status = 1";
+
     $params = [];
 
+    // ===== PRICE =====
     if (!empty($filters['min_price'])) {
         $sql .= " AND p.base_price >= :min_price";
         $params[':min_price'] = (float)$filters['min_price'];
     }
+
     if (!empty($filters['max_price'])) {
         $sql .= " AND p.base_price <= :max_price";
         $params[':max_price'] = (float)$filters['max_price'];
     }
+
+    // ===== SIZE =====
     if (!empty($filters['size'])) {
-        $sql .= " AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.variant_name = :size)";
+        $sql .= " AND EXISTS (
+            SELECT 1 FROM product_variants pv
+            WHERE pv.product_id = p.id
+            AND pv.variant_name = :size
+        )";
         $params[':size'] = $filters['size'];
     }
+
+    // ===== CATEGORY =====
     if (!empty($filters['category'])) {
         $sql .= " AND p.category_id = :category";
         $params[':category'] = (int)$filters['category'];
     }
+
+    // ===== 🔥 SEARCH (FIX CHUẨN) =====
     if (!empty($filters['keyword'])) {
         $sql .= " AND p.name LIKE :keyword";
         $params[':keyword'] = '%' . $filters['keyword'] . '%';
     }
-
+    // ===== GROUP =====
     $sql .= " GROUP BY p.id";
 
+    // ===== SORT =====
     if (!empty($filters['sort'])) {
         if ($filters['sort'] === 'price_asc') {
             $sql .= " ORDER BY p.base_price ASC";
@@ -263,14 +275,18 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
         $sql .= " ORDER BY p.id DESC";
     }
 
+    // ===== LIMIT =====
     $sql .= " LIMIT :limit OFFSET :offset";
 
     $stmt = $conn->prepare($sql);
+
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
     }
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -280,36 +296,47 @@ function getFilteredProducts($page = 1, $limit = 10, $filters = []) {
  */
 function countFilteredProducts($filters = []) {
     $conn = getDB();
+
     $sql = "SELECT COUNT(DISTINCT p.id) as total
             FROM products p
             WHERE p.status = 1";
+
     $params = [];
 
     if (!empty($filters['min_price'])) {
         $sql .= " AND p.base_price >= ?";
         $params[] = (float)$filters['min_price'];
     }
+
     if (!empty($filters['max_price'])) {
         $sql .= " AND p.base_price <= ?";
         $params[] = (float)$filters['max_price'];
     }
+
     if (!empty($filters['size'])) {
-        $sql .= " AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.variant_name = ?)";
+        $sql .= " AND EXISTS (
+            SELECT 1 FROM product_variants pv
+            WHERE pv.product_id = p.id
+            AND pv.variant_name = ?
+        )";
         $params[] = $filters['size'];
     }
+
     if (!empty($filters['category'])) {
         $sql .= " AND p.category_id = ?";
         $params[] = (int)$filters['category'];
     }
+
+    // 🔥 FIX SEARCH
     if (!empty($filters['keyword'])) {
-        $sql .= " AND p.name LIKE ?";
-        $params[] = '%' . $filters['keyword'] . '%';
+        $sql .= " AND LOWER(p.name) LIKE ?";
+        $params[] = '%' . strtolower(trim($filters['keyword'])) . '%';
     }
 
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    return $row['total'] ?? 0;
+
+    return $stmt->fetchColumn();
 }
 
 function getAllVariants() {
@@ -398,4 +425,67 @@ function toggleFavorite($userId, $productId) {
         return ['status' => 'liked'];
     }
 }
+
+
+function getAllCategoriesWithDepth() {
+    $conn = getDB();
+    $stmt = $conn->query("SELECT id, name, parent_id FROM categories ORDER BY COALESCE(parent_id, 0), id");
+    $all = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Xây dựng cây
+    $tree = buildCatTree($all);
+    // Trải phẳng kèm depth
+    $flat = [];
+    flattenCatTree($tree, $flat, 0);
+    return $flat;
+}
+
+function buildCatTree(array $elements, $parentId = null) {
+    $branch = [];
+    foreach ($elements as $el) {
+        if ($el['parent_id'] == $parentId) {
+            $children = buildCatTree($elements, $el['id']);
+            if ($children) {
+                $el['children'] = $children;
+            }
+            $branch[] = $el;
+        }
+    }
+    return $branch;
+}
+
+function flattenCatTree(array $tree, array &$result, $depth) {
+    foreach ($tree as $node) {
+        $result[] = [
+            'id'    => $node['id'],
+            'name'  => $node['name'],
+            'depth' => $depth,
+        ];
+        if (!empty($node['children'])) {
+            flattenCatTree($node['children'], $result, $depth + 1);
+        }
+    }
+}
+
+
+function getParentCategories() {
+    $conn = getDB();
+    // Lấy id của danh mục gốc "Thực đơn"
+    $stmt = $conn->prepare("SELECT id FROM categories WHERE slug = 'thuc-don'");
+    $stmt->execute();
+    $rootId = $stmt->fetchColumn();
+
+    if (!$rootId) {
+        // Nếu không có "Thực đơn", lấy tất cả các category có parent_id IS NULL (nếu dùng cách khác)
+        $stmt = $conn->query("SELECT * FROM categories WHERE parent_id IS NULL ORDER BY sort_order");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy các danh mục con trực tiếp của "Thực đơn"
+    $stmt = $conn->prepare("SELECT * FROM categories WHERE parent_id = ? ORDER BY sort_order");
+    $stmt->execute([$rootId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
 ?>

@@ -134,7 +134,7 @@ function handleLogout() {
     exit();
 }
 
-    function handleRegister() {
+function handleRegister() {
     $conn = getDB();
 
     $email = trim($_POST['email'] ?? '');
@@ -181,7 +181,7 @@ function handleLogout() {
         VALUES (?, ?, ?, ?, 1, NOW(), NOW())
     ");
 
-    $roleId = 1;
+    $roleId = 3;
 
     if ($stmt->execute([$name, $email, $hashedPassword, $roleId])) {
         return "✅ Đăng ký thành công!";

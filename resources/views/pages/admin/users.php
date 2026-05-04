@@ -1,8 +1,4 @@
 <?php
-// resources/views/pages/admin/users.php
-// Các biến được truyền từ controller (admin.php case 'users')
-// $users, $roles, $totalPages, $currentPage, $search, $filter_role, $filter_status
-// $success, $error, $current_user_id, $is_super_admin, $current_role, $base
 
 ?>
 <div class="d-sm-flex align-items-center justify-content-between mb-4">

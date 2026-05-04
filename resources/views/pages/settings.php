@@ -1,7 +1,10 @@
 <?php
-// Các biến được truyền từ index.php: $user, $addresses, $notifications, $success, $error
 $base = '/DoAn/DoAnTotNghiep/public/';
-$avatarPath = !empty($user['avatar']) ? $base . 'assets/img/avatars/' . $user['avatar'] : $base . 'assets/img/avatar-default.png';
+
+// Gộp dữ liệu user + customer
+$avatarPath = !empty($user['avatar'])
+    ? $base . 'assets/img/avatars/' . $user['avatar'] . '?v=' . time()
+    : $base . 'assets/img/avatar-default.png';
 ?>
 <style>
     /* ========== DÙNG BIẾN TỪ LIGHT THEME (TỰ ĐỘNG THEO DARK) ========== */
@@ -252,148 +255,168 @@ $avatarPath = !empty($user['avatar']) ? $base . 'assets/img/avatars/' . $user['a
     }
 </style>
 
+
 <div class="settings-layout">
     <div class="settings-sidebar">
         <ul class="sidebar-menu">
-            <li class="active" data-tab="profile"><span class="menu-icon">👤</span> Thông tin chung</li>
-            <li data-tab="password"><span class="menu-icon">🔒</span> Đổi mật khẩu</li>
-            <li data-tab="address"><span class="menu-icon">📍</span> Địa chỉ giao hàng</li>
-            <li data-tab="notifications"><span class="menu-icon">🔔</span> Thông báo</li>
+            <li class="active" data-tab="profile">👤 Thông tin chung</li>
+            <li data-tab="password">🔒 Đổi mật khẩu</li>
+            <li data-tab="address">📍 Địa chỉ giao hàng</li>
+            <li data-tab="notifications">🔔 Thông báo</li>
         </ul>
     </div>
+
     <div class="settings-content">
         <?php if (!empty($success)): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-        <?php endif; ?>
-        <?php if (!empty($error)): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+            <div class="alert alert-success"><?= $success ?></div>
         <?php endif; ?>
 
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-error"><?= $error ?></div>
+        <?php endif; ?>
+
+        <!-- ================= PROFILE ================= -->
         <div id="profile-tab" class="tab-pane active">
-            <h2 class="section-title">Thông tin chung</h2>
+            <h2 class="section-title">Thông tin cá nhân</h2>
+
             <form action="index.php?url=settings/updateProfile" method="POST" enctype="multipart/form-data">
+
+                <!-- Avatar -->
                 <div class="avatar-upload">
-                    <img src="<?= $avatarPath ?>" class="avatar-preview" id="avatarPreview" alt="Avatar">
-                    <div class="avatar-input">
-                        <input type="file" name="avatar" accept="image/*" id="avatarFile" style="display:none;">
-                        <button type="button" class="btn btn-outline" onclick="document.getElementById('avatarFile').click();">Chọn ảnh đại diện</button>
-                        <small style="display:block; color:#777; margin-top:6px;">JPG, PNG, GIF, tối đa 2MB</small>
+                    <img src="<?= $avatarPath ?>" class="avatar-preview" id="avatarPreview">
+                    <div>
+                        <input type="file" name="avatar" id="avatarFile" hidden>
+                        <button type="button" class="btn btn-outline" onclick="avatarFile.click()">Chọn ảnh</button>
                     </div>
                 </div>
-                <div class="form-group"><label>Họ tên</label><input type="text" name="name" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required></div>
-                <div class="form-group"><label>Email</label><input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required></div>
-                <div class="form-group"><label>Số điện thoại</label><input type="tel" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" placeholder="Nhập số điện thoại"></div>
-                <div style="text-align: right;"><button type="submit" class="btn btn-primary">Lưu thay đổi</button></div>
+
+                <!-- USER -->
+                <div class="form-group">
+                    <label>Tên hiển thị</label>
+                    <input type="text" name="name" value="<?= $user['name'] ?? '' ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="<?= $user['email'] ?? '' ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label>SĐT</label>
+                    <input type="text" name="phone" value="<?= $user['phone'] ?? '' ?>">
+                </div>
+
+                <!-- CUSTOMER -->
+                <div class="form-group">
+                    <label>Họ tên đầy đủ</label>
+                    <input type="text" name="full_name" value="<?= $user['full_name'] ?? '' ?>">
+                </div>
+
+                <div class="form-group">
+                    <label>Giới tính</label>
+                    <select name="gender">
+                        <option value="">-- Chọn --</option>
+                        <option value="male" <?= ($user['gender'] ?? '')=='male'?'selected':'' ?>>Nam</option>
+                        <option value="female" <?= ($user['gender'] ?? '')=='female'?'selected':'' ?>>Nữ</option>
+                        <option value="other" <?= ($user['gender'] ?? '')=='other'?'selected':'' ?>>Khác</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Ngày sinh</label>
+                    <input type="date" name="birthday"
+                        value="<?= !empty($user['birthday']) ? date('Y-m-d', strtotime($user['birthday'])) : '' ?>">
+                </div>
+
+                <div class="form-group">
+                    <label>Địa chỉ cá nhân</label>
+                    <textarea name="address"><?= $user['address'] ?? '' ?></textarea>
+                </div>
+
+                <div style="text-align:right">
+                    <button class="btn btn-primary">Lưu thay đổi</button>
+                </div>
             </form>
         </div>
 
+        <!-- ================= PASSWORD ================= -->
         <div id="password-tab" class="tab-pane" style="display:none;">
             <h2 class="section-title">Đổi mật khẩu</h2>
+
             <form action="index.php?url=settings/changePassword" method="POST">
-                <div class="form-group"><label>Mật khẩu hiện tại</label><input type="password" name="old_password" required></div>
-                <div class="form-group"><label>Mật khẩu mới</label><input type="password" name="new_password" required></div>
-                <div class="form-group"><label>Xác nhận mật khẩu</label><input type="password" name="confirm_password" required></div>
-                <div style="text-align: right;"><button type="submit" class="btn btn-primary">Đổi mật khẩu</button></div>
+                <div class="form-group">
+                    <label>Mật khẩu cũ</label>
+                    <input type="password" name="old_password" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Mật khẩu mới</label>
+                    <input type="password" name="new_password" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Xác nhận</label>
+                    <input type="password" name="confirm_password" required>
+                </div>
+
+                <button class="btn btn-primary">Cập nhật</button>
             </form>
         </div>
 
+        <!-- ================= ADDRESS ================= -->
         <div id="address-tab" class="tab-pane" style="display:none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
-                <h2 class="section-title" style="margin-bottom:0;">Địa chỉ của tôi</h2>
-                <button class="btn btn-primary" onclick="toggleAddressForm()">+ Thêm địa chỉ mới</button>
-            </div>
-            <div id="addressForm" style="display: none; background: var(--review-card-bg, #f9f9f9); border-radius: 20px; padding: 20px; margin-bottom: 24px;">
-                <form action="index.php?url=settings/addAddress" method="POST">
-                    <div class="form-group"><label>Họ tên người nhận</label><input type="text" name="full_name" required></div>
-                    <div class="form-group"><label>Số điện thoại</label><input type="text" name="phone" required></div>
-                    <div class="form-group"><label>Địa chỉ</label><textarea name="address" rows="2" required></textarea></div>
-                    <div class="form-group"><label>Thành phố / Tỉnh</label><input type="text" name="city" required></div>
-                    <div class="form-group"><label><input type="checkbox" name="is_default" value="1"> Đặt làm địa chỉ mặc định</label></div>
-                    <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                        <button type="submit" class="btn btn-primary">Lưu</button>
-                        <button type="button" class="btn btn-outline" onclick="toggleAddressForm()">Hủy</button>
+            <h2 class="section-title">Địa chỉ giao hàng</h2>
+
+            <?php if (!empty($addresses)): ?>
+                <?php foreach ($addresses as $addr): ?>
+                    <div class="address-card">
+                        <b><?= $addr['full_name'] ?></b> - <?= $addr['phone'] ?><br>
+                        <?= $addr['address'] ?>, <?= $addr['city'] ?>
+
+                        <?php if ($addr['is_default']): ?>
+                            <span style="color:red">[Mặc định]</span>
+                        <?php endif; ?>
                     </div>
-                </form>
-            </div>
-            <div>
-                <?php if (!empty($addresses)): ?>
-                    <?php foreach ($addresses as $addr): ?>
-                        <div class="address-card">
-                            <form action="index.php?url=settings/updateAddress" method="POST">
-                                <input type="hidden" name="address_id" value="<?= $addr['id'] ?>">
-                                <div class="row-2col">
-                                    <div class="form-group"><label>Họ tên</label><input type="text" name="full_name" value="<?= htmlspecialchars($addr['full_name'] ?? '') ?>" required></div>
-                                    <div class="form-group"><label>Số điện thoại</label><input type="text" name="phone" value="<?= htmlspecialchars($addr['phone'] ?? '') ?>" required></div>
-                                    <div class="form-group"><label>Địa chỉ</label><textarea name="address" rows="2" required><?= htmlspecialchars($addr['address'] ?? '') ?></textarea></div>
-                                    <div class="form-group"><label>Thành phố</label><input type="text" name="city" value="<?= htmlspecialchars($addr['city'] ?? '') ?>" required></div>
-                                </div>
-                                <div class="form-group"><label><input type="checkbox" name="is_default" value="1" <?= (!empty($addr['is_default']) ? 'checked' : '') ?>> Địa chỉ mặc định</label></div>
-                                <div class="address-actions">
-                                    <button type="submit" class="btn btn-primary">Cập nhật</button>
-                                    <button type="button" class="btn btn-danger" onclick="deleteAddress(<?= $addr['id'] ?>)">Xóa</button>
-                                </div>
-                            </form>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="alert" style="background:#fafafa; text-align:center;">Bạn chưa có địa chỉ nào.</div>
-                <?php endif; ?>
-            </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p>Chưa có địa chỉ nào</p>
+            <?php endif; ?>
         </div>
 
+        <!-- ================= NOTIFICATION ================= -->
         <div id="notifications-tab" class="tab-pane" style="display:none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
-                <h2 class="section-title" style="margin-bottom:0;">Thông báo</h2>
-                <button class="btn btn-outline" onclick="markAllRead()">Đánh dấu tất cả đã đọc</button>
-            </div>
-            <div id="notifList">
-                <?php if (!empty($notifications)): ?>
-                    <?php foreach ($notifications as $notif): ?>
-                        <div class="notif-item <?= empty($notif['is_read']) ? 'unread' : '' ?>" data-id="<?= $notif['id'] ?>" onclick="markRead(this)">
-                            <div class="notif-title"><?= htmlspecialchars($notif['title'] ?? '') ?></div>
-                            <div><?= nl2br(htmlspecialchars($notif['content'] ?? '')) ?></div>
-                            <div class="notif-time"><?= htmlspecialchars($notif['created_at'] ?? '') ?></div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="alert" style="background:#fafafa; text-align:center;">Không có thông báo nào.</div>
-                <?php endif; ?>
-            </div>
+            <h2 class="section-title">Thông báo</h2>
+            <?php if (!empty($notifications)): ?>
+            <?php foreach ($notifications as $n): ?>
+                <div class="notif-item <?= !$n['is_read']?'unread':'' ?>">
+                    <b><?= $n['title'] ?></b><br>
+                    <?= $n['content'] ?>
+                </div>
+            <?php endforeach; ?>
+            <?php else: ?>
+                <p>Chưa có Thông báo nào</p>
+            <?php endif; ?>
         </div>
     </div>
 </div>
 
 <script>
-    const menuItems = document.querySelectorAll('.sidebar-menu li');
-    const panes = {
-        profile: document.getElementById('profile-tab'),
-        password: document.getElementById('password-tab'),
-        address: document.getElementById('address-tab'),
-        notifications: document.getElementById('notifications-tab')
-    };
-    function activateTab(tabId) {
-        Object.keys(panes).forEach(id => { if (panes[id]) panes[id].style.display = 'none'; });
-        if (panes[tabId]) panes[tabId].style.display = 'block';
-        menuItems.forEach(item => {
-            item.classList.remove('active');
-            if (item.getAttribute('data-tab') === tabId) item.classList.add('active');
-        });
-    }
-    menuItems.forEach(item => {
-        item.addEventListener('click', () => { const tabId = item.getAttribute('data-tab'); if (tabId) activateTab(tabId); });
-    });
-    function previewAvatar(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = e => { const preview = document.getElementById('avatarPreview'); if (preview) preview.src = e.target.result; };
-            reader.readAsDataURL(file);
-        }
-    }
-    const avatarFile = document.getElementById('avatarFile');
-    if (avatarFile) avatarFile.addEventListener('change', previewAvatar);
-    function toggleAddressForm() { const formDiv = document.getElementById('addressForm'); if (formDiv) formDiv.style.display = formDiv.style.display === 'none' ? 'block' : 'none'; }
-    function deleteAddress(id) { if (confirm('Xóa địa chỉ này?')) { const form = document.createElement('form'); form.method = 'POST'; form.action = 'index.php?url=settings/deleteAddress'; const input = document.createElement('input'); input.type = 'hidden'; input.name = 'address_id'; input.value = id; form.appendChild(input); document.body.appendChild(form); form.submit(); } }
-    function markRead(element) { const notifId = element.dataset.id; fetch('index.php?url=settings/markNotificationRead', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'notification_id=' + notifId }).then(res => res.json()).then(data => { if (data.success) element.classList.remove('unread'); }); }
-    function markAllRead() { fetch('index.php?url=settings/markAllRead', { method: 'POST' }).then(() => location.reload()); }
+function activateTab(tab){
+    document.querySelectorAll('.tab-pane').forEach(p=>p.style.display='none');
+    document.getElementById(tab+'-tab').style.display='block';
+
+    document.querySelectorAll('.sidebar-menu li').forEach(i=>i.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+}
+
+document.querySelectorAll('.sidebar-menu li').forEach(item=>{
+    item.onclick = ()=>activateTab(item.dataset.tab);
+});
+
+// preview avatar
+avatarFile.onchange = e=>{
+    const reader = new FileReader();
+    reader.onload = ev => avatarPreview.src = ev.target.result;
+    reader.readAsDataURL(e.target.files[0]);
+};
 </script>

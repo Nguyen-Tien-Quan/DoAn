@@ -46,11 +46,14 @@ switch ($action) {
     case 'order-detail':
         $orderId = $_GET['id'] ?? 0;
         $order = getShipperOrderDetail($orderId);
+
         if (!$order) {
             die("Không tìm thấy đơn hàng hoặc bạn không có quyền xem.");
         }
+
+        $data = ['order' => $order];
         $view = __DIR__ . '/../resources/views/pages/shipper/order_detail.php';
-        break;
+    break;
 
     case 'history':
         $history = getShipperHistory($shipperId);
@@ -71,4 +74,5 @@ switch ($action) {
 }
 
 // Load layout shipper
+if (isset($data)) extract($data);
 include __DIR__ . '/../resources/views/layouts/shipper_layout.php';

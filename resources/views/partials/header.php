@@ -110,7 +110,83 @@
                                                             </li>
                                                             <li class="menu-column__item">
                                                                 <a href="#!" class="menu-column__link">Gift Cards</a>
-                                                                <!-- Sub menu for "Gift Cards" -->
+                                                                <div class="sub-menu__column">
+                                                    <!-- Menu column 1 -->
+                                                    <div class="menu-column">
+                                                        <div class="menu-column__icon">
+                                                            <img src="./assets/img/category/cate-9.1.svg" alt=""
+                                                                class="menu-column__icon-1" />
+                                                            <img src="./assets/img/category/cate-9.2.svg" alt=""
+                                                                class="menu-column__icon-2" />
+                                                        </div>
+                                                        <div class="menu-column__content">
+                                                            <h2 class="menu-column__heading">
+                                                                <a href="#!">Bakery & Bread</a>
+                                                            </h2>
+                                                            <ul class="menu-column__list">
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Shop All</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">New in
+                                                                        Bakery</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Sliced
+                                                                        Bread</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Rolls &
+                                                                        Buns</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Tortillas</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Breakfast
+                                                                        Breads</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Pies</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Cookies &
+                                                                        Brownies</a>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Menu column 2 -->
+                                                    <div class="menu-column">
+                                                        <div class="menu-column__icon">
+                                                            <img src="./assets/img/category/cate-10.1.svg" alt=""
+                                                                class="menu-column__icon-1" />
+                                                            <img src="./assets/img/category/cate-10.2.svg" alt=""
+                                                                class="menu-column__icon-2" />
+                                                        </div>
+                                                        <div class="menu-column__content">
+                                                            <h2 class="menu-column__heading">
+                                                                <a href="#!">Frozen</a>
+                                                            </h2>
+                                                            <ul class="menu-column__list">
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Frozen
+                                                                        Breakfast</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Frozen
+                                                                        Potatoes</a>
+                                                                </li>
+                                                                <li class="menu-column__item">
+                                                                    <a href="#!" class="menu-column__link">Frozen Meals
+                                                                        &
+                                                                        Snacks</a>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
                                                             </li>
                                                             <li class="menu-column__item">

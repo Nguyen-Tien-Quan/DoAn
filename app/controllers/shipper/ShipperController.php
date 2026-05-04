@@ -92,11 +92,14 @@ function getAvailableOrders($page = 1, $limit = 10) {
         SELECT COUNT(*)
         FROM orders o
         WHERE o.shipper_id IS NULL
-          AND o.order_type = 'delivery'
-          AND o.status = 'ready_for_delivery'
-          AND o.delivery_status = 'pending'
+            AND o.order_type = 'delivery'
+            AND o.status = 'ready_for_delivery'
+            AND o.delivery_status = 'pending'
     ";
-    $total = $conn->query($countSql)->fetchColumn();
+
+    $stmt = $conn->prepare($countSql);
+    $stmt->execute();
+    $total = $stmt->fetchColumn();
 
     $sql = "
         SELECT o.*,
@@ -110,10 +113,13 @@ function getAvailableOrders($page = 1, $limit = 10) {
           AND o.status = 'ready_for_delivery'
           AND o.delivery_status = 'pending'
         ORDER BY o.created_at ASC
-        LIMIT $limit OFFSET $offset
+        LIMIT :limit OFFSET :offset
     ";
 
-    $stmt = $conn->query($sql);
+    $stmt = $conn->prepare($sql);
+    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+    $stmt->execute();
 
     return [
         'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
@@ -195,23 +201,7 @@ function acceptOrder() {
 
     $conn = getDB();
 
-    $stmt = $conn->prepare("
-        SELECT id, shipper_id
-        FROM orders
-        WHERE id = ?
-          AND status = 'ready_for_delivery'
-          AND delivery_status = 'pending'
-          AND shipper_id IS NULL
-    ");
-    $stmt->execute([$orderId]);
-    $order = $stmt->fetch();
-
-    if (!$order) {
-        echo json_encode(['success' => false, 'message' => 'Đơn không hợp lệ hoặc đã có người nhận']);
-        exit;
-    }
-
-    // 🔥 FIX QUAN TRỌNG
+    // ✅ UPDATE THẲNG + CHECK ĐIỀU KIỆN
     $stmt = $conn->prepare("
         UPDATE orders
         SET shipper_id = ?,
@@ -219,13 +209,26 @@ function acceptOrder() {
             status = 'delivering',
             updated_at = NOW()
         WHERE id = ?
+          AND shipper_id IS NULL
+          AND status = 'ready_for_delivery'
+          AND delivery_status = 'pending'
+          AND order_type = 'delivery'
     ");
 
-    $ok = $stmt->execute([$shipperId, $orderId]);
+    $stmt->execute([$shipperId, $orderId]);
+
+    // 🔥 KEY: kiểm tra có update được không
+    if ($stmt->rowCount() === 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Đơn không hợp lệ, chưa sẵn sàng hoặc đã có người nhận'
+        ]);
+        exit;
+    }
 
     echo json_encode([
-        'success' => $ok,
-        'message' => $ok ? 'Nhận đơn thành công' : 'Lỗi DB'
+        'success' => true,
+        'message' => 'Nhận đơn thành công'
     ]);
     exit;
 }
@@ -270,6 +273,7 @@ function updateDeliveryStatus() {
     // ✅ Giao thành công
     if ($newStatus === 'delivered') {
         $update['status'] = 'completed';
+        $update['completed_at'] = date('Y-m-d H:i:s');
 
         if ($order['payment_method'] === 'cash') {
             $stmt = $conn->prepare("

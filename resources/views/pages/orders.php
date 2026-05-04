@@ -1,3 +1,9 @@
+<?php
+global $orders, $page, $totalPages;
+if (!function_exists('renderOrder')) {
+    require_once __DIR__ . '/../../../app/helpers/order_helper.php';
+}
+?>
 <style>
 /* HEADER */
 .order-header{
@@ -74,6 +80,7 @@
     align-items:center;
     flex-wrap:wrap;
     gap:10px;
+    margin-bottom: 40px;
 }
 
 .order-price{
@@ -96,6 +103,10 @@
 .order-status.delivering{ background:#e2e3e5; color:#383d41; }
 .order-status.completed{ background:#d4edda; color:#155724; }
 .order-status.cancelled{ background:#f8d7da; color:#721c24; }
+.order-status.ready_for_delivery {
+    background: #fff0f6;
+    color: #c2185b;
+}
 
 /* ACTION */
 .order-actions{ display:flex; gap:10px; }
@@ -122,6 +133,28 @@
     text-align:center;
     padding:30px;
     color:#888;
+}
+
+/* PAGINATION */
+.pagination{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-top:20px;
+}
+
+.page-btn{
+    padding:6px 12px;
+    border:1px solid #ddd;
+    background:#fff;
+    cursor:pointer;
+    border-radius:6px;
+}
+
+.page-btn.active{
+    background:#ff4d4f;
+    color:#fff;
+    border-color:#ff4d4f;
 }
 
 /* OVERLAY */
@@ -209,7 +242,87 @@
     from{transform:scale(.9); opacity:0}
     to{transform:scale(1); opacity:1}
 }
+
+/* PROGRESS BAR */
+.progress-bar{
+    margin-top:20px;
+}
+
+.progress-line{
+    height:4px;
+    background:#eee;
+    border-radius:10px;
+    position:relative;
+}
+
+.progress-fill{
+    position:absolute;
+    top:0;
+    left:0;
+    height:100%;
+    background:#ff4d4f;
+    border-radius:10px;
+    transition:.4s;
+}
+
+.progress-steps{
+    display:flex;
+    justify-content:space-between;
+    position:relative;
+    top:-10px;
+}
+
+.step{
+    display:flex;
+    justify-content:center;
+    width:100%;
+}
+
+.step .dot{
+    width:14px;
+    height:14px;
+    background:#ccc;
+    border-radius:50%;
+    z-index:2;
+}
+
+.step.active .dot{
+    background:#ff4d4f;
+    transform:scale(1.2);
+}
+
+.step{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    width:100%;
+}
+
+.step-label{
+    position:absolute;
+    top:-28px;
+    font-size:12px;
+    background:#ff4d4f;
+    color:#fff;
+    padding:4px 8px;
+    border-radius:999px;
+    white-space:nowrap;
+}
+
+.dot{
+    width:14px;
+    height:14px;
+    background:#ccc;
+    border-radius:50%;
+}
+
+.dot.active{
+    background:#ff4d4f;
+    transform:scale(1.3);
+}
+
 </style>
+
 
 <main class="order-page">
 <div class="container">
@@ -234,6 +347,17 @@
         <?php endforeach; ?>
     </div>
 
+    <!-- PAGINATION -->
+    <div id="pagination" class="pagination">
+        <?php for ($i=1; $i <= $totalPages; $i++): ?>
+            <button
+                class="page-btn <?= $i==$page?'active':'' ?>"
+                data-page="<?= $i ?>">
+                <?= $i ?>
+            </button>
+        <?php endfor; ?>
+    </div>
+
 </div>
 </main>
 
@@ -252,29 +376,48 @@
 
 <script>
 let currentOrderId = null;
+let currentStatus = ''; // 🔥 lưu filter hiện tại
 
-/* ================= FILTER ================= */
+// FILTER
 document.querySelectorAll('.filter-btn').forEach(btn=>{
     btn.onclick = function(){
         document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
         this.classList.add('active');
 
-        loadOrders(this.dataset.status);
+        currentStatus = this.dataset.status; // lưu lại
+        loadOrders(currentStatus, 1);
     }
 });
 
-function loadOrders(status=''){
+// PAGINATION CLICK
+document.querySelectorAll('.page-btn').forEach(btn=>{
+    btn.onclick = function(){
+        const page = this.dataset.page;
+        loadOrders(currentStatus, page);
+    }
+});
+
+function loadOrders(status='', page=1){
     const list = document.getElementById('orderList');
+
     list.innerHTML = '<div class="loading">Đang tải...</div>';
 
-    fetch('index.php?url=load-orders&status=' + status)
+    fetch(`index.php?url=load-orders&status=${status}&page=${page}`)
     .then(res=>res.text())
     .then(html=>{
         list.innerHTML = html;
+
+        // update active page
+        document.querySelectorAll('.page-btn').forEach(btn=>{
+            btn.classList.remove('active');
+        });
+
+        const btn = document.querySelector(`.page-btn[data-page="${page}"]`);
+        if(btn) btn.classList.add('active');
     });
 }
 
-/* ================= MODAL ================= */
+// MODAL
 function openCancelModal(id){
     currentOrderId = id;
     document.getElementById('cancelModal').style.display = 'flex';
@@ -284,9 +427,6 @@ function closeModal(){
     document.getElementById('cancelModal').style.display = 'none';
 }
 
-document.getElementById('cancelModal').addEventListener('click', closeModal);
-
-/* ================= CANCEL ================= */
 function confirmCancel(){
     fetch('index.php?url=cancel-order', {
         method:'POST',
@@ -297,7 +437,9 @@ function confirmCancel(){
     .then(data=>{
         alert(data.message);
         closeModal();
-        loadOrders(); // reload ajax
+
+        // 🔥 reload đúng filter hiện tại
+        loadOrders(currentStatus, 1);
     });
 }
 </script>

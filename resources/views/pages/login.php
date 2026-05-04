@@ -84,8 +84,8 @@ if (isset($_SESSION['user'])) {
     <div class="auth__content">
         <div class="auth__content-inner">
             <a href="<?= $base ?>" class="logo">
-                <img src="<?= $base ?>assets/icons/logo.svg" alt="grocerymart" class="logo__img" />
-                <h2 class="logo__title">grocerymart</h2>
+                <img src="<?= $base ?>assets/icons/logo.svg" alt="TRQShop" class="logo__img" />
+                <h2 class="logo__title">TRQShop</h2>
             </a>
 
             <h1 class="auth__heading">Xin chào trở lại!</h1>

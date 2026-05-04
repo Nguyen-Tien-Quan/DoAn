@@ -39,54 +39,136 @@ function addShippingAddress() {
     header('Content-Type: application/json; charset=utf-8');
 
     if (!isset($_SESSION['user'])) {
-        echo json_encode(['success'=>false,'message'=>'Vui lòng đăng nhập']);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Vui lòng đăng nhập'
+        ]);
         exit;
     }
 
+    $conn = getDB();
     $user_id = $_SESSION['user']['id'];
-    $address_id   = $_POST['address_id'] ?? null;
-    $full_name    = trim($_POST['recipient_name'] ?? '');
-    $phone        = trim($_POST['phone'] ?? '');
-    $address      = trim($_POST['address'] ?? '');
-    $city         = trim($_POST['city'] ?? '');
-    $is_default   = isset($_POST['is_default']) ? 1 : 0;
 
+    $address_id = $_POST['address_id'] ?? null;
+    $full_name  = trim($_POST['recipient_name'] ?? '');
+    $phone      = trim($_POST['phone'] ?? '');
+    $address    = trim($_POST['address'] ?? '');
+    $city       = trim($_POST['city'] ?? '');
+    $is_default = isset($_POST['is_default']) ? 1 : 0;
+
+    // ================= VALIDATE =================
     if (!$full_name || !$phone || !$address || !$city) {
-        echo json_encode(['success'=>false,'message'=>'Vui lòng điền đầy đủ thông tin']);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Vui lòng nhập đầy đủ thông tin'
+        ]);
+        exit;
+    }
+
+    // ================= FIX PHONE =================
+    $phone = preg_replace('/\D/', '', $phone);
+
+    // convert +84 -> 0
+    if (substr($phone, 0, 2) === '84') {
+        $phone = '0' . substr($phone, 2);
+    }
+
+    if (!preg_match('/^0[0-9]{9}$/', $phone)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Số điện thoại phải 10 số và bắt đầu bằng 0'
+        ]);
         exit;
     }
 
     try {
-        $conn = getDB();
 
-        if ($is_default) {
-            $conn->prepare("UPDATE shipping_addresses SET is_default = 0 WHERE user_id=?")
-                 ->execute([$user_id]);
+        // ================= CHECK DUPLICATE (ONLY ADD) =================
+        $check = $conn->prepare("
+            SELECT id FROM shipping_addresses
+            WHERE user_id = ?
+            AND phone = ?
+            AND address = ?
+            AND city = ?
+        ");
+        $check->execute([$user_id, $phone, $address, $city]);
+
+        $exist = $check->fetchColumn();
+
+        if ($exist && !$address_id) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Địa chỉ này đã tồn tại'
+            ]);
+            exit;
         }
 
+        // ================= HANDLE DEFAULT =================
+        if ($is_default == 1) {
+            $conn->prepare("
+                UPDATE shipping_addresses
+                SET is_default = 0
+                WHERE user_id = ?
+            ")->execute([$user_id]);
+        }
+
+        // ================= UPDATE =================
         if ($address_id) {
+
             $stmt = $conn->prepare("
                 UPDATE shipping_addresses
-                SET full_name=?, phone=?, address=?, city=?, is_default=?
-                WHERE id=? AND user_id=?
+                SET full_name = ?,
+                    phone = ?,
+                    address = ?,
+                    city = ?,
+                    is_default = ?
+                WHERE id = ? AND user_id = ?
             ");
-            $success = $stmt->execute([$full_name, $phone, $address, $city, $is_default, $address_id, $user_id]);
-            $message = $success ? 'Cập nhật địa chỉ thành công' : 'Cập nhật thất bại';
-        } else {
-            $stmt = $conn->prepare("
-                INSERT INTO shipping_addresses
-                (user_id, full_name, phone, address, city, is_default, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $success = $stmt->execute([$user_id, $full_name, $phone, $address, $city, $is_default]);
-            $message = $success ? 'Thêm địa chỉ thành công' : 'Thêm thất bại';
+
+            $ok = $stmt->execute([
+                $full_name,
+                $phone,
+                $address,
+                $city,
+                $is_default,
+                $address_id,
+                $user_id
+            ]);
+
+            echo json_encode([
+                'success' => $ok,
+                'message' => $ok ? 'Cập nhật địa chỉ thành công' : 'Cập nhật thất bại'
+            ]);
+            exit;
         }
 
-        echo json_encode(['success'=>$success,'message'=>$message]);
+        // ================= INSERT =================
+        $stmt = $conn->prepare("
+            INSERT INTO shipping_addresses
+            (user_id, full_name, phone, address, city, is_default, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ");
+
+        $ok = $stmt->execute([
+            $user_id,
+            $full_name,
+            $phone,
+            $address,
+            $city,
+            $is_default
+        ]);
+
+        echo json_encode([
+            'success' => $ok,
+            'message' => $ok ? 'Thêm địa chỉ thành công' : 'Thêm thất bại'
+        ]);
         exit;
 
-    } catch (\PDOException $e) {
-        echo json_encode(['success'=>false,'message'=>'Lỗi DB: '.$e->getMessage()]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Lỗi hệ thống: ' . $e->getMessage()
+        ]);
         exit;
     }
 }
@@ -109,29 +191,69 @@ function placeOrder() {
     }
 
     $conn = getDB();
+
+    // ✅ CHECK địa chỉ thuộc user
+    $stmt = $conn->prepare("SELECT * FROM shipping_addresses WHERE id=? AND user_id=?");
+    $stmt->execute([$shipping_address_id, $user_id]);
+    $address = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$address) {
+        $_SESSION['error'] = "Địa chỉ không hợp lệ";
+        header("Location: index.php?url=shipping");
+        exit;
+    }
+
+    $cart = $_SESSION['cart'] ?? [];
+
+    // ✅ CHECK giỏ hàng
+    if (empty($cart)) {
+        $_SESSION['error'] = "Giỏ hàng trống";
+        header("Location: index.php?url=cart");
+        exit;
+    }
+
     $conn->beginTransaction();
 
     try {
         $subtotal = 0;
-        foreach ($_SESSION['cart'] ?? [] as $item) {
+        foreach ($cart as $item) {
             $subtotal += $item['price'] * $item['quantity'];
         }
+
         $shipping_fee = 10000;
         $total = $subtotal + $shipping_fee;
 
+        // ✅ thêm delivery_address
+        $delivery_address = $address['address'] . ', ' . $address['city'];
+
         $stmt = $conn->prepare("
-            INSERT INTO orders (user_id, shipping_address_id, total_amount, shipping_fee, final_amount, payment_method, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending')
+            INSERT INTO orders
+            (user_id, shipping_address_id, total_amount, shipping_fee, final_amount, payment_method, status, delivery_address)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
         ");
-        $stmt->execute([$user_id, $shipping_address_id, $subtotal, $shipping_fee, $total, $payment_method]);
+        $stmt->execute([
+            $user_id,
+            $shipping_address_id,
+            $subtotal,
+            $shipping_fee,
+            $total,
+            $payment_method,
+            $delivery_address
+        ]);
+
         $order_id = $conn->lastInsertId();
 
-        foreach ($_SESSION['cart'] ?? [] as $item) {
+        foreach ($cart as $item) {
             $stmt = $conn->prepare("
                 INSERT INTO order_items (order_id, product_id, quantity, unit_price)
                 VALUES (?, ?, ?, ?)
             ");
-            $stmt->execute([$order_id, $item['id'], $item['quantity'], $item['price']]);
+            $stmt->execute([
+                $order_id,
+                $item['id'],
+                $item['quantity'],
+                $item['price']
+            ]);
         }
 
         unset($_SESSION['cart']);
@@ -148,7 +270,24 @@ function placeOrder() {
         exit;
     }
 }
+function generatePaymentUrl($order_id, $amount, $method, $order_code) {
+    $base = 'http://' . $_SERVER['HTTP_HOST'] . '/DoAn/DoAnTotNghiep/public/';
 
+    switch ($method) {
+        case 'vnpay':
+            // Giả lập VNPay (thực tế bạn cần tích hợp SDK)
+            return $base . "index.php?url=vnpay-create&order_id=$order_id&amount=$amount&order_code=$order_code";
+
+        case 'momo':
+            return $base . "index.php?url=momo-create&order_id=$order_id&amount=$amount";
+
+        case 'zalopay':
+            return $base . "index.php?url=zalopay-create&order_id=$order_id&amount=$amount";
+
+        default:
+            return $base . "index.php?url=payment-return&method=$method&order_code=$order_code";
+    }
+}
 // ---------- API TẠO ĐƠN HÀNG (dùng cho AJAX) ----------
 function createOrderAPI() {
     header('Content-Type: application/json');
@@ -165,12 +304,12 @@ function createOrderAPI() {
         exit;
     }
 
-    $user_id = $_SESSION['user']['id'];
-    $shipping_address_id = $input['shipping_address_id'] ?? 0;
-    $shipping_method = $input['shipping_method'] ?? 'fedex';
-    $shipping_fee = intval($input['shipping_fee'] ?? 0);
-    $payment_method = $input['payment_method'] ?? 'card';
-    $order_type = $input['order_type'] ?? 'delivery';
+    $user_id            = $_SESSION['user']['id'];
+    $shipping_address_id = (int)($input['shipping_address_id'] ?? 0);
+    $shipping_method    = $input['shipping_method'] ?? 'standard';
+    $shipping_fee       = (int)($input['shipping_fee'] ?? 10000);
+    $payment_method     = $input['payment_method'] ?? 'cod';
+    $order_type         = $input['order_type'] ?? 'delivery';
 
     $cart = $_SESSION['cart'] ?? [];
     if (empty($cart)) {
@@ -178,85 +317,85 @@ function createOrderAPI() {
         exit;
     }
 
+    // Tính tiền
     $subtotal = 0;
     foreach ($cart as $item) {
-        $subtotal += $item['price'] * $item['quantity'];
+        $subtotal += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
     }
 
     $discount = $_SESSION['discount'] ?? 0;
-    $total = $subtotal - $discount + $shipping_fee;
+    $total    = $subtotal - $discount + $shipping_fee;
     if ($total < 0) $total = 0;
 
     $conn = getDB();
 
-    // Kiểm tra địa chỉ giao hàng
+    // Kiểm tra địa chỉ
     $stmt = $conn->prepare("SELECT * FROM shipping_addresses WHERE id = ? AND user_id = ?");
     $stmt->execute([$shipping_address_id, $user_id]);
     $address = $stmt->fetch(PDO::FETCH_ASSOC);
+
     if (!$address) {
         echo json_encode(['success' => false, 'message' => 'Địa chỉ giao hàng không hợp lệ']);
         exit;
     }
 
     $conn->beginTransaction();
+
     try {
-        $order_code = 'ORD' . date('Ymd') . '_' . strtoupper(uniqid());
-    $delivery_address = $address['address'] . ', ' . $address['city'];
+        $order_code = 'ORD' . date('YmdHis') . rand(100, 999);
+
+        $delivery_address = $address['address'] . ', ' . ($address['city'] ?? '');
+
         // Tạo đơn hàng
         $stmt = $conn->prepare("
             INSERT INTO orders
-            (order_code, user_id, shipping_address_id, order_type, total_amount, discount_amount, shipping_fee, final_amount, payment_method, payment_status, status, delivery_address, created_at, updated_at)
+            (order_code, user_id, shipping_address_id, order_type, total_amount,
+             discount_amount, shipping_fee, final_amount, payment_method,
+             payment_status, status, delivery_address, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, NOW(), NOW())
         ");
+
         $stmt->execute([
-        $order_code,
-        $user_id,
-        $shipping_address_id,
-        $order_type,
-        $subtotal,
-        $discount,
-        $shipping_fee,
-        $total,
-        $payment_method,
-        $delivery_address   // <== THÊM VÀO ĐÂY
-    ]);
+            $order_code,
+            $user_id,
+            $shipping_address_id,
+            $order_type,
+            $subtotal,
+            $discount,
+            $shipping_fee,
+            $total,
+            $payment_method,
+            $delivery_address
+        ]);
+
         $order_id = $conn->lastInsertId();
 
-        // Chuẩn bị câu lệnh INSERT order_items và UPDATE tồn kho
+        // ==================== THÊM ORDER ITEMS + TOPPINGS + TRỪ TỒN KHO ====================
         $stmtItem = $conn->prepare("
-            INSERT INTO order_items (order_id, product_id, variant_id, quantity, unit_price, topping_price, subtotal)
+            INSERT INTO order_items
+            (order_id, product_id, variant_id, quantity, unit_price, topping_price, subtotal)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmtStock = $conn->prepare("
-            UPDATE product_variants
-            SET stock_quantity = stock_quantity - ?
-            WHERE id = ? AND stock_quantity >= ?
         ");
 
         foreach ($cart as $item) {
-            // Lấy variant_id (bắt buộc phải có)
-            $variant_id = $item['variant']['id'] ?? null;
+            $variant_id = $item['variant_id'] ?? ($item['variant']['id'] ?? null);
+
+            // Fallback variant mặc định
             if (!$variant_id) {
-                // Thử lấy variant mặc định từ DB
-                $stmtVar = $conn->prepare("SELECT id FROM product_variants WHERE product_id = ? AND variant_name = 'Mặc định'");
-                $stmtVar->execute([$item['id']]);
-                $variant_id = $stmtVar->fetchColumn();
-            }
-            if (!$variant_id) {
-                throw new Exception("Sản phẩm '{$item['name']}' không có biến thể hợp lệ.");
+                $varStmt = $conn->prepare("SELECT id FROM product_variants WHERE product_id = ? LIMIT 1");
+                $varStmt->execute([$item['id']]);
+                $variant_id = $varStmt->fetchColumn();
             }
 
-            // Tính topping_price
             $topping_price = 0;
             if (!empty($item['toppings'])) {
-                foreach ($item['toppings'] as $topping) {
-                    $topping_price += $topping['price'];
+                foreach ($item['toppings'] as $t) {
+                    $topping_price += $t['price'] ?? 0;
                 }
             }
 
-            $subtotal_item = $item['price'] * $item['quantity'];
+            $item_subtotal = $item['price'] * $item['quantity'];
 
-            // Thêm vào order_items
             $stmtItem->execute([
                 $order_id,
                 $item['id'],
@@ -264,79 +403,62 @@ function createOrderAPI() {
                 $item['quantity'],
                 $item['price'],
                 $topping_price,
-                $subtotal_item
+                $item_subtotal
             ]);
+
             $order_item_id = $conn->lastInsertId();
 
-            // Thêm toppings của item
+            // Thêm toppings
             if (!empty($item['toppings'])) {
-                $stmtTopping = $conn->prepare("
-                    INSERT INTO order_item_toppings (order_item_id, topping_id, price)
-                    VALUES (?, ?, ?)
-                ");
-                foreach ($item['toppings'] as $topping) {
-                    $stmtTopping->execute([$order_item_id, $topping['id'], $topping['price']]);
+                $stmtTop = $conn->prepare("INSERT INTO order_item_toppings (order_item_id, topping_id, price) VALUES (?, ?, ?)");
+                foreach ($item['toppings'] as $top) {
+                    $stmtTop->execute([$order_item_id, $top['id'], $top['price'] ?? 0]);
                 }
             }
 
-            // Cập nhật tồn kho trong product_variants
-            $stmtStock->execute([$item['quantity'], $variant_id, $item['quantity']]);
-            if ($stmtStock->rowCount() == 0) {
-                throw new Exception("Sản phẩm '{$item['name']}' không đủ số lượng tồn kho.");
+            // Trừ tồn kho
+            if ($variant_id) {
+                $conn->prepare("UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE id = ?")
+                     ->execute([$item['quantity'], $variant_id]);
             }
         }
 
-        // Xử lý voucher (nếu có)
-        if (!empty($_SESSION['coupon_data']) && !empty($_SESSION['coupon_code'])) {
-            $voucher_code = $_SESSION['coupon_code'];
-            $stmtVoucher = $conn->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ?");
-            $stmtVoucher->execute([$voucher_code]);
-
-            $voucher_id = $_SESSION['coupon_data']['id'] ?? null;
-            if ($voucher_id) {
-                $stmtUsage = $conn->prepare("
-                    INSERT INTO voucher_usage (voucher_id, customer_id, order_id, used_at)
-                    VALUES (?, ?, ?, NOW())
-                ");
-                $stmtUsage->execute([$voucher_id, $user_id, $order_id]);
-            }
+        // Xử lý voucher
+        if (!empty($_SESSION['coupon_code'])) {
+            $conn->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ?")
+                 ->execute([$_SESSION['coupon_code']]);
         }
 
         $conn->commit();
 
-        // Gửi mail cho admin (nếu có MailService)
-        if (file_exists(__DIR__ . '/../services/MailService.php')) {
-            require_once __DIR__ . '/../services/MailService.php';
-            $stmtUser = $conn->prepare("SELECT name, email, phone FROM users WHERE id = ?");
-            $stmtUser->execute([$user_id]);
-            $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
+        // ==================== TRẢ VỀ KẾT QUẢ ====================
+        $response = [
+            'success'    => true,
+            'order_id'   => $order_id,
+            'order_code' => $order_code,
+            'total'      => $total
+        ];
 
-            $html = "<h2>📦 Đơn hàng mới</h2>";
-            $html .= "<p><b>Mã đơn:</b> {$order_code}</p>";
-            $html .= "<p><b>Khách:</b> {$user['name']}</p>";
-            $html .= "<p><b>SĐT:</b> {$address['phone']}</p>";
-            $html .= "<p><b>Địa chỉ:</b> {$address['address']}, {$address['city']}</p>";
-            $html .= "<p><b>Tổng tiền:</b> " . number_format($total) . "đ</p>";
-
-            $stmtAdmin = $conn->prepare("SELECT email FROM users WHERE role_id = 1 AND status = 1");
-            $stmtAdmin->execute();
-            $admins = $stmtAdmin->fetchAll(PDO::FETCH_COLUMN);
-            foreach ($admins as $email) {
-                MailService::send($email, 'Đơn hàng mới', $html);
-            }
+        // Thanh toán online → trả về payment_url
+        if (in_array($payment_method, ['vnpay', 'momo', 'zalopay', 'card'])) {
+            $payment_url = generatePaymentUrl($order_id, $total, $payment_method, $order_code);
+            $response['payment_url'] = $payment_url;
+            $response['message'] = 'Đang chuyển hướng đến cổng thanh toán...';
+        } else {
+            // COD → xóa giỏ hàng
+            unset($_SESSION['cart'], $_SESSION['discount'], $_SESSION['coupon_code'], $_SESSION['coupon_data']);
+            $response['message'] = 'Đặt hàng thành công!';
         }
 
-        // Trả về kết quả thành công
-        echo json_encode([
-            'success' => true,
-            'order_id' => $order_id,
-            'order_code' => $order_code
-        ]);
+        echo json_encode($response);
         exit;
 
     } catch (Exception $e) {
         $conn->rollBack();
-        echo json_encode(['success' => false, 'message' => 'Lỗi tạo đơn hàng: ' . $e->getMessage()]);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Lỗi tạo đơn hàng: ' . $e->getMessage()
+        ]);
         exit;
     }
 }
@@ -469,9 +591,6 @@ function listOrders() {
     $GLOBALS['page'] = $page;
     $GLOBALS['totalPages'] = $totalPages;
 
-    $view = __DIR__ . '/../../resources/views/pages/orders.php';
-    $layout = __DIR__ . '/../../resources/views/layouts/layout.php';
-    include $layout;
 }
 
 function orderDetail() {
@@ -523,9 +642,6 @@ function orderDetail() {
     $GLOBALS['items'] = $items;
     $GLOBALS['statusHistory'] = $statusHistory;
 
-    $view = __DIR__ . '/../../resources/views/pages/order-detail.php';
-    $layout = __DIR__ . '/../../resources/views/layouts/layout.php';
-    include $layout;
 }
 
 function cancelOrder() {
@@ -564,4 +680,33 @@ function cancelOrder() {
 
     echo json_encode(['success' => true, 'message' => 'Đã hủy đơn hàng']);
     exit;
+}
+
+function loadOrders() {
+    if (session_status() === PHP_SESSION_NONE) session_start(); // ✅ FIX
+
+    if (!isset($_SESSION['user'])) exit;
+
+    $user_id = $_SESSION['user']['id'];
+    $status = $_GET['status'] ?? '';
+
+    $conn = getDB();
+
+    $sql = "SELECT * FROM orders WHERE user_id = ?";
+    $params = [$user_id];
+
+    if ($status !== '') {
+        $sql .= " AND status = ?";
+        $params[] = $status;
+    }
+
+    $sql .= " ORDER BY created_at DESC";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($orders as $order) {
+        echo renderOrder($order);
+    }
 }

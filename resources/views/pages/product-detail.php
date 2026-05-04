@@ -1,6 +1,10 @@
 <?php
 // Xử lý ảnh sản phẩm
-$product['images'] = isset($product['images']) ? explode(',', $product['images']) : [$product['image']];
+$product = $product ?? [];
+
+$product['images'] = isset($product['images'])
+    ? explode(',', $product['images'])
+    : [($product['image'] ?? 'default.png')];
 
 // Lấy các variant và topping (nếu có)
 $variants = $product['variants'] ?? [];
@@ -716,38 +720,7 @@ $isFavorited = in_array($product['id'], $favIds);
                         <?php endif; ?>
                     </div>
 
-                    <!-- Similar Tab -->
-                    <div class="prod-tab__content" id="tab-similar">
-                        <div class="prod-content">
-                            <h2 class="prod-content__heading">Similar Products</h2>
-                            <div class="row row-cols-6 row-cols-xl-4 row-cols-lg-3 row-cols-md-2 row-cols-sm-1 g-2">
-                                <?php foreach ($similarProducts as $sim): ?>
-                                    <div class="col">
-                                        <article class="product-card">
-                                            <div class="product-card__img-wrap">
-                                                <a href="<?= $base ?>index.php?url=product-detail&id=<?= $sim['id'] ?>">
-                                                    <img src="<?= $base ?>assets/img/product/<?= $sim['images'][0] ?>" class="product-card__thumb" />
-                                                </a>
-                                                <!-- Nút like cho sản phẩm tương tự, kiểm tra yêu thích -->
-                                                <button class="like-btn product-card__like-btn <?= in_array($sim['id'], $favIds) ? 'like-btn--liked' : '' ?>" data-id="<?= $sim['id'] ?>">
-                                                    <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
-                                                    <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
-                                                </button>
-                                            </div>
-                                            <h3 class="product-card__title">
-                                                <a href="<?= $base ?>index.php?url=product-detail&id=<?= $sim['id'] ?>"><?= $sim['name'] ?></a>
-                                            </h3>
-                                            <div class="product-card__row">
-                                                <span class="product-card__price"><?= number_format($sim['base_price']) ?>đ</span>
-                                                <img src="<?= $base ?>assets/icons/star.svg" class="product-card__star" />
-                                                <span class="product-card__score"><?= $sim['avg_rating'] ?? 0 ?></span>
-                                            </div>
-                                        </article>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -755,9 +728,10 @@ $isFavorited = in_array($product['id'], $favIds);
 </main>
 
 <script>
-    // ========== TOAST NOTIFICATION ==========
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ===== TOAST =====
     function showToast(message, type = 'error') {
-        // Xóa toast cũ nếu có
         const oldToast = document.querySelector('.custom-toast');
         if (oldToast) oldToast.remove();
 
@@ -771,12 +745,11 @@ $isFavorited = in_array($product['id'], $favIds);
         toast.style.color = '#fff';
         toast.style.padding = '12px 20px';
         toast.style.borderRadius = '8px';
-        toast.style.fontSize = '14px';
         toast.style.zIndex = '9999';
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(20px)';
-        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        toast.style.transition = '0.3s';
+
         document.body.appendChild(toast);
 
         setTimeout(() => {
@@ -791,141 +764,136 @@ $isFavorited = in_array($product['id'], $favIds);
         }, 3000);
     }
 
+    // ===== BIẾN =====
     let currentStock = <?= $totalStock ?>;
 
-    function addCart() {
-        const isLogin = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
-        if (!isLogin) {
-            showToast("Vui lòng đăng nhập để thêm vào giỏ!", "error");
-            setTimeout(() => { window.location.href = "index.php?url=login"; }, 1500);
-            return;
-        }
-        const hasStock = <?= $hasStock ? 'true' : 'false' ?>;
-        if (!hasStock) {
-            showToast("Sản phẩm đã hết hàng!", "error");
-            return;
-        }
-        const qtyInput = document.querySelector('.qty-input');
-        let qty = parseInt(qtyInput.value);
-        if (isNaN(qty) || qty < 1) qty = 1;
-        if (qty > currentStock) {
-            showToast(`Số lượng không được vượt quá tồn kho (${currentStock})`, "error");
-            qtyInput.value = currentStock;
-            return;
-        }
-        document.querySelector(".add-cart-form").submit();
-    }
+    const qtyInput = document.querySelector('.qty-input');
+    const priceEl = document.getElementById('prod-price');
+    const totalEl = document.getElementById('prod-total-price');
 
-    let holdInterval;
-    function changeQty(n){
-        const input = document.querySelector('.qty-input');
-        let val = Number(input.value);
-        val += n;
-        if(val < 1) val = 1;
-        if(val > currentStock) {
-            showToast(`Chỉ còn ${currentStock} sản phẩm trong kho`, "error");
-            val = currentStock;
-        }
-        input.value = val;
-        input.style.transform = "scale(1.2)";
-        setTimeout(() => input.style.transform = "scale(1)", 150);
-        updateTotal();
-    }
-
-    document.querySelectorAll('.qty-btn').forEach(btn => {
-        btn.addEventListener('mousedown', () => {
-            holdInterval = setInterval(() => { btn.click(); }, 120);
-        });
-        document.addEventListener('mouseup', () => { clearInterval(holdInterval); });
-    });
-
+    // ===== UPDATE TOTAL =====
     function updateTotal() {
         const basePrice = <?= $product['base_price'] ?>;
         const variant = document.querySelector('input[name="variant_id"]:checked');
+
         const variantPrice = variant ? Number(variant.dataset.price) : 0;
+
         let toppingTotal = 0;
         let toppingCount = 0;
+
         document.querySelectorAll('input[name="toppings[]"]:checked').forEach(cb => {
             toppingTotal += Number(cb.dataset.price);
             toppingCount++;
         });
+
         const toppingSpan = document.getElementById('topping-count');
         if (toppingSpan) toppingSpan.innerText = "(" + toppingCount + ")";
-        const qty = Number(document.querySelector('.qty-input').value) || 1;
+
+        const qty = Number(qtyInput.value) || 1;
+
         const finalPrice = (basePrice + variantPrice + toppingTotal) * qty;
-        document.getElementById('prod-price').innerText = (basePrice + variantPrice).toLocaleString() + 'đ';
-        document.getElementById('prod-total-price').innerText = finalPrice.toLocaleString() + 'đ';
+
+        priceEl.innerText = (basePrice + variantPrice).toLocaleString() + 'đ';
+        totalEl.innerText = finalPrice.toLocaleString() + 'đ';
     }
 
+    // ===== UPDATE STOCK =====
     function updateVariantStock() {
-        const variantRadios = document.querySelectorAll('input[name="variant_id"]');
-        if (variantRadios.length) {
-            const selected = document.querySelector('input[name="variant_id"]:checked');
-            if (selected) {
-                const stock = parseInt(selected.dataset.stock) || 0;
-                currentStock = stock;
-            } else {
-                currentStock = <?= $totalStock ?>;
-            }
+        const selected = document.querySelector('input[name="variant_id"]:checked');
+
+        if (selected) {
+            currentStock = parseInt(selected.dataset.stock) || 0;
         } else {
             currentStock = <?= $totalStock ?>;
         }
-        const qtyInput = document.querySelector('.qty-input');
-        if (qtyInput) {
-            qtyInput.max = currentStock;
-            let currentVal = parseInt(qtyInput.value);
-            if (currentVal > currentStock) {
-                qtyInput.value = currentStock;
-                updateTotal();
-            }
+
+        if (qtyInput.value > currentStock) {
+            qtyInput.value = currentStock;
         }
     }
 
-    const variantRadios = document.querySelectorAll('input[name="variant_id"]');
-    if (variantRadios.length) {
-        variantRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
+    // ===== QTY BUTTON =====
+    window.changeQty = function (n) {
+        let val = Number(qtyInput.value);
+        val += n;
+
+        if (val < 1) val = 1;
+
+        if (val > currentStock) {
+            showToast(`Chỉ còn ${currentStock} sản phẩm`, "error");
+            val = currentStock;
+        }
+
+        qtyInput.value = val;
+        updateTotal();
+    };
+
+    // ===== HOLD CLICK =====
+    let holdInterval;
+    document.querySelectorAll('.qty-btn').forEach(btn => {
+        btn.addEventListener('mousedown', () => {
+            holdInterval = setInterval(() => btn.click(), 120);
+        });
+    });
+
+    document.addEventListener('mouseup', () => clearInterval(holdInterval));
+
+    // ===== VARIANT =====
+    const variants = document.querySelectorAll('input[name="variant_id"]');
+
+    if (variants.length) {
+        variants.forEach(v => {
+            v.addEventListener('change', () => {
                 updateVariantStock();
                 updateTotal();
             });
         });
-        const anyChecked = Array.from(variantRadios).some(r => r.checked);
-        if (!anyChecked) {
-            const firstEnabled = Array.from(variantRadios).find(r => !r.disabled);
-            if (firstEnabled) firstEnabled.checked = true;
+
+        const first = [...variants].find(v => !v.disabled);
+        if (first && !document.querySelector('input[name="variant_id"]:checked')) {
+            first.checked = true;
         }
-        updateVariantStock();
-        updateTotal();
     }
 
+    // ===== TOPPING =====
     document.querySelectorAll('input[name="toppings[]"]').forEach(cb => {
         cb.addEventListener('change', updateTotal);
     });
 
-    // tabs
+    // ===== TAB =====
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('prod-tab__item--current'));
-            document.querySelectorAll('.prod-tab__content').forEach(c => c.classList.remove('prod-tab__content--current'));
-            btn.classList.add('prod-tab__item--current');
-            const tabId = btn.dataset.tab;
-            document.getElementById(tabId).classList.add('prod-tab__content--current');
+        btn.addEventListener('click', function () {
+
+            document.querySelectorAll('.tab-btn')
+                .forEach(b => b.classList.remove('prod-tab__item--current'));
+
+            document.querySelectorAll('.prod-tab__content')
+                .forEach(c => c.classList.remove('prod-tab__content--current'));
+
+            this.classList.add('prod-tab__item--current');
+
+            const tabId = this.dataset.tab;
+            const tab = document.getElementById(tabId);
+
+            if (tab) tab.classList.add('prod-tab__content--current');
         });
     });
 
-    function likeReview(id, el){
+    // ===== LIKE REVIEW =====
+    window.likeReview = function (id, el) {
         fetch("index.php?url=like-review&id=" + id)
-        .then(res => res.text())
-        .then(data => {
-            el.classList.add('active');
-            el.innerText = "👍 Đã thích (" + data + ")";
-        });
-    }
+            .then(res => res.text())
+            .then(data => {
+                el.innerText = "👍 Đã thích (" + data + ")";
+            });
+    };
 
+    // ===== PREVIEW IMAGE =====
     const input = document.querySelector('input[name="images[]"]');
     const preview = document.getElementById('previewImages');
-    if(input){
-        input.addEventListener('change', function(){
+
+    if (input) {
+        input.addEventListener('change', function () {
             preview.innerHTML = '';
             [...this.files].forEach(file => {
                 const reader = new FileReader();
@@ -933,14 +901,41 @@ $isFavorited = in_array($product['id'], $favIds);
                     const img = document.createElement('img');
                     img.src = e.target.result;
                     preview.appendChild(img);
-                }
+                };
                 reader.readAsDataURL(file);
             });
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        updateTotal();
-        updateVariantStock();
-    });
+    // ===== ADD CART =====
+    window.addCart = function () {
+        const isLogin = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
+
+        if (!isLogin) {
+            showToast("Vui lòng đăng nhập!", "error");
+            setTimeout(() => location.href = "index.php?url=login", 1500);
+            return;
+        }
+
+        const hasStock = <?= $hasStock ? 'true' : 'false' ?>;
+
+        if (!hasStock) {
+            showToast("Hết hàng!", "error");
+            return;
+        }
+
+        let qty = parseInt(qtyInput.value);
+        if (qty > currentStock) {
+            showToast(`Tối đa ${currentStock}`, "error");
+            qtyInput.value = currentStock;
+            return;
+        }
+
+        document.querySelector(".add-cart-form").submit();
+    };
+
+    // INIT
+    updateVariantStock();
+    updateTotal();
+});
 </script>

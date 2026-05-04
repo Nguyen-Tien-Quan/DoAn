@@ -1,104 +1,112 @@
 <?php
-    // Đảm bảo có session
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+// Đảm bảo có session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$user = $_SESSION['user'] ?? null;
+
+// Helper format tiền
+if (!function_exists('vnd')) {
+    function vnd($amount) {
+        return number_format($amount) . 'đ';
     }
+}
 
-    $user = $_SESSION['user'] ?? null;
-
-    // Helper format tiền
-    if (!function_exists('vnd')) {
-        function vnd($amount) {
-            return number_format($amount) . 'đ';
-        }
+// Hàm lấy favorites
+if (!function_exists('getFavorites')) {
+    function getFavorites() {
+        return []; // TODO: truy vấn DB
     }
+}
 
-    // Hàm lấy favorites (bạn thay bằng code thật)
-    if (!function_exists('getFavorites')) {
-        function getFavorites() {
-            return []; // TODO: truy vấn DB
-        }
-    }
+// Kết nối DB
+require_once __DIR__ . '/../../../config/database.php';
+$conn = getDB();
 
-    // Kết nối DB
-    require_once __DIR__ . '/../../../config/database.php';
-
-    // Lấy danh mục - kiểm tra cột parent_id
+// Kiểm tra có parent_id không
+$hasParentCol = false;
+try {
+    $stmt = $conn->query("SHOW COLUMNS FROM categories LIKE 'parent_id'");
+    $hasParentCol = $stmt->rowCount() > 0;
+} catch (PDOException $e) {
     $hasParentCol = false;
-    try {
-        $stmt = $conn->query("SHOW COLUMNS FROM categories LIKE 'parent_id'");
-        $hasParentCol = $stmt->rowCount() > 0;
-    } catch (PDOException $e) {
-        $hasParentCol = false;
+}
+
+$tree = [];
+
+if ($hasParentCol) {
+
+    // Lấy tất cả category
+    $sql = "SELECT id, name, slug, parent_id, image, description
+            FROM categories
+            ORDER BY parent_id, id";
+    $result = $conn->query($sql);
+
+    $categories = [];
+
+    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+        $row['children'] = []; // init luôn
+        $categories[$row['id']] = $row;
     }
 
-    if ($hasParentCol) {
-        $sql = "SELECT id, name, slug, parent_id, image, description FROM categories ORDER BY parent_id, id";
-        $result = $conn->query($sql);
-        $categories = [];
-        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-            $categories[$row['id']] = $row;
-        }
-        $tree = [];
-        foreach ($categories as $id => $cat) {
-            if ($cat['parent_id'] == 0) {
-                $tree[$id] = $cat;
-                $tree[$id]['children'] = [];
+    // BUILD TREE CHUẨN
+    foreach ($categories as $id => &$cat) {
+        if ($cat['parent_id'] == 0) {
+            $tree[$id] = &$cat; // root
+        } else {
+            $parentId = $cat['parent_id'];
+
+            if (isset($categories[$parentId])) {
+                $categories[$parentId]['children'][$id] = &$cat;
             }
-        }
-        foreach ($categories as $id => $cat) {
-            if ($cat['parent_id'] != 0 && isset($tree[$cat['parent_id']])) {
-                $tree[$cat['parent_id']]['children'][$id] = $cat;
-                $tree[$cat['parent_id']]['children'][$id]['children'] = [];
-            }
-        }
-        foreach ($categories as $id => $cat) {
-            if ($cat['parent_id'] != 0) {
-                foreach ($tree as $parentId => $parent) {
-                    if (isset($parent['children'][$cat['parent_id']])) {
-                        $parent['children'][$cat['parent_id']]['children'][$id] = $cat;
-                    }
-                }
-            }
-        }
-    } else {
-        $sql = "SELECT id, name, slug, image, description FROM categories ORDER BY id";
-        $result = $conn->query($sql);
-        $tree = [];
-        while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-            $tree[$row['id']] = $row;
-            $tree[$row['id']]['children'] = [];
         }
     }
+    unset($cat);
 
-    // Các biến giỏ hàng, yêu thích
-    $cart = $_SESSION['cart'] ?? [];
-    $cartCount = count($cart);
-    $total = 0;
-    foreach ($cart as $item) {
-        $total += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
+} else {
+    // fallback nếu không có parent_id
+    $sql = "SELECT id, name, slug, image, description FROM categories ORDER BY id";
+    $result = $conn->query($sql);
+
+    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+        $row['children'] = [];
+        $tree[$row['id']] = $row;
     }
-    $shipping = 10000;
-    $miniSubtotal = $total;
-    $miniTotal = $miniSubtotal + $shipping;
+}
 
-    $favorites = $user ? getFavorites() : [];
-    $totalFav = count($favorites);
+// ================= CART =================
+$cart = $_SESSION['cart'] ?? [];
+$cartCount = count($cart);
+
+$total = 0;
+foreach ($cart as $item) {
+    $total += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
+}
+
+$shipping = 10000;
+$miniSubtotal = $total;
+$miniTotal = $miniSubtotal + $shipping;
+
+// ================= FAVORITE =================
+$favorites = $user ? getFavorites() : [];
+$totalFav = count($favorites);
 ?>
+
 <style>
+
     @media (min-width: 992.98px) and (max-width: 1199.98px) {
-         .navbar {
-            margin-left: 20px;
-        }
-
-        .navbar__link{
-            gap: 0;
-            padding: 0 8px;
-        }
-
-
+    .navbar {
+        margin-left: 20px;
     }
 
+    .navbar__link {
+        gap: 0;
+        padding: 0 8px;
+    }
+}
+
+/* ================= SEARCH FULL ================= */
 .search-full {
     position: fixed;
     inset: 0;
@@ -110,7 +118,7 @@
     display: block;
 }
 
-/* overlay blur */
+/* overlay */
 .search-full__overlay {
     position: absolute;
     height: 100vh;
@@ -127,7 +135,7 @@
     padding: 20px;
 }
 
-/* input */
+/* ===== INPUT ===== */
 .search-full__top {
     display: flex;
     gap: 10px;
@@ -138,12 +146,19 @@
     padding: 18px 20px;
     font-size: 20px;
     border-radius: 999px;
-    border: none;
+    border: 1px solid var(--separate-color);
     outline: none;
+
+    background: var(--search-bar-bg);
+    color: var(--text-color);
+}
+
+.search-full__top input::placeholder {
+    color: var(--form-placeholder-color);
 }
 
 .search-full__top button {
-    background: #ff6b00;
+    background: #ffb700;
     border: none;
     color: #fff;
     width: 50px;
@@ -152,18 +167,20 @@
     cursor: pointer;
 }
 
-/* history */
+/* ===== HISTORY ===== */
 .search-full__history {
     margin-top: 20px;
-    background: #fff;
+    background: var(--dropdown-bg-color);
     border-radius: 16px;
     padding: 15px;
+    box-shadow: 0 10px 30px var(--dropdown-shadow-color);
 }
 
 .search-full__history-head {
     display: flex;
     justify-content: space-between;
     margin-bottom: 10px;
+    color: var(--text-color);
 }
 
 #historyList {
@@ -176,14 +193,43 @@
     padding: 10px;
     border-radius: 10px;
     cursor: pointer;
+    color: var(--text-color);
 }
 
 #historyList li:hover {
-    background: #f3f3f3;
+    background: var(--form-option-hover-bg);
 }
+
+/* ===== SUGGEST ===== */
+.search-suggest-products {
+    background: var(--dropdown-bg-color);
+    margin-top: 10px;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 10px 30px var(--dropdown-shadow-color);
+}
+
+.suggest-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    cursor: pointer;
+    align-items: center;
+    color: var(--text-color);
+}
+
+.suggest-item:hover {
+    background: var(--form-option-hover-bg);
+}
+
+.suggest-item span:last-child {
+    margin-left: auto;
+    font-weight: 500;
+}
+
 </style>
 
-<header id="header" class="header header__fixed">
+<header id="header" class="header">
     <div class="container">
         <div class="top-bar">
             <!-- More -->
@@ -216,47 +262,55 @@
                 </a>
 
                 <ul class="navbar__list js-dropdown-list">
-                    <!-- ========== DANH MỤC SẢN PHẨM (DYNAMIC) ========== -->
+                    <!-- ========== DANH MỤC + SẢN PHẨM (MEGA MENU) ========== -->
                     <li class="navbar__item">
-                        <a href="#!" class="navbar__link">
+                        <a href="<?= $base ?>index.php?url=home" class="navbar__link">
                             Danh mục
                             <img src="./assets/icons/arrow-down.svg" alt="" class="icon navbar__arrow" />
                         </a>
+
                         <div class="dropdown js-dropdown">
                             <div class="dropdown__inner">
                                 <div class="top-menu">
                                     <div class="top-menu__main">
                                         <div class="menu-column">
                                             <div class="menu-column__icon d-lg-none">
-                                                <img src="./assets/img/category/cate-1.1.svg" alt="" class="menu-column__icon-1" />
-                                                <img src="./assets/img/category/cate-1.2.svg" alt="" class="menu-column__icon-2" />
+                                                <img
+                                                    src="./assets/img/category/cate-1.1.svg"
+                                                    alt=""
+                                                    class="menu-column__icon-1"
+                                                />
+                                                <img
+                                                    src="./assets/img/category/cate-1.2.svg"
+                                                    alt=""
+                                                    class="menu-column__icon-2"
+                                                />
                                             </div>
                                             <div class="menu-column__content">
                                                 <h2 class="menu-column__heading d-lg-none">Tất cả danh mục</h2>
                                                 <ul class="menu-column__list js-menu-list">
+
                                                     <?php foreach ($tree as $rootId => $rootCat): ?>
                                                         <li class="menu-column__item">
                                                             <a href="<?= $base ?>index.php?url=category&id=<?= $rootCat['id'] ?>" class="menu-column__link">
                                                                 <?= htmlspecialchars($rootCat['name']) ?>
                                                             </a>
+
                                                             <?php if (!empty($rootCat['children'])): ?>
-                                                                <div class="sub-menu sub-menu--not-main">
+                                                                <div class="sub-menu">
                                                                     <?php
                                                                     $children = $rootCat['children'];
-
-                                                                    // 👉 mỗi column chứa 2 menu-column (giống Grocery)
-                                                                    $columns = array_chunk($children, 2);
+                                                                    $columns = array_chunk($children, 2, true);
                                                                     ?>
 
                                                                     <?php foreach ($columns as $column): ?>
                                                                         <div class="sub-menu__column">
-
                                                                             <?php foreach ($column as $childCat): ?>
                                                                                 <div class="menu-column">
-
                                                                                     <?php if (!empty($childCat['image'])): ?>
                                                                                         <div class="menu-column__icon">
-                                                                                            <img src="<?= $base ?>assets/img/category/<?= htmlspecialchars($childCat['image']) ?>" class="menu-column__icon-1" />
+                                                                                            <img src="<?= $base ?>assets/img/category-item/<?= htmlspecialchars($childCat['image']) ?>"
+                                                                                                class="menu-column__icon-1" alt="">
                                                                                         </div>
                                                                                     <?php endif; ?>
 
@@ -267,28 +321,32 @@
                                                                                             </a>
                                                                                         </h2>
 
-                                                                                        <?php if (!empty($childCat['children'])): ?>
+                                                                                        <?php
+                                                                                        $subProducts = getProductsByCategoryId($childCat['id'], 10);
+                                                                                        if (!empty($subProducts)):
+                                                                                        ?>
                                                                                             <ul class="menu-column__list">
-                                                                                                <?php foreach ($childCat['children'] as $grandChild): ?>
+                                                                                                <?php foreach ($subProducts as $prod): ?>
                                                                                                     <li class="menu-column__item">
-                                                                                                        <a href="<?= $base ?>index.php?url=category&id=<?= $grandChild['id'] ?>" class="menu-column__link">
-                                                                                                            <?= htmlspecialchars($grandChild['name']) ?>
+                                                                                                        <a href="<?= $base ?>index.php?url=product&id=<?= $prod['id'] ?>" class="menu-column__link">
+                                                                                                            <?= htmlspecialchars($prod['name']) ?>
+
                                                                                                         </a>
                                                                                                     </li>
                                                                                                 <?php endforeach; ?>
                                                                                             </ul>
                                                                                         <?php endif; ?>
-                                                                                    </div>
 
+                                                                                    </div>
                                                                                 </div>
                                                                             <?php endforeach; ?>
-
                                                                         </div>
                                                                     <?php endforeach; ?>
                                                                 </div>
                                                             <?php endif; ?>
                                                         </li>
                                                     <?php endforeach; ?>
+
                                                 </ul>
                                             </div>
                                         </div>
@@ -329,15 +387,7 @@
 
             <div class="navbar__overlay js-toggle" toggle-target="#navbar"></div>
 
-            <!-- Actions (giữ nguyên phần tìm kiếm, giỏ hàng, user) -->
             <div class="top-act">
-                <!-- <div class="top-act__group d-md-none top-act__group--single search-box">
-                    <button class="top-act__btn search-toggle">
-                        <img src="<?= $base ?>assets/icons/search.svg" class="icon top-act__icon" />
-                    </button>
-                    <input type="text" class="top-act__search search-input" placeholder="Tìm sản phẩm..." />
-                    <div class="search-suggest"></div>
-                </div> -->
 
                 <button class="top-act__group d-md-none top-act__group--single search-box" id="openSearch">
                     <img src="<?= $base ?>assets/icons/search.svg" class="icon top-act__icon" />
@@ -366,36 +416,11 @@
 
                             <ul id="historyList"></ul>
                         </div>
+
+                        <div id="suggestBox" class="search-suggest-products" style="display:none;"></div>
                     </div>
                 </div>
 
-                <!-- ========== SEARCH BOX MỚI (ĐẸP) ========== -->
-                <!-- <div class="top-act__group search-box">
-                    <button class="top-act__btn search-toggle">
-                        <img src="<?= $base ?>assets/icons/search.svg" class="icon" alt="Tìm kiếm">
-                    </button>
-
-                    <div class="search-dropdown">
-                        <div class="search-input-wrapper">
-                            <img src="<?= $base ?>assets/icons/search.svg" class="search-input-icon" alt="">
-                            <input type="text" id="search-input" class="search-input"
-                                placeholder="Bạn tìm gì hôm nay..." autocomplete="off">
-                        </div>
-
-                        <div class="search-suggest">
-
-                            <div class="search-history">
-                                <div class="search-history-header">
-                                    <span class="search-history-title">🔍 Tìm kiếm gần đây</span>
-                                    <button id="clear-all-history" class="search-history-clear-all">Xóa tất cả</button>
-                                </div>
-                                <ul id="history-list" class="search-history-list"></ul>
-                            </div>
-
-                            <div id="suggest-products" class="search-suggest-products" style="display:none;"></div>
-                        </div>
-                    </div>
-                </div> -->
 
                 <div class="search-overlay"></div>
 
@@ -537,16 +562,15 @@
 </header>
 
 <script>
-    window.dispatchEvent(new Event("template-loaded"));
-    // Hàm cập nhật số lượng yêu thích trên header (gọi từ mọi nơi)
+window.dispatchEvent(new Event("template-loaded"));
+
+// ================= FAVORITE =================
 window.updateFavoriteBadge = function(newCount = null) {
     if (newCount !== null) {
-        // Cập nhật trực tiếp nếu biết số mới
         document.querySelectorAll('.fav-count-badge').forEach(el => {
             el.textContent = newCount;
         });
     } else {
-        // Nếu không truyền số, gọi AJAX lấy số mới từ server
         fetch('index.php?url=get-favorites-count', {
             method: 'GET',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -563,39 +587,68 @@ window.updateFavoriteBadge = function(newCount = null) {
     }
 };
 
+// ================= SEARCH =================
 const openBtn = document.getElementById('openSearch');
 const searchFull = document.getElementById('searchFull');
 const closeBtn = document.getElementById('closeSearch');
 const input = document.getElementById('searchInputFull');
 const historyList = document.getElementById('historyList');
 const clearBtn = document.getElementById('clearHistory');
+const overlay = document.querySelector('.search-full__overlay');
+const suggestBox = document.getElementById('suggestBox');
 
 const KEY = 'search_history';
 
-// mở
+// ===== OPEN =====
 openBtn.onclick = () => {
     searchFull.classList.add('active');
     input.focus();
     renderHistory();
 };
 
-// đóng
-closeBtn.onclick = () => {
+// ===== CLOSE =====
+function closeSearchBox() {
     searchFull.classList.remove('active');
-};
+    suggestBox.style.display = 'none';
+    input.value = '';
+}
 
-// enter search
+// nút X
+closeBtn.onclick = closeSearchBox;
+
+// click overlay
+overlay.onclick = closeSearchBox;
+
+// ESC để đóng
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSearchBox();
+});
+
+// ===== ENTER SEARCH =====
 input.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
         const val = input.value.trim();
         if (!val) return;
 
         saveHistory(val);
-        window.location.href = `index.php?url=search&q=${encodeURIComponent(val)}`;
+        window.location.href = `index.php?url=search&keyword=${encodeURIComponent(val)}`;
     }
 });
 
-// lưu history
+// ===== CLICK BUTTON SEARCH =====
+const searchBtn = document.querySelector('.search-full__top button:not(#closeSearch)');
+
+if (searchBtn) {
+    searchBtn.onclick = () => {
+        const val = input.value.trim();
+        if (!val) return;
+
+        saveHistory(val);
+        window.location.href = `index.php?url=search&keyword=${encodeURIComponent(val)}`;
+    };
+}
+
+// ===== SAVE HISTORY =====
 function saveHistory(val) {
     let arr = JSON.parse(localStorage.getItem(KEY)) || [];
     arr = arr.filter(i => i !== val);
@@ -605,7 +658,7 @@ function saveHistory(val) {
     localStorage.setItem(KEY, JSON.stringify(arr));
 }
 
-// render history
+// ===== RENDER HISTORY =====
 function renderHistory() {
     let arr = JSON.parse(localStorage.getItem(KEY)) || [];
 
@@ -619,14 +672,54 @@ function renderHistory() {
     ).join('');
 }
 
-// click history
-window.selectHistory = function(val) {
-    window.location.href = `index.php?url=search&q=${encodeURIComponent(val)}`;
-}
+// ===== SEARCH SUGGEST =====
+input.addEventListener('input', () => {
+    const val = input.value.trim();
 
-// clear
+    if (!val) {
+        suggestBox.style.display = 'none';
+        renderHistory();
+        return;
+    }
+
+    fetch(`index.php?url=search-suggest&keyword=${encodeURIComponent(val)}`)
+        .then(res => res.json())
+        .then(data => {
+
+            if (data.length === 0) {
+                suggestBox.innerHTML = "<p>Không có gợi ý</p>";
+            } else {
+                suggestBox.innerHTML = data.map(item => `
+                    <div class="suggest-item" onclick="goProduct(${item.id})">
+                        <img src="assets/img/product/${item.image}" width="40">
+                        <span>${item.name}</span>
+                        <span>${Number(item.base_price).toLocaleString()}đ</span>
+                    </div>
+                `).join('');
+            }
+
+            suggestBox.style.display = 'block';
+        });
+});
+
+// ===== CLICK HISTORY =====
+window.selectHistory = function(val) {
+    window.location.href = `index.php?url=search&keyword=${encodeURIComponent(val)}`;
+};
+
+// ===== CLEAR HISTORY =====
 clearBtn.onclick = () => {
     localStorage.removeItem(KEY);
     renderHistory();
 };
+
+// // ===== GO PRODUCT DETAIL =====
+// function goProduct(id) {
+//     window.location.href = `index.php?url=product-detail&id=${id}`;
+// }
+
+window.goProduct = function(id) {
+    window.location.href = `index.php?url=product&id=${id}`;
+};
+
 </script>

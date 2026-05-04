@@ -49,7 +49,18 @@
                     </div>
                 </div>
                 <div class="card-footer">
-                    <button class="btn btn-primary" onclick="acceptOrder(<?= $order['id'] ?>)">Nhận giao</button>
+                    <?php if (
+                        $order['status'] == 'ready_for_delivery' &&
+                        $order['delivery_status'] == 'pending'
+                    ): ?>
+                        <button class="btn btn-primary" onclick="acceptOrder(<?= $order['id'] ?>)">
+                            Nhận giao
+                        </button>
+                    <?php else: ?>
+                        <button class="btn btn-outline" disabled>
+                            Chưa sẵn sàng
+                        </button>
+                    <?php endif; ?>
                     <a href="?action=order-detail&id=<?= $order['id'] ?>" class="btn btn-outline">Chi tiết</a>
                 </div>
             </div>

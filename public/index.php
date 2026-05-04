@@ -66,52 +66,72 @@ switch ($url) {
         break;
 
     // ==================== SETTINGS ====================
-    case 'settings':
-        // Lấy dữ liệu từ hàm trong SettingsController
-        $settingsData = getSettingsData();
-        $user = $settingsData['user'];
-        $addresses = $settingsData['addresses'];
-        $notifications = $settingsData['notifications'];
-        $success = $settingsData['success'];
-        $error = $settingsData['error'];
-        $view = view('settings');
-        // KHÔNG exit, để layout tự include
-        break;
+case 'settings':
+    $settingsData = getSettingsData();
 
-    case 'settings/updateProfile':
+    $user = $settingsData['user'];
+    $addresses = $settingsData['addresses'];
+    $notifications = $settingsData['notifications'];
+    $success = $settingsData['success'];
+    $error = $settingsData['error'];
+
+    $view = view('settings');
+    break;
+
+
+// ===== PROFILE =====
+case 'settings/updateProfile':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         updateProfile();
-        exit;
-        break;
+    }
+    header('Location: index.php?url=settings');
+    exit;
 
-    case 'settings/changePassword':
+
+// ===== PASSWORD =====
+case 'settings/changePassword':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         changePassword();
-        exit;
-        break;
+    }
+    header('Location: index.php?url=settings');
+    exit;
 
-    case 'settings/addAddress':
+
+// ===== ADDRESS =====
+case 'settings/addAddress':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         addAddress();
-        exit;
-        break;
+    }
+    header('Location: index.php?url=settings');
+    exit;
 
-    case 'settings/updateAddress':
+case 'settings/updateAddress':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         updateAddress();
-        exit;
-        break;
+    }
+    header('Location: index.php?url=settings');
+    exit;
 
-    case 'settings/deleteAddress':
+case 'settings/deleteAddress':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         deleteAddress();
-        exit;
-        break;
+    }
+    header('Location: index.php?url=settings');
+    exit;
 
-    case 'settings/markNotificationRead':
+
+// ===== NOTIFICATION =====
+case 'settings/markNotificationRead':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         markNotificationRead();
-        exit;
-        break;
+    }
+    exit;
 
-    case 'settings/markAllRead':
+case 'settings/markAllRead':
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         markAllRead();
-        exit;
-        break;
+    }
+    exit;
 
     // ==================== CHECKOUT, PROFILE, SHIPPING ====================
     case 'checkout':
@@ -124,14 +144,17 @@ switch ($url) {
 
     case 'shipping':
     $addresses = [];
+
     if (isset($_SESSION['user'])) {
         $addresses = getShippingAddresses($_SESSION['user']['id']);
     }
     $view = view('shipping');
     break;
 
-case 'add-shipping-address':
+    case 'add-shipping-address':
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
         header('Content-Type: application/json; charset=utf-8');
         addShippingAddress();   // hàm này trả về JSON và exit
         exit;
@@ -166,6 +189,7 @@ case 'add-shipping-address':
 
             header('Content-Type: application/json; charset=utf-8');
 
+            $conn = getDB();
             try {
                 switch ($action) {
                     case 'list':
@@ -236,8 +260,20 @@ case 'add-shipping-address':
         $view = view('payment');
         break;
 
+    case 'vnpay-create':
+        createVNPayPayment();
+        exit;
+
+    case 'vnpay-return':
+    case 'payment-return':
+        vnpayReturn();
+        exit;
+
+    case 'momo-create':
+        createMoMoPayment();
+        exit;
+
     case 'place-order':
-        require_once __DIR__ . '/../app/controllers/OrderController.php';
         placeOrder();
         break;
 
@@ -366,51 +402,52 @@ case 'add-shipping-address':
         break;
 
     // ==================== ORDERS ====================
+     case 'orders':
+        listOrders();
+        $view = view('orders'); // ✅ THÊM DÒNG NÀY
+        break;
     case 'create-order':
         createOrderAPI();
         break;
-    case 'orders':
-        listOrders();
-        break;
+
     case 'order-detail':
         orderDetail();
+        $view = view('order-detail'); // ✅ THÊM DÒNG NÀY
         break;
     case 'cancel-order':
         cancelOrder();
         break;
 
     case 'load-orders':
-        $status = $_GET['status'] ?? '';
-
-        $conn = getDB();
-        $userId = $_SESSION['user']['id'];
-
-        $sql = "SELECT * FROM orders WHERE user_id = ?";
-        $params = [$userId];
-
-        if ($status) {
-            $sql .= " AND status = ?";
-            $params[] = $status;
-        }
-
-        $sql .= " ORDER BY id DESC";
-
-        $stmt = $conn->prepare($sql);
-        $stmt->execute($params);
-        $orders = $stmt->fetchAll();
-
-        foreach ($orders as $order) {
-            echo renderOrder($order);
-        }
+        loadOrders();
         exit;
 
     // ==================== PRODUCT ====================
     case 'product':
         $favIds = getFavoriteIds();
+
         $product = getProductById($_GET['id'] ?? 0);
-        $product['reviews'] = getReviewsByProductId($product['id']);
+
+        // ❌ nếu không có sản phẩm
+        if (!$product) {
+            header("Location: index.php?url=home");
+            exit;
+        }
+
+        // ✅ đảm bảo luôn là array
+        $product = (array)$product;
+
+        // reviews
+        $product['reviews'] = getReviewsByProductId($product['id']) ?? [];
+
+        // rating
         $ratingData = getAverageRating($product['id']);
         $product['avg_rating'] = $ratingData['avg_rating'] ?? 0;
+
+        // 👉 nếu có variants/toppings thì nên add luôn
+        $product['variants'] = getVariantsByProductId($product['id']) ?? [];
+        $product['toppings'] = getToppingsByProductId($product['id']) ?? [];
+
         $view = view('product-detail');
         break;
 
@@ -419,19 +456,39 @@ case 'add-shipping-address':
         break;
 
     case 'search':
-        if (isset($_GET['ajax'])) {
-            $q = $_GET['q'] ?? '';
-            $stmt = $conn->prepare("
-                SELECT id, name
-                FROM products
-                WHERE name LIKE ?
-                LIMIT 5
-            ");
-            $stmt->execute(["%$q%"]);
-            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        $filters = [
+            'keyword' => $_GET['keyword'] ?? ''
+        ];
+
+        $products = getFilteredProducts(1, 20, $filters);
+
+        $view = view('home');
+    break;
+
+    case 'search-suggest':
+        header('Content-Type: application/json');
+
+        $keyword = $_GET['keyword'] ?? '';
+
+        if (!$keyword) {
+            echo json_encode([]);
             exit;
         }
-        break;
+
+        $conn = getDB();
+
+        $stmt = $conn->prepare("
+            SELECT id, name, image, base_price
+            FROM products
+            WHERE name LIKE ?
+            LIMIT 5
+        ");
+        $stmt->execute(["%$keyword%"]);
+
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode($data);
+    exit;
 
     // ==================== NOTIFICATIONS ====================
     case 'notifications':
@@ -462,37 +519,47 @@ case 'add-shipping-address':
     break;
 
     // ==================== HOME & DEFAULT ====================
+        // ==================== HOME & DEFAULT ====================
     case 'home':
-        default:
+    default:
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = 10;
 
-            $page = $_GET['page'] ?? 1;
-            $limit = 10;
+        $filters = [
+            'keyword'   => $_GET['keyword'] ?? '',
+            'category'  => $_GET['category'] ?? '',
+            'min_price' => $_GET['min_price'] ?? '',
+            'max_price' => $_GET['max_price'] ?? '',
+            'size'      => $_GET['size'] ?? '',
+            'sort'      => $_GET['sort'] ?? ''
+        ];
 
-            $filters = [
-                'category'  => $_GET['category'] ?? '',
-                'min_price' => $_GET['min_price'] ?? '',
-                'max_price' => $_GET['max_price'] ?? '',
-                'size'      => $_GET['size'] ?? '',
-                'sort'      => $_GET['sort'] ?? '',
-                'keyword'   => $_GET['keyword'] ?? ''
-            ];
+        // Lấy sản phẩm
+        $products     = getFilteredProducts($page, $limit, $filters);
+        $totalProducts = countFilteredProducts($filters);
+        $totalPages   = ceil($totalProducts / $limit);
 
-            $products = getFilteredProducts($page, $limit, $filters);
-            $totalProducts = countFilteredProducts($filters);
-            $totalPages = ceil($totalProducts / $limit);
+        // Danh mục
+        $categories     = getParentCategories();           // cho slider Browse Categories
+        $allCategories  = getAllCategoriesWithDepth();     // cho filter select
 
-            $favIds = getFavoriteIds();
-            $categories = getCategories();
-            $variants = getAllVariants();
+        // Variants cho filter
+        $variants = getAllVariants();
 
-            // 🔥 FIX Ở ĐÂY
-            if (isset($_GET['ajax'])) {
-                include view('home'); // ✅ trả lại FULL HTML
-                exit;
-            }
+        // Favorites
+        $favIds = [];
+        if (isset($_SESSION['user']['id'])) {
+            $favIds = getUserFavorites($_SESSION['user']['id']);
+        }
 
-            $view = view('home');
-        break;
+        // AJAX request (filter)
+        if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
+            include view('home');   // chỉ include phần nội dung
+            exit;
+        }
+
+        $view = view('home');
+    break;
     }
 
 // Load layout + view
