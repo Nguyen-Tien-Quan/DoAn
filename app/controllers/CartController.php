@@ -265,6 +265,51 @@ function saveToFavorite()
     exit;
 }
 
+function addFavoriteToCart()
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!isset($_SESSION['user'])) {
+        echo json_encode(['success' => false]);
+        exit;
+    }
+
+    $conn = getDB();
+    $userId = $_SESSION['user']['id'];
+
+    $stmt = $conn->prepare("
+        SELECT p.id, p.name, p.base_price, p.image
+        FROM favorites f
+        JOIN products p ON f.product_id = p.id
+        WHERE f.user_id = ?
+    ");
+    $stmt->execute([$userId]);
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
+
+    foreach ($items as $p) {
+        $key = $p['id'];
+
+        if (isset($_SESSION['cart'][$key])) {
+            $_SESSION['cart'][$key]['quantity']++;
+        } else {
+            $_SESSION['cart'][$key] = [
+                'id' => $p['id'],
+                'name' => $p['name'],
+                'image' => $p['image'],
+                'price' => $p['base_price'],
+                'quantity' => 1,
+                'variant' => null,
+                'toppings' => []
+            ];
+        }
+    }
+
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // ==================== COUPON (VOUCHER) ====================
 
 function getActiveCoupons() {

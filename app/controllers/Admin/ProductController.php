@@ -55,7 +55,7 @@ function getAllProducts($page = 1, $limit = 10, $filters = []) {
     ];
 }
 
-/* ================== EDIT PRODUCT (CHỈ XỬ LÝ LOGIC) ================== */
+/* ================== HARD EDIT ================== */
 function editProduct() {
     $conn = getDB();
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -66,7 +66,6 @@ function editProduct() {
         exit;
     }
 
-    // Lấy thông tin sản phẩm
     $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
     $stmt->execute([$id]);
     $product = $stmt->fetch();
@@ -77,17 +76,8 @@ function editProduct() {
         exit;
     }
 
-    $categories = $conn->query("SELECT id, name FROM categories ORDER BY name")->fetchAll();
-
-    // Lấy variants hiện tại (chỉ những cái đang hoạt động)
-    $stmt = $conn->prepare("SELECT * FROM product_variants WHERE product_id = ? AND status = 1 ORDER BY id");
-    $stmt->execute([$id]);
-    $variants = $stmt->fetchAll();
-
-    $error = '';
-    $success = '';
-
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
         $category_id = (int)($_POST['category_id'] ?? 0);
         $name        = trim($_POST['name'] ?? '');
         $description = trim($_POST['description'] ?? '');
@@ -95,111 +85,117 @@ function editProduct() {
         $is_featured = isset($_POST['is_featured']) ? 1 : 0;
         $status      = (int)($_POST['status'] ?? 1);
 
-        $image_path = $product['image'] ?? '';
+        // ✅ CHỈ LẤY TÊN FILE
+        $image_name = $product['image'] ?? '';
 
-        // Upload ảnh mới
+        // ================= UPLOAD =================
         if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
-            $allowed = ['jpg','jpeg','png','gif','webp'];
+
+            $allowed = ['jpg','jpeg','png','webp'];
             $ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
 
             if (in_array($ext, $allowed)) {
-                $uploadDir = __DIR__ . '/../../../public/uploads/products/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
-                $newName = uniqid('prod_') . '.' . $ext;
+                $uploadDir = __DIR__ . '/../../../public/assets/img/product/';
+
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+
+                $newName = 'prod_' . time() . '_' . uniqid() . '.' . $ext;
                 $dest = $uploadDir . $newName;
 
                 if (move_uploaded_file($_FILES['image_file']['tmp_name'], $dest)) {
-                    // Xóa ảnh cũ nếu tồn tại
-                    if ($image_path && strpos($image_path, 'uploads/products/') === 0 && file_exists(__DIR__ . '/../../../public/' . $image_path)) {
-                        unlink(__DIR__ . '/../../../public/' . $image_path);
+
+                    // ❌ XÓA ẢNH CŨ (chỉ khi là file local)
+                    if (!empty($image_name) && file_exists($uploadDir . $image_name)) {
+                        unlink($uploadDir . $image_name);
                     }
-                    $image_path = 'uploads/products/' . $newName;
-                } else {
-                    $error = "Tải ảnh lên thất bại";
+
+                    $image_name = $newName; // ✅ chỉ lưu tên
                 }
-            } else {
-                $error = "Định dạng ảnh không hợp lệ";
-            }
-        } elseif (!empty($_POST['image_url'])) {
-            $image_path = trim($_POST['image_url']);
-        }
-
-        if (empty($error)) {
-            if (empty($name)) {
-                $error = "Tên sản phẩm không được để trống";
-            } elseif ($category_id <= 0) {
-                $error = "Vui lòng chọn danh mục";
-            } elseif ($base_price <= 0) {
-                $error = "Giá phải lớn hơn 0";
-            } else {
-                $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-'));
-
-                // Kiểm tra slug trùng
-                $check = $conn->prepare("SELECT id FROM products WHERE slug = ? AND id != ?");
-                $check->execute([$slug, $id]);
-                if ($check->fetch()) {
-                    $slug .= '-' . time();
-                }
-
-                $sql = "UPDATE products SET category_id=?, name=?, slug=?, description=?,
-                        base_price=?, image=?, is_featured=?, status=? WHERE id=?";
-                $stmt = $conn->prepare($sql);
-                $stmt->execute([$category_id, $name, $slug, $description, $base_price, $image_path, $is_featured, $status, $id]);
-
-                // --- Xử lý variants an toàn (không xóa cứng) ---
-                // Bước 1: Đánh dấu tất cả variants hiện có của sản phẩm là không hoạt động (status = 0)
-                $conn->prepare("UPDATE product_variants SET status = 0 WHERE product_id = ?")->execute([$id]);
-
-                // Bước 2: Duyệt danh sách variant gửi lên, cập nhật hoặc thêm mới
-                if (!empty($_POST['variant_names']) && is_array($_POST['variant_names'])) {
-                    foreach ($_POST['variant_names'] as $i => $vName) {
-                        $vName = trim($vName);
-                        if ($vName !== '') {
-                            $vPrice = isset($_POST['variant_prices'][$i]) ? (float)$_POST['variant_prices'][$i] : $base_price;
-                            // Kiểm tra xem variant với tên này đã tồn tại chưa (kể cả đã bị ẩn)
-                            $checkVar = $conn->prepare("SELECT id FROM product_variants WHERE product_id = ? AND variant_name = ?");
-                            $checkVar->execute([$id, $vName]);
-                            $varId = $checkVar->fetchColumn();
-                            if ($varId) {
-                                // Cập nhật giá và kích hoạt lại
-                                $conn->prepare("UPDATE product_variants SET price = ?, status = 1 WHERE id = ?")->execute([$vPrice, $varId]);
-                            } else {
-                                // Thêm mới
-                                $conn->prepare("INSERT INTO product_variants (product_id, variant_name, price, status) VALUES (?,?,?,1)")->execute([$id, $vName, $vPrice]);
-                            }
-                        }
-                    }
-                }
-
-                $_SESSION['success'] = "✅ Cập nhật sản phẩm thành công!";
             }
         }
-    }
 
-    // Nếu là AJAX request, trả về view modal
-    $isAjax = isset($_GET['ajax']) && $_GET['ajax'] == 1;
-    if ($isAjax) {
-        if ($success) {
-            echo '<div class="alert alert-success m-3">' . htmlspecialchars($success) . '</div>';
-            echo '<script>setTimeout(function(){ location.reload(); }, 1000);</script>';
+        // ================= URL =================
+        if (!empty($_POST['image_url'])) {
+            $image_name = trim($_POST['image_url']); // cho phép URL
+        }
+
+        // ================= VALIDATE =================
+        if (empty($name) || $category_id <= 0 || $base_price <= 0) {
+            $_SESSION['error'] = "Dữ liệu không hợp lệ";
+            header("Location: admin.php?url=products");
             exit;
         }
-        if ($error) {
-            echo '<div class="alert alert-danger m-3">' . htmlspecialchars($error) . '</div>';
+
+        $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-'));
+
+        $check = $conn->prepare("SELECT id FROM products WHERE slug=? AND id!=?");
+        $check->execute([$slug, $id]);
+        if ($check->fetch()) {
+            $slug .= '-' . time();
         }
-        // Load view modal
-        $viewData = compact('product', 'categories', 'variants', 'error', 'success');
-        extract($viewData);
-        require __DIR__ . '/../resources/views/pages/admin/product-edit-modal.php';
+
+        // ================= UPDATE =================
+        $conn->prepare("
+            UPDATE products
+            SET category_id=?, name=?, slug=?, description=?, base_price=?, image=?, is_featured=?, status=?
+            WHERE id=?
+        ")->execute([
+            $category_id,
+            $name,
+            $slug,
+            $description,
+            $base_price,
+            $image_name,
+            $is_featured,
+            $status,
+            $id
+        ]);
+
+        // ================= VARIANTS =================
+        $conn->prepare("UPDATE product_variants SET status=0 WHERE product_id=?")->execute([$id]);
+
+        if (!empty($_POST['variant_names'])) {
+            foreach ($_POST['variant_names'] as $i => $vName) {
+                $vName = trim($vName);
+                if ($vName !== '') {
+
+                    $price = $_POST['variant_prices'][$i] ?? $base_price;
+
+                    $check = $conn->prepare("
+                        SELECT id FROM product_variants
+                        WHERE product_id=? AND variant_name=?
+                    ");
+                    $check->execute([$id, $vName]);
+                    $varId = $check->fetchColumn();
+
+                    if ($varId) {
+                        $conn->prepare("
+                            UPDATE product_variants
+                            SET price=?, status=1
+                            WHERE id=?
+                        ")->execute([$price, $varId]);
+                    } else {
+                        $conn->prepare("
+                            INSERT INTO product_variants(product_id, variant_name, price, status)
+                            VALUES (?,?,?,1)
+                        ")->execute([$id, $vName, $price]);
+                    }
+                }
+            }
+        }
+
+        $_SESSION['success'] = "✅ Cập nhật thành công";
+        header("Location: admin.php?url=products");
         exit;
     }
-
 
     header("Location: admin.php?url=products");
     exit;
 }
-
+/* ================== HARD ADD ================== */
 function handleAddProduct() {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
@@ -222,7 +218,6 @@ function handleAddProduct() {
 
         if (in_array($ext, $allowed)) {
 
-            // 📌 THƯ MỤC ĐÚNG
             $uploadDir = __DIR__ . '/../../../public/assets/img/product/';
 
             if (!is_dir($uploadDir)) {
@@ -233,20 +228,19 @@ function handleAddProduct() {
             $dest = $uploadDir . $newName;
 
             if (move_uploaded_file($_FILES['image_file']['tmp_name'], $dest)) {
-                // 📌 LƯU PATH CHUẨN (KHÔNG có public)
-                $image_path = $newName;
+                $image_path = $newName; // ✅ CHỈ LƯU TÊN FILE
             }
         }
     }
 
     // ================= URL ẢNH =================
     if (!empty($_POST['image_url'])) {
-        $image_path = trim($_POST['image_url']);
+        $image_path = trim($_POST['image_url']); // URL giữ nguyên
     }
 
     // ================= ẢNH MẶC ĐỊNH =================
     if (empty($image_path)) {
-        $image_path = 'assets/img/product/product-default.png';
+        $image_path = 'product-default.png'; // ✅ FIX
     }
 
     // ================= VALIDATE =================
@@ -268,7 +262,6 @@ function handleAddProduct() {
     try {
         $conn->beginTransaction();
 
-        // ================= INSERT PRODUCT =================
         $stmt = $conn->prepare("
             INSERT INTO products
             (category_id, name, slug, description, base_price, image, is_featured, status)
@@ -288,21 +281,17 @@ function handleAddProduct() {
 
         $product_id = $conn->lastInsertId();
 
-        // ================= INSERT VARIANTS =================
+        // VARIANTS
         if (!empty($_POST['variant_names'])) {
             foreach ($_POST['variant_names'] as $i => $vName) {
-
                 $vName = trim($vName);
-
                 if ($vName !== '') {
-
                     $vPrice = isset($_POST['variant_prices'][$i]) && $_POST['variant_prices'][$i] > 0
                         ? (float)$_POST['variant_prices'][$i]
                         : $base_price;
 
                     $conn->prepare("
-                        INSERT INTO product_variants
-                        (product_id, variant_name, price, status)
+                        INSERT INTO product_variants (product_id, variant_name, price, status)
                         VALUES (?,?,?,1)
                     ")->execute([$product_id, $vName, $vPrice]);
                 }
@@ -310,7 +299,6 @@ function handleAddProduct() {
         }
 
         $conn->commit();
-
         $_SESSION['success'] = "✅ Thêm sản phẩm thành công!";
     } catch (Exception $e) {
         $conn->rollBack();

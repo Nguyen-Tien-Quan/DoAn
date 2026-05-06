@@ -1,6 +1,11 @@
 <?php
-// Giả định các biến sau được truyền từ controller:
-// $report_type, $start_date, $end_date, $revenue, $orders, $month, $year
+$report_type = $report_type ?? 'daily';
+$start_date = $start_date ?? date('Y-m-01');
+$end_date = $end_date ?? date('Y-m-d');
+$month = $month ?? date('m');
+$year = $year ?? date('Y');
+$revenue = $revenue ?? 0;
+$orders = $orders ?? [];
 ?>
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">

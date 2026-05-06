@@ -1,7 +1,40 @@
+<?php
+$order = $order ?? [];
+?>
+
 <style>
+:root{
+    --primary:#ee4d2d;
+    --bg:#f5f5f5;
+    --card:#fff;
+    --text:#222;
+    --muted:#888;
+    --border:#eee;
+    --shadow:0 8px 24px rgba(0,0,0,0.06);
+}
+
 .order-detail{
-    background:#f6f7fb;
-    padding:30px 0;
+    background:var(--bg);
+    padding:28px 0;
+    font-family:system-ui;
+}
+
+/* LAYOUT */
+.order-layout{
+    display:grid;
+    grid-template-columns:1.7fr 1fr;
+    gap:20px;
+    align-items:start;
+}
+
+/* CARD */
+.od-card{
+    background:var(--card);
+    border-radius:14px;
+    padding:16px;
+    box-shadow:var(--shadow);
+    border:1px solid var(--border);
+    margin-bottom:16px;
 }
 
 /* HEADER */
@@ -9,35 +42,41 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-bottom:25px;
+    margin-bottom:16px;
+}
+
+.od-header h2{
+    font-size:18px;
+    margin:0;
 }
 
 .od-date{
-    color:#888;
-    font-size:13px;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:4px;
 }
 
 .btn-back{
+    color:var(--primary);
     text-decoration:none;
-    color:#555;
+    font-weight:600;
+    font-size:13px;
 }
 
-/* CARD */
-.od-card{
-    background:#fff;
-    border-radius:16px;
-    padding:20px;
-    margin-bottom:20px;
-    box-shadow:0 8px 25px rgba(0,0,0,0.05);
-}
-
-/* ITEM */
+/* ITEMS */
 .od-item{
     display:flex;
-    align-items:center;
-    gap:15px;
-    padding:12px 0;
-    border-bottom:1px solid #eee;
+    gap:12px;
+    padding:12px;
+    border-radius:12px;
+    background:#fafafa;
+    margin-bottom:10px;
+    transition:.2s;
+}
+
+.od-item:hover{
+    transform:translateY(-2px);
+    background:#f3f3f3;
 }
 
 .od-item img{
@@ -47,100 +86,128 @@
     object-fit:cover;
 }
 
-.od-item .info{
-    flex:1;
-}
+.od-item .info{flex:1;}
 
 .od-item .name{
     font-weight:600;
+    font-size:14px;
 }
 
 .od-item .qty{
-    font-size:13px;
-    color:#888;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:4px;
 }
 
 .od-item .price{
-    font-weight:600;
-    color:#ff4d4f;
+    color:var(--primary);
+    font-weight:700;
 }
 
 /* TOTAL */
 .od-total{
-    margin-top:15px;
+    border-top:1px dashed var(--border);
+    margin-top:10px;
+    padding-top:10px;
 }
 
 .od-total div{
     display:flex;
     justify-content:space-between;
+    font-size:14px;
     margin:6px 0;
 }
 
 .od-total .final{
     font-size:18px;
-    font-weight:700;
-    color:#ff4d4f;
+    font-weight:800;
+    color:var(--primary);
 }
 
 /* STATUS */
 .od-status{
-    padding:10px;
-    border-radius:10px;
-    text-align:center;
+    display:inline-flex;
+    padding:6px 12px;
+    border-radius:999px;
+    font-size:12px;
     font-weight:600;
+    margin-bottom:10px;
 }
 
-.od-status.pending{ background:#fff3cd; color:#856404; }
-.od-status.confirmed{ background:#d1ecf1; color:#0c5460; }
-.od-status.preparing{ background:#cce5ff; color:#004085; }
-.od-status.delivering{ background:#e2e3e5; color:#383d41; }
-.od-status.completed{ background:#d4edda; color:#155724; }
-.od-status.cancelled{ background:#f8d7da; color:#721c24; }
+.od-status.pending{background:#fff1f0;color:#a8071a;}
+.od-status.confirmed{background:#e6f4ff;color:#0958d9;}
+.od-status.preparing{background:#f9f0ff;color:#531dab;}
+.od-status.delivering{background:#e6fffb;color:#08979c;}
+.od-status.completed{background:#f6ffed;color:#237804;}
+.od-status.cancelled{background:#fff2f0;color:#cf1322;}
 
-/* PROGRESS */
-.order-progress{
+/* PROGRESS SHOPEE STYLE */
+.progress{
+    position:relative;
     display:flex;
     justify-content:space-between;
-    margin-top:15px;
-    position:relative;
+    margin-top:14px;
 }
 
-.order-progress::before{
-    content:'';
+.progress::before{
+    content:"";
     position:absolute;
-    top:6px;
+    top:8px;
     left:0;
     right:0;
-    height:2px;
+    height:4px;
     background:#eee;
+    border-radius:999px;
 }
 
-.order-progress .step{
+.progress-bar{
+    position:absolute;
+    top:8px;
+    left:0;
+    height:4px;
+    background:var(--primary);
+    border-radius:999px;
+    transition:0.4s ease;
+}
+
+.step{
     text-align:center;
     flex:1;
     position:relative;
+    z-index:2;
 }
 
-.order-progress .dot{
-    width:14px;
-    height:14px;
+.step .dot{
+    width:16px;
+    height:16px;
     border-radius:50%;
-    background:#ccc;
+    background:#ddd;
     margin:auto;
+    transition:.3s;
 }
 
-.order-progress .step.active .dot{
-    background:#ff4d4f;
+.step.active .dot{
+    background:var(--primary);
+    box-shadow:0 0 0 4px rgba(238,77,45,0.15);
 }
 
-.order-progress span{
-    font-size:12px;
+.step span{
+    font-size:10px;
+    color:#777;
+    display:block;
+    margin-top:6px;
+}
+
+/* RIGHT SIDEBAR STICKY */
+.order-right{
+    position:sticky;
+    top:20px;
 }
 
 /* TIMELINE */
 .timeline{
+    padding-left:18px;
     position:relative;
-    padding-left:20px;
 }
 
 .timeline::before{
@@ -150,201 +217,188 @@
     top:0;
     bottom:0;
     width:2px;
-    background:#ddd;
+    background:#eee;
 }
 
 .timeline-item{
     display:flex;
     gap:10px;
-    margin-bottom:15px;
+    margin-bottom:12px;
 }
 
 .timeline-item .dot{
-    width:12px;
-    height:12px;
-    background:#1890ff;
+    width:9px;
+    height:9px;
     border-radius:50%;
-    margin-top:4px;
+    background:var(--primary);
+    margin-top:5px;
 }
 
 .timeline-item .title{
+    font-size:13px;
     font-weight:600;
 }
 
 .timeline-item .time{
-    font-size:12px;
-    color:#888;
-}
-
-.timeline-item .note{
-    font-size:13px;
-    color:#555;
+    font-size:11px;
+    color:var(--muted);
 }
 
 /* BUTTON */
 .btn-reorder{
     display:block;
     text-align:center;
-    margin-top:15px;
-    padding:10px;
-    background:#ff4d4f;
+    padding:11px;
+    background:var(--primary);
     color:#fff;
     border-radius:10px;
+    font-weight:600;
     text-decoration:none;
+    margin-top:12px;
+    transition:.2s;
+}
+
+.btn-reorder:hover{
+    opacity:.9;
+}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+    .order-layout{
+        grid-template-columns:1fr;
+    }
+    .order-right{
+        position:static;
+    }
 }
 </style>
 
 <main class="order-detail">
-    <div class="container">
+<div class="container">
 
-        <!-- HEADER -->
-        <div class="od-header">
-            <div>
-                <h2>🧾 Đơn hàng #<?= $order['order_code'] ?? $order['id'] ?></h2>
-                <span class="od-date">
-                    <?= date('d/m/Y H:i', strtotime($order['created_at'])) ?>
-                </span>
+    <!-- HEADER -->
+    <div class="od-header">
+        <div>
+            <h2>Đơn hàng #<?= $order['order_code'] ?? $order['id'] ?></h2>
+            <div class="od-date">
+                <?= date('d/m/Y H:i', strtotime($order['created_at'])) ?>
             </div>
-            <a href="index.php?url=orders" class="btn-back">← Quay lại</a>
+        </div>
+        <a class="btn-back" href="index.php?url=orders">← Quay lại</a>
+    </div>
+
+    <div class="order-layout">
+
+        <!-- LEFT -->
+        <div>
+
+            <div class="od-card">
+                <h3>Sản phẩm</h3>
+
+                <?php foreach ($items ?? [] as $item): ?>
+                <div class="od-item">
+                    <img src="<?= $base ?>assets/img/product/<?= $item['image'] ?>">
+
+                    <div class="info">
+                        <div class="name"><?= $item['product_name'] ?></div>
+                        <div class="qty">x<?= $item['quantity'] ?></div>
+                    </div>
+
+                    <div class="price">
+                        <?= number_format($item['subtotal']) ?>đ
+                    </div>
+                </div>
+                <?php endforeach; ?>
+
+                <div class="od-total">
+                    <div><span>Tạm tính</span><span><?= number_format($order['total_amount']) ?>đ</span></div>
+                    <div><span>Giảm giá</span><span>-<?= number_format($order['discount_amount'] ?? 0) ?>đ</span></div>
+                    <div><span>Ship</span><span><?= number_format($order['shipping_fee'] ?? 0) ?>đ</span></div>
+
+                    <div class="final">
+                        <span>Tổng</span>
+                        <span><?= number_format($order['final_amount'] ?? $order['total_amount']) ?>đ</span>
+                    </div>
+                </div>
+
+                <a class="btn-reorder" href="index.php?url=reorder&id=<?= $order['id'] ?>">
+                    🔁 Mua lại
+                </a>
+            </div>
+
         </div>
 
-        <div class="row">
+        <!-- RIGHT -->
+        <div class="order-right">
 
-            <!-- LEFT -->
-            <div class="col-lg-8">
+            <div class="od-card">
+                <h3>Trạng thái</h3>
 
-                <!-- ITEMS -->
-                <div class="od-card">
-                    <h3>Sản phẩm</h3>
+                <?php
+                $map = [
+                    'pending'=>'Chờ xác nhận',
+                    'confirmed'=>'Đã xác nhận',
+                    'preparing'=>'Chuẩn bị',
+                    'delivering'=>'Đang giao',
+                    'completed'=>'Hoàn thành',
+                    'cancelled'=>'Đã hủy'
+                ];
 
-                    <?php foreach ($items as $item): ?>
-                        <div class="od-item">
-                            <img src="<?= $base ?>assets/img/product/<?= $item['image'] ?>">
+                $steps = ['pending','confirmed','preparing','delivering','completed'];
+                $currentIndex = array_search($order['status'], $steps);
+                $percent = ($currentIndex/(count($steps)-1))*100;
+                ?>
 
-                            <div class="info">
-                                <div class="name">
-                                    <?= $item['product_name'] ?>
-                                    <?php if (!empty($item['variant_name'])): ?>
-                                        <span style="font-size:12px;color:#888;">
-                                            (<?= $item['variant_name'] ?>)
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="qty">x<?= $item['quantity'] ?></div>
-                            </div>
+                <div class="od-status <?= $order['status'] ?>">
+                    <?= $map[$order['status']] ?>
+                </div>
 
-                            <div class="price">
-                                <?= number_format($item['subtotal']) ?>đ
+                <div class="progress">
+                    <div class="progress-bar" style="width:<?= $percent ?>%"></div>
+
+                    <?php foreach ($steps as $i => $step): ?>
+                        <div class="step <?= $i <= $currentIndex ? 'active' : '' ?>">
+                            <div class="dot"></div>
+                            <span><?= $map[$step] ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="od-card">
+                <h3>Giao hàng</h3>
+                <p><b><?= $order['receiver_name'] ?></b></p>
+                <p><?= $order['receiver_phone'] ?></p>
+                <p><?= $order['delivery_address'] ?></p>
+            </div>
+
+            <div class="od-card">
+                <h3>Thanh toán</h3>
+                <p><?= strtoupper($order['payment_method'] ?? 'COD') ?></p>
+            </div>
+
+            <?php if (!empty($statusHistory)): ?>
+            <div class="od-card">
+                <h3>Lịch sử</h3>
+
+                <div class="timeline">
+                    <?php foreach ($statusHistory as $h): ?>
+                        <div class="timeline-item">
+                            <div class="dot"></div>
+                            <div>
+                                <div class="title"><?= $map[$h['status']] ?? $h['status'] ?></div>
+                                <div class="time"><?= date('d/m/Y H:i', strtotime($h['created_at'])) ?></div>
                             </div>
                         </div>
                     <?php endforeach; ?>
-
-                    <div class="od-total">
-                        <div>
-                            <span>Tạm tính</span>
-                            <span><?= number_format($order['total_amount']) ?>đ</span>
-                        </div>
-                        <div>
-                            <span>Giảm giá</span>
-                            <span>-<?= number_format($order['discount_amount'] ?? 0) ?>đ</span>
-                        </div>
-                        <div>
-                            <span>Ship</span>
-                            <span><?= number_format($order['shipping_fee'] ?? 0) ?>đ</span>
-                        </div>
-
-                        <div class="final">
-                            <span>Tổng</span>
-                            <span><?= number_format($order['final_amount'] ?? $order['total_amount']) ?>đ</span>
-                        </div>
-                    </div>
-
-                    <a href="index.php?url=reorder&id=<?= $order['id'] ?>" class="btn-reorder">
-                        🔁 Mua lại
-                    </a>
                 </div>
 
             </div>
-
-            <!-- RIGHT -->
-            <div class="col-lg-4">
-
-                <!-- STATUS -->
-                <div class="od-card">
-                    <h3>Trạng thái</h3>
-
-                    <?php
-                    $map = [
-                        'pending'=>'Chờ xác nhận',
-                        'confirmed'=>'Đã xác nhận',
-                        'preparing'=>'Đang chuẩn bị',
-                        'delivering'=>'Đang giao',
-                        'completed'=>'Hoàn thành',
-                        'cancelled'=>'Đã hủy'
-                    ];
-
-                    $steps = ['pending','confirmed','preparing','delivering','completed'];
-                    $currentIndex = array_search($order['status'], $steps);
-                    ?>
-
-                    <div class="od-status <?= $order['status'] ?>">
-                        <?= $map[$order['status']] ?? $order['status'] ?>
-                    </div>
-
-                    <!-- PROGRESS -->
-                    <div class="order-progress">
-                        <?php foreach ($steps as $i => $step): ?>
-                            <div class="step <?= $i <= $currentIndex ? 'active' : '' ?>">
-                                <div class="dot"></div>
-                                <span><?= $map[$step] ?? $step ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <!-- ADDRESS -->
-                <div class="od-card">
-                    <h3>Giao hàng</h3>
-                    <p><b><?= $order['receiver_name'] ?></b></p>
-                    <p><?= $order['receiver_phone'] ?></p>
-                    <p><?= $order['delivery_address'] ?></p>
-                </div>
-
-                <!-- PAYMENT -->
-                <div class="od-card">
-                    <h3>Thanh toán</h3>
-                    <p><?= strtoupper($order['payment_method'] ?? 'COD') ?></p>
-                </div>
-
-                <!-- TIMELINE -->
-                <?php if (!empty($statusHistory)): ?>
-                    <div class="od-card">
-                        <h3>Lịch sử</h3>
-
-                        <div class="timeline">
-                            <?php foreach ($statusHistory as $h): ?>
-                                <div class="timeline-item">
-                                    <div class="dot"></div>
-                                    <div class="content">
-                                        <div class="title">
-                                            <?= $map[$h['status']] ?? $h['status'] ?>
-                                        </div>
-                                        <div class="time">
-                                            <?= date('d/m/Y H:i', strtotime($h['created_at'])) ?>
-                                        </div>
-                                        <?php if ($h['note']): ?>
-                                            <div class="note"><?= $h['note'] ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-
-                    </div>
-                <?php endif; ?>
-
-            </div>
+            <?php endif; ?>
 
         </div>
+
     </div>
+
+</div>
 </main>

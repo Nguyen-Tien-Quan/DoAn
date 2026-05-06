@@ -128,8 +128,8 @@ if ($user) {
                                                 <?= vnd($item['base_price']) ?>
                                             </p>
 
-                                            <a href="<?= $base ?>index.php?url=checkout&product=<?= $item['id'] ?>"
-                                               class="cart-item__checkout-btn btn btn--primary btn--rounded">
+                                            <a href="<?= $base ?>index.php?url=add-cart&id=<?= $item['id'] ?>"
+                                            class="cart-item__checkout-btn btn btn--primary btn--rounded">
                                                 Mua ngay
                                             </a>
                                         </div>
@@ -150,10 +150,11 @@ if ($user) {
                                         </a>
                                     </div>
 
-                                    <a href="<?= $base ?>index.php?url=checkout"
-                                       class="cart-info__checkout-all btn btn--primary btn--rounded">
-                                        Thanh toán tất cả
-                                    </a>
+                                    <a href="#"
+                                        class="cart-info__checkout-all btn btn--primary btn--rounded"
+                                        onclick="checkoutAllFav()">
+                                            Thanh toán tất cả
+                                        </a>
                                 </div>
                             </div>
 
@@ -202,3 +203,14 @@ if ($user) {
         </div>
 
 </main>
+<script>
+function checkoutAllFav(){
+    fetch('index.php?url=add-fav-to-cart')
+    .then(res => res.json())
+    .then(data => {
+        if(data.success){
+            window.location.href = 'index.php?url=checkout';
+        }
+    });
+}
+</script>

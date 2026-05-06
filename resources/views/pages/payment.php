@@ -542,23 +542,32 @@ if (!function_exists('vnd')) {
         window.showAlert = function(title, message, callback = null) {
             const modal = document.getElementById('alert-modal');
             if (!modal) return;
-            document.getElementById('alert-title').innerText = title;
-            document.getElementById('alert-message').innerText = message;
+
+            document.getElementById('alert-title').innerHTML = title;
+            document.getElementById('alert-message').innerHTML = message;
+
             modal.classList.remove('hide');
             modal.classList.add('show');
 
             const okBtn = document.getElementById('alert-ok');
-            const handler = () => {
+
+            // Xóa listener cũ tránh trùng
+            okBtn.replaceWith(okBtn.cloneNode(true));
+            const newOkBtn = document.getElementById('alert-ok');
+
+            newOkBtn.addEventListener('click', function handler() {
                 modal.classList.remove('show');
                 modal.classList.add('hide');
-                okBtn.removeEventListener('click', handler);
-                if (callback) callback();
-            };
-            okBtn.addEventListener('click', handler, { once: true });
+
+                // Đợi animation modal đóng xong rồi mới redirect
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 400);
+            }, { once: true });
         };
 
         // ========== PROCESS ORDER (dùng chung) ==========
-        async function processOrder(paymentMethod, shippingMethod, shippingFee, email = null) {
+       async function processOrder(paymentMethod, shippingMethod, shippingFee) {
             const btn = document.getElementById('alt-pay-btn') || document.getElementById('pay-btn');
             if (btn) {
                 btn.disabled = true;
@@ -566,54 +575,65 @@ if (!function_exists('vnd')) {
             }
 
             try {
-                const payload = {
-                    shipping_method: shippingMethod,
-                    shipping_fee: shippingFee,
-                    payment_method: paymentMethod,
-                    shipping_address_id: <?= $defaultAddress['id'] ?? 'null' ?>
-                };
+                if (paymentMethod === 'cash' || paymentMethod === 'cod') {
+                    // ========== COD ==========
+                    const payload = {
+                        shipping_address_id: <?= $defaultAddress['id'] ?? 'null' ?>,
+                        shipping_method: shippingMethod,
+                        shipping_fee: shippingFee,
+                        payment_method: 'cod'
+                    };
 
-                const res = await fetch('index.php?url=create-order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await res.json();
-
-                if (!data.success) {
-                    throw new Error(data.message || 'Không thể tạo đơn hàng');
-                }
-
-                // === XỬ LÝ THEO PHƯƠNG THỨC THANH TOÁN ===
-                if (paymentMethod === 'cod') {
-                    // Thanh toán khi nhận hàng
-                    await fetch('index.php?url=clearCoupon', { method: 'POST' });
-                    await fetch('index.php?url=remove-all-cart');
-
-                    showAlert('Đặt hàng thành công!', 'Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ xác nhận sớm nhất.', () => {
-                        window.location.href = `index.php?url=orders`;
+                    const res = await fetch('index.php?url=create-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
                     });
-                }
-                else {
-                    // Thanh toán Online → Redirect sang cổng thanh toán
-                    if (data.payment_url) {
+
+                    const data = await res.json();
+
+                    if (data.success) {
+                        showAlert('🎉 Đặt hàng thành công!',
+                            `Mã đơn hàng: <strong>${data.order_code}</strong><br>Cảm ơn bạn đã mua hàng!`,
+                            () => {
+                                window.location.href = `index.php?url=thank-you&order_code=${data.order_code}`;
+                            }
+                        );
+                    } else {
+                        throw new Error(data.message || 'Tạo đơn thất bại');
+                    }
+
+                } else {
+                    // ========== Thanh toán Online ==========
+                    const payload = {
+                        shipping_address_id: <?= $defaultAddress['id'] ?? 'null' ?>,
+                        shipping_method: shippingMethod,
+                        shipping_fee: shippingFee,
+                        payment_method: paymentMethod
+                    };
+
+                    const res = await fetch('index.php?url=prepare-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+
+                    if (data.success && data.payment_url) {
                         window.location.href = data.payment_url;
                     } else {
-                        // Nếu chưa có payment_url → fallback QR
-                        showAlert('Chuyển sang thanh toán online', 'Đang chuyển hướng đến cổng thanh toán...', () => {
-                            window.location.href = `index.php?url=payment-return&method=${paymentMethod}&order_code=${data.order_code}`;
-                        });
+                        throw new Error(data.message || 'Không lấy được link thanh toán');
                     }
                 }
 
             } catch (err) {
                 console.error(err);
-                showAlert('Lỗi', err.message || 'Đặt hàng thất bại. Vui lòng thử lại.');
+                showAlert('❌ Lỗi', err.message || 'Đặt hàng thất bại');
 
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerText = btn.id === 'pay-btn' ? `Thanh toán <?= vnd($total) ?>` : 'Xác nhận thanh toán';
+                    btn.innerText = 'Xác nhận thanh toán';
                 }
             }
         }

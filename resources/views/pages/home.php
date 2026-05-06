@@ -692,9 +692,20 @@ document.querySelectorAll('.chip').forEach(chip => {
 
 function applyFilter(page = 1) {
     let params = new URLSearchParams();
+
     Object.entries(filterState).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (!value) return;
+
+        // 🔥 FIX PRICE
+        if (key === 'price') {
+            const [min, max] = value.split('-');
+            if (min) params.append('min_price', min);
+            if (max) params.append('max_price', max);
+        } else {
+            params.append(key, value);
+        }
     });
+
     if (page > 1) params.append('page', page);
 
     const url = `index.php?url=home&ajax=1&${params.toString()}`;

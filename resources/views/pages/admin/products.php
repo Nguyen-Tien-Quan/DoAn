@@ -1,13 +1,21 @@
 <?php
-// Nhận dữ liệu từ controller
+// ================= DEFAULT DATA (ANTI ERROR) =================
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 $success = $_SESSION['success'] ?? '';
 $error   = $_SESSION['error']   ?? '';
 unset($_SESSION['success'], $_SESSION['error']);
 
-// Đảm bảo $base có sẵn
-if (!isset($base)) {
-    $base = '/DoAn/DoAnTotNghiep/public/';
-}
+// BASE URL
+$base = $base ?? '/DoAn/DoAnTotNghiep/public/';
+
+// DATA FALLBACK
+$products     = $products ?? [];
+$categories   = $categories ?? [];
+$filters      = $filters ?? [];
+$totalPages   = $totalPages ?? 1;
+$currentPage  = $currentPage ?? 1;
+$is_admin     = $is_admin ?? false;
 ?>
 
 <div class="container-fluid">

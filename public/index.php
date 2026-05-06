@@ -66,72 +66,72 @@ switch ($url) {
         break;
 
     // ==================== SETTINGS ====================
-case 'settings':
-    $settingsData = getSettingsData();
+    case 'settings':
+        $settingsData = getSettingsData();
 
-    $user = $settingsData['user'];
-    $addresses = $settingsData['addresses'];
-    $notifications = $settingsData['notifications'];
-    $success = $settingsData['success'];
-    $error = $settingsData['error'];
+        $user = $settingsData['user'];
+        $addresses = $settingsData['addresses'];
+        $notifications = $settingsData['notifications'];
+        $success = $settingsData['success'];
+        $error = $settingsData['error'];
 
-    $view = view('settings');
-    break;
-
-
-// ===== PROFILE =====
-case 'settings/updateProfile':
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        updateProfile();
-    }
-    header('Location: index.php?url=settings');
-    exit;
+        $view = view('settings');
+        break;
 
 
-// ===== PASSWORD =====
-case 'settings/changePassword':
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        changePassword();
-    }
-    header('Location: index.php?url=settings');
-    exit;
+    // ===== PROFILE =====
+    case 'settings/updateProfile':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            updateProfile();
+        }
+        header('Location: index.php?url=settings');
+        exit;
 
 
-// ===== ADDRESS =====
-case 'settings/addAddress':
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        addAddress();
-    }
-    header('Location: index.php?url=settings');
-    exit;
-
-case 'settings/updateAddress':
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        updateAddress();
-    }
-    header('Location: index.php?url=settings');
-    exit;
-
-case 'settings/deleteAddress':
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        deleteAddress();
-    }
-    header('Location: index.php?url=settings');
-    exit;
+    // ===== PASSWORD =====
+    case 'settings/changePassword':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            changePassword();
+        }
+        header('Location: index.php?url=settings');
+        exit;
 
 
-// ===== NOTIFICATION =====
-case 'settings/markNotificationRead':
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        markNotificationRead();
-    }
-    exit;
+    // ===== ADDRESS =====
+    case 'settings/addAddress':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            addAddress();
+        }
+        header('Location: index.php?url=settings');
+        exit;
 
-case 'settings/markAllRead':
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        markAllRead();
-    }
-    exit;
+    case 'settings/updateAddress':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            updateAddress();
+        }
+        header('Location: index.php?url=settings');
+        exit;
+
+    case 'settings/deleteAddress':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            deleteAddress();
+        }
+        header('Location: index.php?url=settings');
+        exit;
+
+
+    // ===== NOTIFICATION =====
+    case 'settings/markNotificationRead':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            markNotificationRead();
+        }
+        exit;
+
+    case 'settings/markAllRead':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            markAllRead();
+        }
+        exit;
 
     // ==================== CHECKOUT, PROFILE, SHIPPING ====================
     case 'checkout':
@@ -143,23 +143,23 @@ case 'settings/markAllRead':
         break;
 
     case 'shipping':
-    $addresses = [];
+        $addresses = [];
 
-    if (isset($_SESSION['user'])) {
-        $addresses = getShippingAddresses($_SESSION['user']['id']);
-    }
-    $view = view('shipping');
-    break;
+        if (isset($_SESSION['user'])) {
+            $addresses = getShippingAddresses($_SESSION['user']['id']);
+        }
+        $view = view('shipping');
+        break;
 
-    case 'add-shipping-address':
+        case 'add-shipping-address':
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-        header('Content-Type: application/json; charset=utf-8');
-        addShippingAddress();   // hàm này trả về JSON và exit
-        exit;
-    }
-    break;
+            header('Content-Type: application/json; charset=utf-8');
+            addShippingAddress();   // hàm này trả về JSON và exit
+            exit;
+        }
+        break;
 
     case 'delete-shipping-address':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -353,6 +353,10 @@ case 'settings/markAllRead':
         addToCart();
         break;
 
+    case 'add-fav-to-cart':
+        addFavoriteToCart();
+        break;
+
     case 'update-cart':
         updateCart();
         break;
@@ -406,6 +410,11 @@ case 'settings/markAllRead':
         listOrders();
         $view = view('orders'); // ✅ THÊM DÒNG NÀY
         break;
+
+    case 'prepare-payment':
+        preparePayment();
+    break;
+
     case 'create-order':
         createOrderAPI();
         break;
@@ -506,9 +515,45 @@ case 'settings/markAllRead':
         $view = view('support');
         break;
 
+    case 'support-chat':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $_SESSION['support_chat'][] = $_POST['message'];
+        }
+        exit;
+
+    case 'support-get':
+        header('Content-Type: application/json');
+        echo json_encode($_SESSION['support_chat'] ?? []);
+        exit;
+
     case 'promotion':
+
+     // Lấy khuyến mãi đang chạy
+        $promo = getActivePromotion();
+
+        if ($promo) {
+            $banner = [
+                'title' => $promo['name'],
+                'desc' => $promo['description'],
+                'image' => $base . $promo['image'],
+                'end_time' => $promo['end_date']
+            ];
+
+            $products = getPromotionProducts($promo);
+        } else {
+            // fallback nếu không có khuyến mãi
+            $banner = [
+                'title' => 'Hiện chưa có khuyến mãi',
+                'desc' => 'Vui lòng quay lại sau',
+                'image' => $base . 'assets/img/promo/default.jpg',
+                'end_time' => date('Y-m-d H:i:s', strtotime('+1 day'))
+            ];
+
+            $products = [];
+        }
+
         $view = view('promotion');
-        break;
+    break;
 
     case 'contact':
         $view = view('contact');

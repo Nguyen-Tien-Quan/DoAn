@@ -29,13 +29,7 @@ if (session_status() === PHP_SESSION_NONE) {
 <body>
 
     <!-- HEADER CONDITIONAL -->
-    <?php if (isset($_SESSION['user']) && !empty($_SESSION['user'])): ?>
-        <?php include __DIR__ . '/../partials/header-logined.php'; ?>
-    <?php else: ?>
-        <?php include __DIR__ . '/../partials/header.php'; ?>
-    <?php endif; ?>
-
-
+    <?php include __DIR__ . '/../partials/header-logined.php'; ?>
 
     <?php
     if (!empty($view) && file_exists($view)) {

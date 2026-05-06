@@ -370,12 +370,12 @@ $totalFav = count($favorites);
                         </a>
                     </li>
 
-                    <!-- ========== GIỚI THIỆU ========== -->
+                    <!-- ========== GIỚI THIỆU ==========
                     <li class="navbar__item">
                         <a href="<?= $base ?>index.php?url=about" class="navbar__link">
                             Giới thiệu
                         </a>
-                    </li>
+                    </li> -->
 
                     <li class="navbar__item">
                         <a href="<?= $base ?>index.php?url=contact" class="navbar__link">
@@ -387,148 +387,148 @@ $totalFav = count($favorites);
 
             <div class="navbar__overlay js-toggle" toggle-target="#navbar"></div>
 
+
             <div class="top-act">
+                <?php if ($user): ?>
+                    <button class="top-act__group d-md-none top-act__group--single search-box" id="openSearch">
+                        <img src="<?= $base ?>assets/icons/search.svg" class="icon top-act__icon" />
+                    </button>
 
-                <button class="top-act__group d-md-none top-act__group--single search-box" id="openSearch">
-                    <img src="<?= $base ?>assets/icons/search.svg" class="icon top-act__icon" />
-                </button>
+                    <!-- SEARCH FULL SCREEN -->
+                    <div class="search-full" id="searchFull">
+                        <div class="search-full__overlay"></div>
 
-                <!-- SEARCH FULL SCREEN -->
-                <div class="search-full" id="searchFull">
-                    <div class="search-full__overlay"></div>
+                        <div class="search-full__content">
+                            <!-- Input -->
+                            <div class="search-full__top">
+                                <input type="text" id="searchInputFull"
+                                    placeholder="Bạn tìm gì hôm nay..."
+                                    autocomplete="off" />
 
-                    <div class="search-full__content">
-                        <!-- Input -->
-                        <div class="search-full__top">
-                            <input type="text" id="searchInputFull"
-                                placeholder="Bạn tìm gì hôm nay..."
-                                autocomplete="off" />
-
-                            <button id="closeSearch">✕</button>
-                        </div>
-
-                        <!-- History -->
-                        <div class="search-full__history">
-                            <div class="search-full__history-head">
-                                <span>Lịch sử tìm kiếm</span>
-                                <button id="clearHistory">Xóa tất cả</button>
+                                <button id="closeSearch">✕</button>
                             </div>
 
-                            <ul id="historyList"></ul>
-                        </div>
-
-                        <div id="suggestBox" class="search-suggest-products" style="display:none;"></div>
-                    </div>
-                </div>
-
-
-                <div class="search-overlay"></div>
-
-                <div class="top-act__group d-xl-none d-lg-none d-md-none d-sm-none top-act__group--bell">
-                    <div class="top-act__btn-wrap">
-                        <button class="top-act__btn js-toggle" toggle-target="#noti-dropdown">
-                            <img src="<?= $base ?>assets/icons/bell.svg" class="icon top-act__icon" />
-                            <span class="top-act__title" id="noti-count">0</span>
-                        </button>
-                        <div id="noti-dropdown" class="act-dropdown hide">
-                            <div class="act-dropdown__inner">
-                                <img src="./assets/icons/arrow-up.png" alt="" class="act-dropdown__arrow" />
-                                <div class="act-dropdown__top">
-                                    <h2 class="act-dropdown__title">Thông báo</h2>
-                                    <a href="#" class="act-dropdown__view-all" id="mark-all-read">Đánh dấu đã đọc</a>
+                            <!-- History -->
+                            <div class="search-full__history">
+                                <div class="search-full__history-head">
+                                    <span>Lịch sử tìm kiếm</span>
+                                    <button id="clearHistory">Xóa tất cả</button>
                                 </div>
-                                <div class="noti-list" id="noti-list"><div class="noti-item">Đang tải...</div></div>
-                                <div class="act-dropdown__separate"></div>
-                                <div class="act-dropdown__checkout">
-                                    <a href="<?= $base ?>index.php?url=notifications" class="btn btn--primary btn--rounded act-dropdown__checkout-btn">Xem tất cả</a>
+
+                                <ul id="historyList"></ul>
+                            </div>
+
+                            <div id="suggestBox" class="search-suggest-products" style="display:none;"></div>
+                        </div>
+                    </div>
+
+                    <div class="search-overlay"></div>
+
+                    <div class="top-act__group d-xl-none d-lg-none d-md-none d-sm-none top-act__group--bell">
+                        <div class="top-act__btn-wrap">
+                            <button class="top-act__btn js-toggle" toggle-target="#noti-dropdown">
+                                <img src="<?= $base ?>assets/icons/bell.svg" class="icon top-act__icon" />
+                                <span class="top-act__title" id="noti-count">0</span>
+                            </button>
+                            <div id="noti-dropdown" class="act-dropdown hide">
+                                <div class="act-dropdown__inner">
+                                    <img src="./assets/icons/arrow-up.png" alt="" class="act-dropdown__arrow" />
+                                    <div class="act-dropdown__top">
+                                        <h2 class="act-dropdown__title">Thông báo</h2>
+                                        <a href="#" class="act-dropdown__view-all" id="mark-all-read">Đánh dấu đã đọc</a>
+                                    </div>
+                                    <div class="noti-list" id="noti-list"><div class="noti-item">Đang tải...</div></div>
+                                    <div class="act-dropdown__separate"></div>
+                                    <div class="act-dropdown__checkout">
+                                        <a href="<?= $base ?>index.php?url=notifications" class="btn btn--primary btn--rounded act-dropdown__checkout-btn">Xem tất cả</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="top-act__group d-md-none">
-                    <!-- Yêu thích -->
-                    <div class="top-act__btn-wrap">
-                        <a class="top-act__btn" href="<?= $base ?>index.php?url=favorite">
-                            <img src="<?= $base ?>assets/icons/heart.svg" alt="" class="icon top-act__icon" />
-                            <span class="top-act__title fav-count-badge"><?= $totalFav ?></span>
-                        </a>
-                        <div class="act-dropdown">
-                            <div class="act-dropdown__inner">
-                                <img src="./assets/icons/arrow-up.png" alt="" class="act-dropdown__arrow" />
-                                <div class="act-dropdown__top">
-                                    <h2 class="act-dropdown__title">Bạn có <?= $totalFav ?> mục yêu thích</h2>
-                                    <a href="<?= $base ?>index.php?url=favorite" class="act-dropdown__view-all">Xem tất cả</a>
+                    <div class="top-act__group d-md-none">
+                        <!-- Yêu thích -->
+                        <div class="top-act__btn-wrap">
+                            <a class="top-act__btn" href="<?= $base ?>index.php?url=favorite">
+                                <img src="<?= $base ?>assets/icons/heart.svg" alt="" class="icon top-act__icon" />
+                                <span class="top-act__title fav-count-badge"><?= $totalFav ?></span>
+                            </a>
+                            <div class="act-dropdown">
+                                <div class="act-dropdown__inner">
+                                    <img src="./assets/icons/arrow-up.png" alt="" class="act-dropdown__arrow" />
+                                    <div class="act-dropdown__top">
+                                        <h2 class="act-dropdown__title">Bạn có <?= $totalFav ?> mục yêu thích</h2>
+                                        <a href="<?= $base ?>index.php?url=favorite" class="act-dropdown__view-all">Xem tất cả</a>
+                                    </div>
+                                    <div class="row row-cols-3 gx-2 act-dropdown__list">
+                                        <?php if ($totalFav > 0): ?>
+                                            <?php foreach ($favorites as $item): ?>
+                                                <div class="col">
+                                                    <article class="cart-preview-item">
+                                                        <div class="cart-preview-item__img-wrap">
+                                                            <img src="<?= $base ?>assets/img/product/<?= htmlspecialchars($item['image'] ?? 'placeholder.png') ?>" alt="<?= htmlspecialchars($item['name']) ?>" class="cart-preview-item__thumb" />
+                                                        </div>
+                                                        <h3 class="cart-preview-item__title"><?= htmlspecialchars($item['name']) ?></h3>
+                                                        <p class="cart-preview-item__price"><?= vnd($item['base_price'] ?? 0) ?></p>
+                                                    </article>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <p style="padding:10px; color:#777;">Chưa có sản phẩm yêu thích.</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="act-dropdown__separate"></div>
+                                    <div class="act-dropdown__checkout">
+                                        <a href="<?= $base ?>index.php?url=favorite" class="btn btn--primary btn--rounded act-dropdown__checkout-btn">Xem tất cả</a>
+                                    </div>
                                 </div>
-                                <div class="row row-cols-3 gx-2 act-dropdown__list">
-                                    <?php if ($totalFav > 0): ?>
-                                        <?php foreach ($favorites as $item): ?>
+                            </div>
+                        </div>
+
+                        <div class="top-act__separate"></div>
+
+                        <!-- Giỏ hàng -->
+                        <div class="top-act__btn-wrap">
+                            <a href="<?= $base ?>index.php?url=checkout" class="top-act__btn">
+                                <img src="<?= $base ?>assets/icons/buy.svg" class="icon" />
+                                <span class="top-act__title"><?= number_format($total) ?>đ</span>
+                            </a>
+                            <div class="act-dropdown">
+                                <div class="act-dropdown__inner">
+                                    <div class="act-dropdown__top">
+                                        <h2 class="act-dropdown__title">Bạn có <?= $cartCount ?> sản phẩm</h2>
+                                        <a href="<?= $base ?>index.php?url=checkout" class="act-dropdown__view-all">Xem tất cả</a>
+                                    </div>
+                                    <div class="row row-cols-3 gx-2 act-dropdown__list" id="cart-list">
+                                        <?php foreach ($cart as $item): ?>
                                             <div class="col">
                                                 <article class="cart-preview-item">
                                                     <div class="cart-preview-item__img-wrap">
-                                                        <img src="<?= $base ?>assets/img/product/<?= htmlspecialchars($item['image'] ?? 'placeholder.png') ?>" alt="<?= htmlspecialchars($item['name']) ?>" class="cart-preview-item__thumb" />
+                                                        <img src="<?= $base ?>assets/img/product/<?= $item['image'] ?>" class="cart-preview-item__thumb" />
                                                     </div>
-                                                    <h3 class="cart-preview-item__title"><?= htmlspecialchars($item['name']) ?></h3>
-                                                    <p class="cart-preview-item__price"><?= vnd($item['base_price'] ?? 0) ?></p>
+                                                    <h3 class="cart-preview-item__title"><?= $item['name'] ?></h3>
+                                                    <p class="cart-preview-item__price"><?= number_format($item['price']) ?>đ</p>
                                                 </article>
                                             </div>
                                         <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <p style="padding:10px; color:#777;">Chưa có sản phẩm yêu thích.</p>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="act-dropdown__separate"></div>
-                                <div class="act-dropdown__checkout">
-                                    <a href="<?= $base ?>index.php?url=favorite" class="btn btn--primary btn--rounded act-dropdown__checkout-btn">Xem tất cả</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="top-act__separate"></div>
-
-                    <!-- Giỏ hàng -->
-                    <div class="top-act__btn-wrap">
-                        <a href="<?= $base ?>index.php?url=checkout" class="top-act__btn">
-                            <img src="<?= $base ?>assets/icons/buy.svg" class="icon" />
-                            <span class="top-act__title"><?= number_format($total) ?>đ</span>
-                        </a>
-                        <div class="act-dropdown">
-                            <div class="act-dropdown__inner">
-                                <div class="act-dropdown__top">
-                                    <h2 class="act-dropdown__title">Bạn có <?= $cartCount ?> sản phẩm</h2>
-                                    <a href="<?= $base ?>index.php?url=checkout" class="act-dropdown__view-all">Xem tất cả</a>
-                                </div>
-                                <div class="row row-cols-3 gx-2 act-dropdown__list" id="cart-list">
-                                    <?php foreach ($cart as $item): ?>
-                                        <div class="col">
-                                            <article class="cart-preview-item">
-                                                <div class="cart-preview-item__img-wrap">
-                                                    <img src="<?= $base ?>assets/img/product/<?= $item['image'] ?>" class="cart-preview-item__thumb" />
-                                                </div>
-                                                <h3 class="cart-preview-item__title"><?= $item['name'] ?></h3>
-                                                <p class="cart-preview-item__price"><?= number_format($item['price']) ?>đ</p>
-                                            </article>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                <div class="act-dropdown__bottom">
-                                    <div class="act-dropdown__row"><span>Tạm tính</span><span id="mini-subtotal"><?= vnd($miniSubtotal) ?></span></div>
-                                    <div class="act-dropdown__row"><span>Phí vận chuyển</span><span><?= vnd($shipping) ?></span></div>
-                                    <div class="act-dropdown__row act-dropdown__row--bold"><span>Tổng cộng</span><span id="mini-total"><?= vnd($miniTotal) ?></span></div>
-                                </div>
-                                <div class="act-dropdown__checkout">
-                                    <a href="<?= $base ?>index.php?url=checkout" class="btn btn--primary btn--rounded act-dropdown__checkout-btn">Thanh toán</a>
+                                    </div>
+                                    <div class="act-dropdown__bottom">
+                                        <div class="act-dropdown__row"><span>Tạm tính</span><span id="mini-subtotal"><?= vnd($miniSubtotal) ?></span></div>
+                                        <div class="act-dropdown__row"><span>Phí vận chuyển</span><span><?= vnd($shipping) ?></span></div>
+                                        <div class="act-dropdown__row act-dropdown__row--bold"><span>Tổng cộng</span><span id="mini-total"><?= vnd($miniTotal) ?></span></div>
+                                    </div>
+                                    <div class="act-dropdown__checkout">
+                                        <a href="<?= $base ?>index.php?url=checkout" class="btn btn--primary btn--rounded act-dropdown__checkout-btn">Thanh toán</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
                 <!-- User menu -->
-                <div class="top-act__user">
-                    <?php if ($user): ?>
+                    <div class="top-act__user">
+
                         <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($_SESSION['user']['avatar'] ?? 'avatar-default.png') ?>" alt="Avatar" class="top-act__avatar" />
                         <div class="act-dropdown top-act__dropdown">
                             <div class="act-dropdown__inner user-menu">
@@ -554,8 +554,20 @@ $totalFav = count($favorites);
                                 </ul>
                             </div>
                         </div>
-                    <?php endif; ?>
-                </div>
+                    </div>
+
+                <?php else: ?>
+                    <!-- ===== CHƯA LOGIN ===== -->
+
+                    <a href="<?= $base ?>index.php?url=login" class="btn btn--text">
+                        Sign In
+                    </a>
+
+                    <a href="<?= $base ?>index.php?url=register" class="btn btn--primary">
+                        Sign Up
+                    </a>
+
+                <?php endif; ?>
             </div>
         </div>
     </div>

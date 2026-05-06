@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../../config/database.php';
 
 /**
- * Lấy danh sách đơn hàng
+ * LẤY DANH SÁCH ĐƠN HÀNG
  */
 function getOrders($page = 1, $limit = 10, $filters = []) {
     $conn = getDB();
@@ -15,68 +15,91 @@ function getOrders($page = 1, $limit = 10, $filters = []) {
     $where = "WHERE 1=1";
     $params = [];
 
+    // SEARCH
     if (!empty($search)) {
-        $where .= " AND order_code LIKE ?";
+        $where .= " AND o.order_code LIKE ?";
         $params[] = "%$search%";
     }
 
+    // FILTER STATUS
     if (!empty($status)) {
-        $where .= " AND status = ?";
+        $where .= " AND o.status = ?";
         $params[] = $status;
     }
 
     // COUNT
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM orders $where");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM orders o $where");
     $stmt->execute($params);
     $total = $stmt->fetchColumn();
 
-    // DATA
-    $sql = "SELECT o.*, c.full_name, c.phone, p.payment_status
-            FROM orders o
-            LEFT JOIN customers c ON o.customer_id = c.id
-            LEFT JOIN payments p ON o.id = p.order_id
-            $where
-            ORDER BY o.id ASC
-            LIMIT $limit OFFSET $offset";
+    // DATA (FIX FULL NAME + PHONE + SORT DESC)
+    $sql = "
+        SELECT
+    o.*,
+
+    COALESCE(o.receiver_name, c.name) AS full_name,
+    COALESCE(o.receiver_phone, c.phone) AS phone,
+
+    p.payment_status
+
+
+        FROM orders o
+        LEFT JOIN users c ON o.user_id = c.id
+        LEFT JOIN payments p ON o.id = p.order_id
+
+        $where
+        ORDER BY o.id DESC
+        LIMIT $limit OFFSET $offset
+    ";
 
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
 
     return [
-        'data' => $stmt->fetchAll(),
+        'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
         'total' => $total,
         'totalPages' => ceil($total / $limit)
     ];
 }
 
 /**
- * Chi tiết đơn
+ * CHI TIẾT ĐƠN
  */
 function getOrderDetail($id) {
     $conn = getDB();
 
     $stmt = $conn->prepare("
-        SELECT o.*, c.full_name, c.phone, c.address,
-               p.payment_method, p.payment_status
+        SELECT
+            o.*,
+            COALESCE(o.receiver_name, c.full_name) AS full_name,
+            COALESCE(o.receiver_phone, c.phone) AS phone,
+            COALESCE(o.delivery_address, c.address) AS address,
+
+            p.payment_method,
+            p.payment_status
+
         FROM orders o
-        LEFT JOIN customers c ON o.customer_id = c.id
+        LEFT JOIN users c ON o.user_id = c.id
         LEFT JOIN payments p ON o.id = p.order_id
         WHERE o.id = ?
     ");
     $stmt->execute([$id]);
-    $order = $stmt->fetch();
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$order) return null;
 
     $itemsStmt = $conn->prepare("
-        SELECT oi.*, pr.name as product_name, pv.variant_name
+        SELECT
+            oi.*,
+            pr.name AS product_name,
+            pv.variant_name
         FROM order_items oi
         LEFT JOIN products pr ON oi.product_id = pr.id
         LEFT JOIN product_variants pv ON oi.variant_id = pv.id
         WHERE oi.order_id = ?
     ");
     $itemsStmt->execute([$id]);
-    $items = $itemsStmt->fetchAll();
+    $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($items as &$item) {
         $topStmt = $conn->prepare("
@@ -86,7 +109,7 @@ function getOrderDetail($id) {
             WHERE oit.order_item_id = ?
         ");
         $topStmt->execute([$item['id']]);
-        $item['toppings'] = $topStmt->fetchAll();
+        $item['toppings'] = $topStmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     return [
@@ -96,13 +119,12 @@ function getOrderDetail($id) {
 }
 
 /**
- * UPDATE STATUS (FIX FULL)
+ * UPDATE STATUS
  */
 function updateOrderStatus($order_id, $new_status) {
     $conn = getDB();
 
-    // 🔥 Normalize tránh lỗi
-    $new_status = trim(strtolower($new_status));
+    $new_status = strtolower(trim($new_status));
 
     $allowed = [
         'pending',
@@ -115,24 +137,19 @@ function updateOrderStatus($order_id, $new_status) {
     ];
 
     if (!in_array($new_status, $allowed)) {
-        return ['success' => false, 'message' => 'Trạng thái không hợp lệ: ' . $new_status];
+        return ['success' => false, 'message' => 'Trạng thái không hợp lệ'];
     }
 
-    // Lấy trạng thái hiện tại
     $stmt = $conn->prepare("SELECT id, status FROM orders WHERE id = ?");
     $stmt->execute([$order_id]);
-    $order = $stmt->fetch();
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$order) {
-        return ['success' => false, 'message' => 'Không tìm thấy đơn #' . $order_id];
+        return ['success' => false, 'message' => 'Không tìm thấy đơn'];
     }
 
-    $old = trim(strtolower($order['status']));
+    $old = strtolower($order['status']);
 
-    // DEBUG (có thể bỏ sau)
-    error_log("ORDER #$order_id | OLD: [$old] -> NEW: [$new_status]");
-
-    // FLOW chuẩn
     $valid = [
         'pending' => ['confirmed', 'cancelled'],
         'confirmed' => ['preparing', 'cancelled'],
@@ -143,17 +160,16 @@ function updateOrderStatus($order_id, $new_status) {
         'cancelled' => []
     ];
 
-    if (!isset($valid[$old]) || !in_array($new_status, $valid[$old])) {
+    if (!in_array($new_status, $valid[$old] ?? [])) {
         return [
             'success' => false,
-            'message' => "Không thể chuyển từ '$old' sang '$new_status'"
+            'message' => "Không thể chuyển từ $old sang $new_status"
         ];
     }
 
     try {
         $conn->beginTransaction();
 
-        // 🔥 FIX QUAN TRỌNG: map delivery_status
         $delivery_status = null;
 
         if ($new_status === 'ready_for_delivery') {
@@ -166,43 +182,34 @@ function updateOrderStatus($order_id, $new_status) {
             $delivery_status = 'failed';
         }
 
-        // UPDATE
-        if ($delivery_status !== null) {
+        if ($delivery_status) {
             $stmt = $conn->prepare("
                 UPDATE orders
-                SET status = ?, delivery_status = ?, updated_at = NOW()
-                WHERE id = ?
+                SET status=?, delivery_status=?, updated_at=NOW()
+                WHERE id=?
             ");
             $stmt->execute([$new_status, $delivery_status, $order_id]);
         } else {
             $stmt = $conn->prepare("
                 UPDATE orders
-                SET status = ?, updated_at = NOW()
-                WHERE id = ?
+                SET status=?, updated_at=NOW()
+                WHERE id=?
             ");
             $stmt->execute([$new_status, $order_id]);
         }
 
         $conn->commit();
 
-        return [
-            'success' => true,
-            'message' => "Đã chuyển sang $new_status",
-            'new_status' => $new_status
-        ];
+        return ['success' => true];
 
     } catch (Exception $e) {
         $conn->rollBack();
-        error_log("ERROR UPDATE: " . $e->getMessage());
-
-        return [
-            'success' => false,
-            'message' => 'Lỗi DB'
-        ];
+        return ['success' => false, 'message' => $e->getMessage()];
     }
 }
+
 /**
- * Render chi tiết đơn
+ * RENDER DETAIL
  */
 function renderOrderDetailHTML($id) {
     $data = getOrderDetail($id);
@@ -216,10 +223,11 @@ function renderOrderDetailHTML($id) {
 
     ob_start();
     ?>
-
     <div>
         <p><strong>Mã đơn:</strong> <?= htmlspecialchars($order['order_code']) ?></p>
         <p><strong>Khách:</strong> <?= htmlspecialchars($order['full_name'] ?? 'Khách lẻ') ?></p>
+        <p><strong>SĐT:</strong> <?= htmlspecialchars($order['phone'] ?? '') ?></p>
+        <p><strong>Địa chỉ:</strong> <?= htmlspecialchars($order['address'] ?? '') ?></p>
         <p><strong>Trạng thái:</strong> <?= htmlspecialchars($order['status']) ?></p>
 
         <hr>
@@ -231,23 +239,25 @@ function renderOrderDetailHTML($id) {
             </div>
         <?php endforeach; ?>
     </div>
-
     <?php
+
     return ob_get_clean();
 }
 
+/**
+ * CANCEL ORDER
+ */
 function cancelOrder($order_id) {
     $conn = getDB();
 
     try {
         $stmt = $conn->prepare("
             UPDATE orders
-            SET status = 'cancelled',
-                delivery_status = 'failed',
-                updated_at = NOW()
-            WHERE id = ?
+            SET status='cancelled',
+                delivery_status='failed',
+                updated_at=NOW()
+            WHERE id=?
         ");
-
         $stmt->execute([$order_id]);
 
         return ['success' => true];

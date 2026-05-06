@@ -4,7 +4,8 @@
 DROP DATABASE IF EXISTS qlbthucan;
 CREATE DATABASE qlbthucan CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE qlbthucan;
-
+ALTER TABLE orders 
+MODIFY COLUMN payment_method ENUM('cod', 'cash', 'momo', 'vnpay', 'zalopay', 'card', 'online') NOT NULL DEFAULT 'cod';
 SET FOREIGN_KEY_CHECKS=0;
 SET time_zone = '+07:00';
 

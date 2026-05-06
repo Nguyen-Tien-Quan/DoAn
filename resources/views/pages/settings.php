@@ -1,11 +1,18 @@
 <?php
+
 $base = '/DoAn/DoAnTotNghiep/public/';
 
-// Gộp dữ liệu user + customer
-$avatarPath = !empty($user['avatar'])
-    ? $base . 'assets/img/avatars/' . $user['avatar'] . '?v=' . time()
+$avatarFile = $user['avatar'] ?? '';
+
+// ROOT thật của project (fix quan trọng)
+$rootPath = $_SERVER['DOCUMENT_ROOT'] . '/DoAn/DoAnTotNghiep/public/assets/img/avatars/';
+
+$avatarPath = (!empty($avatarFile) && file_exists($rootPath . $avatarFile))
+    ? $base . 'assets/img/avatars/' . $avatarFile . '?v=' . time()
     : $base . 'assets/img/avatar-default.png';
+
 ?>
+
 <style>
     /* ========== DÙNG BIẾN TỪ LIGHT THEME (TỰ ĐỘNG THEO DARK) ========== */
     .settings-layout {

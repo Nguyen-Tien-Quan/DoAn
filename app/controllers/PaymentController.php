@@ -213,25 +213,120 @@ function createVNPayPayment() {
     exit;
 }
 // Callback từ VNPay
+// Callback từ VNPay
 function vnpayReturn() {
-    // Xử lý kết quả thanh toán (bạn có thể copy code mẫu từ VNPay)
     $vnp_ResponseCode = $_GET['vnp_ResponseCode'] ?? '';
-    $order_code = $_GET['vnp_TxnRef'] ?? '';
+    $order_code       = $_GET['vnp_TxnRef'] ?? $_GET['order_code'] ?? '';
+
+    if (empty($order_code)) {
+        header("Location: index.php?url=checkout");
+        exit;
+    }
+
+    $conn = getDB();
 
     if ($vnp_ResponseCode == '00') {
-        // Thanh toán thành công
-        // Cập nhật trạng thái order
-        $conn = getDB();
-        $stmt = $conn->prepare("UPDATE orders SET payment_status = 'paid', status = 'confirmed' WHERE order_code = ?");
-        $stmt->execute([$order_code]);
 
-        header("Location: index.php?url=thank-you&order_code=" . $order_code);
+        if (!isset($_SESSION['pending_payment'])) {
+            header("Location: index.php?url=checkout&error=session_expired");
+            exit;
+        }
+
+        $pending = $_SESSION['pending_payment'];
+
+        try {
+            $conn->beginTransaction();
+
+            // Tạo đơn hàng
+            $stmt = $conn->prepare("
+                INSERT INTO orders
+                (order_code, user_id, shipping_address_id, order_type, total_amount,
+                 discount_amount, shipping_fee, final_amount, payment_method,
+                 payment_status, status, delivery_address, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', 'confirmed', ?, NOW(), NOW())
+            ");
+
+            $delivery_address = $pending['delivery_address'] ?? 'Chưa cập nhật';
+
+            $stmt->execute([
+                $pending['order_code'],
+                $_SESSION['user']['id'],
+                $pending['shipping_address_id'],
+                'delivery',
+                $pending['subtotal'],
+                $pending['discount'],
+                $pending['shipping_fee'],
+                $pending['total'],
+                $pending['payment_method'],
+                $delivery_address
+            ]);
+
+            $order_id = $conn->lastInsertId();
+
+            // Thêm order items
+            if (!empty($_SESSION['cart'])) {
+                $stmtItem = $conn->prepare("
+                    INSERT INTO order_items (order_id, product_id, variant_id, quantity, unit_price, subtotal)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+
+                foreach ($_SESSION['cart'] as $item) {
+                    $variant_id = $item['variant_id'] ?? null;
+                    $subtotal = $item['price'] * $item['quantity'];
+
+                    $stmtItem->execute([
+                        $order_id,
+                        $item['id'],
+                        $variant_id,
+                        $item['quantity'],
+                        $item['price'],
+                        $subtotal
+                    ]);
+                }
+            }
+
+            $conn->commit();
+
+            // ==================== GỬI EMAIL CHO ADMIN ====================
+            require_once __DIR__ . '/../services/MailService.php';   // ← Quan trọng
+
+            if (class_exists('MailService')) {
+                $html = "
+                    <h2>📦 Đơn hàng mới - Thanh toán thành công</h2>
+                    <p><strong>Mã đơn:</strong> {$pending['order_code']}</p>
+                    <p><strong>Khách hàng:</strong> " . ($_SESSION['user']['name'] ?? 'Khách hàng') . "</p>
+                    <p><strong>Tổng tiền:</strong> " . number_format($pending['total']) . "đ</p>
+                    <p><strong>Phương thức:</strong> " . strtoupper($pending['payment_method']) . "</p>
+                    <hr>
+                    <p>Đơn hàng đã được xác nhận thanh toán.</p>
+                ";
+
+                $sent = MailService::send('nguyentienquan1st@gmail.com', 'Đơn hàng mới #' . $pending['order_code'], $html);
+
+                if (!$sent) {
+                    error_log("Gửi email thất bại cho đơn " . $pending['order_code']);
+                }
+            }
+
+            // Xóa session
+            unset($_SESSION['pending_payment'], $_SESSION['cart'], $_SESSION['discount'], $_SESSION['coupon_code']);
+
+            header("Location: index.php?url=thank-you&order_code=" . urlencode($pending['order_code']));
+            exit;
+
+        } catch (Exception $e) {
+            $conn->rollBack();
+            error_log("Tạo đơn hàng thất bại: " . $e->getMessage());
+            header("Location: index.php?url=checkout&error=order_create_failed");
+            exit;
+        }
+
     } else {
-        header("Location: index.php?url=checkout&error=payment_failed");
+        unset($_SESSION['pending_payment']);
+        header("Location: index.php?url=checkout&error=payment_cancelled");
+        exit;
     }
-    exit;
 }
-
 // ====================== MOMO PAYMENT ======================
 function createMoMoPayment() {
     if (!isset($_GET['order_id']) || !isset($_GET['amount'])) {
@@ -302,5 +397,70 @@ function createMoMoPayment() {
     } else {
         echo "Lỗi tạo thanh toán MoMo: " . ($jsonResult['message'] ?? 'Unknown error');
     }
+    exit;
+}
+
+// Chuẩn bị thanh toán online (không tạo đơn hàng)
+function preparePayment() {
+    header('Content-Type: application/json');
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!isset($_SESSION['user'])) {
+        echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    $shipping_address_id = (int)($input['shipping_address_id'] ?? 0);
+    $payment_method      = $input['payment_method'] ?? 'vnpay';
+    $shipping_fee        = (int)($input['shipping_fee'] ?? 10000);
+
+    // Kiểm tra giỏ hàng
+    if (empty($_SESSION['cart'])) {
+        echo json_encode(['success' => false, 'message' => 'Giỏ hàng trống']);
+        exit;
+    }
+
+    // Kiểm tra địa chỉ
+    $conn = getDB();
+    $stmt = $conn->prepare("SELECT id FROM shipping_addresses WHERE id = ? AND user_id = ?");
+    $stmt->execute([$shipping_address_id, $_SESSION['user']['id']]);
+    if (!$stmt->fetchColumn()) {
+        echo json_encode(['success' => false, 'message' => 'Địa chỉ không hợp lệ']);
+        exit;
+    }
+
+    // Tính tổng tiền
+    $subtotal = 0;
+    foreach ($_SESSION['cart'] as $item) {
+        $subtotal += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
+    }
+    $discount = $_SESSION['discount'] ?? 0;
+    $total = $subtotal - $discount + $shipping_fee;
+
+    // Tạo order_code tạm để truyền sang VNPay
+    $temp_order_code = 'ORD' . date('YmdHis') . rand(100, 999);
+
+    // Lưu thông tin tạm vào session để sau callback sẽ tạo đơn
+    $_SESSION['pending_payment'] = [
+        'order_code'         => $temp_order_code,
+        'shipping_address_id'=> $shipping_address_id,
+        'shipping_method'    => $input['shipping_method'] ?? 'standard',
+        'shipping_fee'       => $shipping_fee,
+        'payment_method'     => $payment_method,
+        'total'              => $total,
+        'subtotal'           => $subtotal,
+        'discount'           => $discount,
+        'timestamp'          => time()
+    ];
+
+    $payment_url = generatePaymentUrl(0, $total, $payment_method, $temp_order_code);
+
+    echo json_encode([
+        'success'     => true,
+        'payment_url' => $payment_url,
+        'order_code'  => $temp_order_code
+    ]);
     exit;
 }

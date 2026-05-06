@@ -488,4 +488,46 @@ function getParentCategories() {
 }
 
 
+// ================== THÊM MỚI: LẤY KHUYẾN MÃI ĐANG DIỄN RA ==================
+function getActivePromotion() {
+    $conn = getDB();
+
+    $stmt = $conn->prepare("
+        SELECT *
+        FROM promotions
+        WHERE status = 1
+        AND NOW() BETWEEN start_date AND end_date
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $stmt->execute();
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function getPromotionProducts($promotion) {
+    if (!$promotion) return [];
+
+    $conn = getDB();
+
+    // Lấy sản phẩm random để áp khuyến mãi
+    $stmt = $conn->prepare("
+        SELECT id, name, image, base_price
+        FROM products
+        WHERE status = 1
+        ORDER BY RAND()
+        LIMIT 8
+    ");
+    $stmt->execute();
+
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Gán discount từ promotion
+    foreach ($products as &$p) {
+        $p['discount'] = $promotion['discount_percent'];
+    }
+
+    return $products;
+}
+
 ?>

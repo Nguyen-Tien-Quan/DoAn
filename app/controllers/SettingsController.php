@@ -31,28 +31,32 @@ function getSettingsData() {
             c.gender,
             c.birthday,
             c.address AS customer_address
+
         FROM users u
         LEFT JOIN customers c ON c.user_id = u.id
         WHERE u.id = ?
+        LIMIT 1
     ");
+
     $stmt->execute([$userId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // 🔥 CHUẨN HÓA DATA 1 OBJECT DUY NHẤT
-    $user = [
-        'id' => $row['id'],
-        'name' => $row['name'],
-        'email' => $row['email'],
-        'phone' => $row['phone'],
-        'avatar' => $row['avatar'],
+    if (!$row) return null;
 
-        'full_name' => $row['full_name'],
-        'gender' => $row['gender'],
-        'birthday' => $row['birthday'],
-        'address' => $row['customer_address'],
+    $user = [
+        'id'        => $row['id'],
+        'name'      => $row['name'] ?? '',
+        'email'     => $row['email'] ?? '',
+        'phone'     => $row['phone'] ?? '',
+        'avatar'    => $row['avatar'] ?? '',
+
+        'full_name' => $row['full_name'] ?? '',
+        'gender'    => $row['gender'] ?? '',
+        'birthday'  => $row['birthday'] ?? '',
+        'address'   => $row['customer_address'] ?? '',
     ];
 
-    // ADDRESS
+    // ================= ADDRESS (FIX KHÔNG DÙNG tap) =================
     $stmt = $conn->prepare("
         SELECT * FROM shipping_addresses
         WHERE user_id = ?
@@ -61,7 +65,7 @@ function getSettingsData() {
     $stmt->execute([$userId]);
     $addresses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // NOTIFICATION
+    // ================= NOTIFICATION =================
     $stmt = $conn->prepare("
         SELECT * FROM notifications
         WHERE user_id = ?
@@ -71,12 +75,15 @@ function getSettingsData() {
     $stmt->execute([$userId]);
     $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $success = $_SESSION['settings_success'] ?? null;
-    $error   = $_SESSION['settings_error'] ?? null;
-    unset($_SESSION['settings_success'], $_SESSION['settings_error']);
-
-    return compact('user','addresses','notifications','success','error');
+    return [
+        'user' => $user,
+        'addresses' => $addresses,
+        'notifications' => $notifications,
+        'success' => $_SESSION['settings_success'] ?? null,
+        'error' => $_SESSION['settings_error'] ?? null,
+    ];
 }
+
 // ================== UPDATE PROFILE ==================
 function updateProfile() {
     checkLogin();
@@ -94,52 +101,61 @@ function updateProfile() {
     $phone    = trim($_POST['phone'] ?? '');
 
     $fullName = trim($_POST['full_name'] ?? '');
-    $gender   = $_POST['gender'] ?? null;
-    $birthday = $_POST['birthday'] ?? null;
+    $gender   = $_POST['gender'] ?? '';
+    $birthday = $_POST['birthday'] ?? '';
     $address  = trim($_POST['address'] ?? '');
 
-    $errors = [];
-
-    if (empty($name)) $errors[] = 'Tên không được trống';
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Email không hợp lệ';
-
-    if ($phone && !preg_match('/^[0-9]{10,11}$/', $phone)) {
-        $errors[] = 'SĐT không hợp lệ';
-    }
-
-    if (!empty($errors)) {
-        $_SESSION['settings_error'] = implode('<br>', $errors);
+    if (empty($name) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['settings_error'] = 'Dữ liệu không hợp lệ';
         header('Location: index.php?url=settings');
         exit;
     }
 
-    // ================= AVATAR =================
-    $avatarName = $_SESSION['user']['avatar'] ?? null;
+    // ================= AVATAR FIX CHUẨN =================
+    $avatarName = $_SESSION['user']['avatar'] ?? '';
 
-    if (!empty($_FILES['avatar']['name'])) {
+    if (!empty($_FILES['avatar']['name']) && $_FILES['avatar']['error'] === 0) {
 
-        $uploadDir = __DIR__ . '/../../../public/assets/img/avatars/';
+        // 👉 FIX PATH CHUẨN XAMPP (QUAN TRỌNG NHẤT)
+        $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/DoAn/DoAnTotNghiep/public/assets/img/avatars/';
+
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0777, true);
         }
 
-        $ext = pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
+        $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
+
+        $allow = ['jpg', 'jpeg', 'png', 'webp'];
+
+        if (!in_array($ext, $allow)) {
+            $_SESSION['settings_error'] = 'File không hợp lệ';
+            header('Location: index.php?url=settings');
+            exit;
+        }
+
+        // 👉 tạo tên file mới
         $avatarName = 'avatar_' . $userId . '_' . time() . '.' . $ext;
 
-        move_uploaded_file(
-            $_FILES['avatar']['tmp_name'],
-            $uploadDir . $avatarName
-        );
+        $targetPath = $uploadDir . $avatarName;
+
+        // 👉 debug nếu cần
+        // var_dump($targetPath); exit;
+
+        if (!move_uploaded_file($_FILES['avatar']['tmp_name'], $targetPath)) {
+            $_SESSION['settings_error'] = 'Upload ảnh thất bại';
+            header('Location: index.php?url=settings');
+            exit;
+        }
     }
 
-    // ================= USERS TABLE =================
+    // ================= UPDATE USERS =================
     $conn->prepare("
         UPDATE users
         SET name=?, email=?, phone=?, avatar=?
         WHERE id=?
     ")->execute([$name, $email, $phone, $avatarName, $userId]);
 
-    // ================= CUSTOMERS TABLE =================
+    // ================= UPSERT CUSTOMERS =================
     $stmt = $conn->prepare("SELECT id FROM customers WHERE user_id=?");
     $stmt->execute([$userId]);
 
@@ -156,16 +172,16 @@ function updateProfile() {
         ")->execute([$userId, $fullName, $phone, $gender, $birthday, $address]);
     }
 
-    // ================= FIX SESSION (QUAN TRỌNG) =================
+    // ================= SYNC SESSION =================
     $_SESSION['user'] = array_merge($_SESSION['user'], [
-        'name'     => $name,
-        'email'    => $email,
-        'phone'    => $phone,
-        'avatar'   => $avatarName,
-        'gender'   => $gender,
-        'birthday' => $birthday,
-        'address'  => $address,
-        'full_name'=> $fullName
+        'name'      => $name,
+        'email'     => $email,
+        'phone'     => $phone,
+        'avatar'    => $avatarName,
+        'gender'    => $gender,
+        'birthday'  => $birthday,
+        'address'   => $address,
+        'full_name' => $fullName
     ]);
 
     $_SESSION['settings_success'] = 'Cập nhật thành công';

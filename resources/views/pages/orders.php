@@ -323,7 +323,6 @@ if (!function_exists('renderOrder')) {
 
 </style>
 
-
 <main class="order-page">
 <div class="container">
 

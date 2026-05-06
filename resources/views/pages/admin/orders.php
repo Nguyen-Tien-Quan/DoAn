@@ -1,5 +1,11 @@
 <?php
-// resources/views/pages/admin/orders.php
+
+$orders = $orders ?? [];
+$search = $search ?? '';
+$status_filter = $status_filter ?? '';
+$totalPages = $totalPages ?? 1;
+$currentPage = $currentPage ?? 1;
+
 ?>
 <div id="content-wrapper" class="d-flex flex-column">
     <div id="content">
@@ -37,7 +43,6 @@
                         <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
                                     <th>Mã đơn</th>
                                     <th>Khách hàng</th>
                                     <th>SĐT</th>
@@ -55,7 +60,6 @@
                                 <?php else: ?>
                                     <?php foreach ($orders as $o): ?>
                                         <tr>
-                                            <td><?= $o['id'] ?></td>
                                             <td><?= htmlspecialchars($o['order_code']) ?></td>
                                             <td><?= htmlspecialchars($o['full_name'] ?? 'Khách lẻ') ?></td>
                                             <td><?= htmlspecialchars($o['phone'] ?? '') ?></td>

@@ -288,6 +288,27 @@ function generatePaymentUrl($order_id, $amount, $method, $order_code) {
             return $base . "index.php?url=payment-return&method=$method&order_code=$order_code";
     }
 }
+
+function sendOrderSuccessEmail($order_code, $total, $payment_method = 'cod') {
+    if (!class_exists('MailService')) {
+        error_log("MailService class not found");
+        return false;
+    }
+
+    $customer_name = $_SESSION['user']['name'] ?? 'Khách hàng';
+
+    $html = "
+        <h2>📦 Đơn hàng mới - Thành công</h2>
+        <p><strong>Mã đơn hàng:</strong> {$order_code}</p>
+        <p><strong>Khách hàng:</strong> {$customer_name}</p>
+        <p><strong>Tổng tiền:</strong> " . number_format($total) . "đ</p>
+        <p><strong>Phương thức:</strong> " . strtoupper($payment_method) . "</p>
+        <hr>
+        <p>Đơn hàng đã được tạo thành công.</p>
+    ";
+
+    return MailService::send('nguyentienquan1st@gmail.com', 'Đơn hàng mới #' . $order_code, $html);
+}
 // ---------- API TẠO ĐƠN HÀNG (dùng cho AJAX) ----------
 function createOrderAPI() {
     header('Content-Type: application/json');
@@ -309,7 +330,6 @@ function createOrderAPI() {
     $shipping_method    = $input['shipping_method'] ?? 'standard';
     $shipping_fee       = (int)($input['shipping_fee'] ?? 10000);
     $payment_method     = $input['payment_method'] ?? 'cod';
-    $order_type         = $input['order_type'] ?? 'delivery';
 
     $cart = $_SESSION['cart'] ?? [];
     if (empty($cart)) {
@@ -317,7 +337,6 @@ function createOrderAPI() {
         exit;
     }
 
-    // Tính tiền
     $subtotal = 0;
     foreach ($cart as $item) {
         $subtotal += ($item['price'] ?? 0) * ($item['quantity'] ?? 0);
@@ -346,7 +365,6 @@ function createOrderAPI() {
 
         $delivery_address = $address['address'] . ', ' . ($address['city'] ?? '');
 
-        // Tạo đơn hàng
         $stmt = $conn->prepare("
             INSERT INTO orders
             (order_code, user_id, shipping_address_id, order_type, total_amount,
@@ -359,7 +377,7 @@ function createOrderAPI() {
             $order_code,
             $user_id,
             $shipping_address_id,
-            $order_type,
+            'delivery',
             $subtotal,
             $discount,
             $shipping_fee,
@@ -370,31 +388,15 @@ function createOrderAPI() {
 
         $order_id = $conn->lastInsertId();
 
-        // ==================== THÊM ORDER ITEMS + TOPPINGS + TRỪ TỒN KHO ====================
+        // Thêm sản phẩm vào đơn hàng
         $stmtItem = $conn->prepare("
-            INSERT INTO order_items
-            (order_id, product_id, variant_id, quantity, unit_price, topping_price, subtotal)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO order_items (order_id, product_id, variant_id, quantity, unit_price, subtotal)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
 
         foreach ($cart as $item) {
-            $variant_id = $item['variant_id'] ?? ($item['variant']['id'] ?? null);
-
-            // Fallback variant mặc định
-            if (!$variant_id) {
-                $varStmt = $conn->prepare("SELECT id FROM product_variants WHERE product_id = ? LIMIT 1");
-                $varStmt->execute([$item['id']]);
-                $variant_id = $varStmt->fetchColumn();
-            }
-
-            $topping_price = 0;
-            if (!empty($item['toppings'])) {
-                foreach ($item['toppings'] as $t) {
-                    $topping_price += $t['price'] ?? 0;
-                }
-            }
-
-            $item_subtotal = $item['price'] * $item['quantity'];
+            $variant_id = $item['variant_id'] ?? null;
+            $subtotal_item = $item['price'] * $item['quantity'];
 
             $stmtItem->execute([
                 $order_id,
@@ -402,55 +404,24 @@ function createOrderAPI() {
                 $variant_id,
                 $item['quantity'],
                 $item['price'],
-                $topping_price,
-                $item_subtotal
+                $subtotal_item
             ]);
-
-            $order_item_id = $conn->lastInsertId();
-
-            // Thêm toppings
-            if (!empty($item['toppings'])) {
-                $stmtTop = $conn->prepare("INSERT INTO order_item_toppings (order_item_id, topping_id, price) VALUES (?, ?, ?)");
-                foreach ($item['toppings'] as $top) {
-                    $stmtTop->execute([$order_item_id, $top['id'], $top['price'] ?? 0]);
-                }
-            }
-
-            // Trừ tồn kho
-            if ($variant_id) {
-                $conn->prepare("UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE id = ?")
-                     ->execute([$item['quantity'], $variant_id]);
-            }
         }
 
-        // Xử lý voucher
-        if (!empty($_SESSION['coupon_code'])) {
-            $conn->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ?")
-                 ->execute([$_SESSION['coupon_code']]);
-        }
+        // Gửi mail cho Admin
+        sendOrderSuccessEmail($order_code, $total, $payment_method);
 
         $conn->commit();
 
-        // ==================== TRẢ VỀ KẾT QUẢ ====================
-        $response = [
+        unset($_SESSION['cart'], $_SESSION['discount'], $_SESSION['coupon_code']);
+
+        echo json_encode([
             'success'    => true,
             'order_id'   => $order_id,
             'order_code' => $order_code,
-            'total'      => $total
-        ];
-
-        // Thanh toán online → trả về payment_url
-        if (in_array($payment_method, ['vnpay', 'momo', 'zalopay', 'card'])) {
-            $payment_url = generatePaymentUrl($order_id, $total, $payment_method, $order_code);
-            $response['payment_url'] = $payment_url;
-            $response['message'] = 'Đang chuyển hướng đến cổng thanh toán...';
-        } else {
-            // COD → xóa giỏ hàng
-            unset($_SESSION['cart'], $_SESSION['discount'], $_SESSION['coupon_code'], $_SESSION['coupon_data']);
-            $response['message'] = 'Đặt hàng thành công!';
-        }
-
-        echo json_encode($response);
+            'total'      => $total,
+            'message'    => 'Đặt hàng thành công!'
+        ]);
         exit;
 
     } catch (Exception $e) {
@@ -467,63 +438,28 @@ function createOrderAPI() {
  * Được gọi khi khách hoàn tất thanh toán hoặc bị hủy
  */
 function paymentReturn() {
-    $method = $_GET['method'] ?? '';
+    $method = $_GET['method'] ?? 'vnpay';
     $order_code = $_GET['order_code'] ?? '';
-    // Các tham số khác tùy cổng (vnp_ResponseCode, vnp_TxnRef...)
 
-    if (!$order_code) {
-        die("Thiếu mã đơn hàng");
+    if (empty($order_code)) {
+        header("Location: index.php?url=checkout");
+        exit;
     }
 
     $conn = getDB();
 
-    // Lấy thông tin đơn hàng
-    $stmt = $conn->prepare("SELECT id, final_amount, payment_status FROM orders WHERE order_code = ?");
-    $stmt->execute([$order_code]);
-    $order = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$order) {
-        die("Đơn hàng không tồn tại");
-    }
+    $responseCode = $_GET['vnp_ResponseCode'] ?? $_GET['errorCode'] ?? $_GET['status'] ?? '';
 
     $is_success = false;
-    $transaction_code = '';
 
-    // Xử lý theo từng cổng
-    switch ($method) {
-        case 'vnpay':
-            $vnp_ResponseCode = $_GET['vnp_ResponseCode'] ?? '';
-            $vnp_TransactionNo = $_GET['vnp_TransactionNo'] ?? '';
-            if ($vnp_ResponseCode == '00') {
-                $is_success = true;
-                $transaction_code = $vnp_TransactionNo;
-            }
-            break;
-
-        case 'momo':
-            $errorCode = $_GET['errorCode'] ?? $_POST['errorCode'] ?? '';
-            $transId = $_GET['transId'] ?? $_POST['transId'] ?? '';
-            if ($errorCode == '0') {
-                $is_success = true;
-                $transaction_code = $transId;
-            }
-            break;
-
-        case 'zalopay':
-            $status = $_GET['status'] ?? $_POST['status'] ?? '';
-            $zp_trans_id = $_GET['zp_trans_id'] ?? $_POST['zp_trans_id'] ?? '';
-            if ($status == '1') {
-                $is_success = true;
-                $transaction_code = $zp_trans_id;
-            }
-            break;
-
-        default:
-            die("Phương thức thanh toán không hỗ trợ");
+    if ($method === 'vnpay' && $responseCode == '00') {
+        $is_success = true;
+    } elseif (in_array($method, ['momo', 'zalopay']) && $responseCode == '0') {
+        $is_success = true;
     }
 
     if ($is_success) {
-        // Cập nhật đơn hàng: đã thanh toán, xác nhận
+        // Thanh toán thành công
         $stmt = $conn->prepare("
             UPDATE orders
             SET payment_status = 'paid',
@@ -533,27 +469,23 @@ function paymentReturn() {
         ");
         $stmt->execute([$order_code]);
 
-        // Ghi log thanh toán
-        try {
-            $stmtPay = $conn->prepare("
-                INSERT INTO payments (order_id, payment_method, amount, payment_status, transaction_code, paid_at, created_at)
-                VALUES (?, ?, ?, 'paid', ?, NOW(), NOW())
-            ");
-            $stmtPay->execute([$order['id'], $method, $order['final_amount'], $transaction_code]);
-        } catch (Exception $e) {}
+        unset($_SESSION['cart'], $_SESSION['discount'], $_SESSION['coupon_code']);
 
-        // Xóa session giỏ hàng, mã giảm giá
-        unset($_SESSION['cart'], $_SESSION['discount'], $_SESSION['coupon_code'], $_SESSION['coupon_data']);
-
-        // Chuyển hướng đến trang cảm ơn
-        header("Location: index.php?url=thank-you&order_code=$order_code");
-        exit;
+        header("Location: index.php?url=thank-you&order_code=" . urlencode($order_code));
     } else {
-        // Thanh toán thất bại / hủy
-        // Có thể giữ nguyên trạng thái pending để khách thử lại
-        header("Location: index.php?url=checkout&error=payment_failed");
-        exit;
+        // Hủy hoặc thất bại
+        $stmt = $conn->prepare("
+            UPDATE orders
+            SET status = 'cancelled',
+                cancelled_at = NOW(),
+                updated_at = NOW()
+            WHERE order_code = ? AND status = 'pending'
+        ");
+        $stmt->execute([$order_code]);
+
+        header("Location: index.php?url=checkout&error=payment_cancelled");
     }
+    exit;
 }
 
 function listOrders() {
@@ -683,15 +615,35 @@ function cancelOrder() {
 }
 
 function loadOrders() {
-    if (session_status() === PHP_SESSION_NONE) session_start(); // ✅ FIX
+    if (session_status() === PHP_SESSION_NONE) session_start();
 
     if (!isset($_SESSION['user'])) exit;
 
     $user_id = $_SESSION['user']['id'];
     $status = $_GET['status'] ?? '';
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
 
     $conn = getDB();
 
+    // COUNT TOTAL
+    $countSql = "SELECT COUNT(*) FROM orders WHERE user_id = ?";
+    $countParams = [$user_id];
+
+    if ($status !== '') {
+        $countSql .= " AND status = ?";
+        $countParams[] = $status;
+    }
+
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->execute($countParams);
+    $totalOrders = $countStmt->fetchColumn();
+
+    $totalPages = ceil($totalOrders / $limit);
+
+    // DATA
     $sql = "SELECT * FROM orders WHERE user_id = ?";
     $params = [$user_id];
 
@@ -700,7 +652,7 @@ function loadOrders() {
         $params[] = $status;
     }
 
-    $sql .= " ORDER BY created_at DESC";
+    $sql .= " ORDER BY created_at DESC LIMIT $limit OFFSET $offset";
 
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
@@ -709,4 +661,9 @@ function loadOrders() {
     foreach ($orders as $order) {
         echo renderOrder($order);
     }
+
+    // trả thêm pagination info cho JS (QUAN TRỌNG)
+    echo "<script>
+        window.totalPages = $totalPages;
+    </script>";
 }
