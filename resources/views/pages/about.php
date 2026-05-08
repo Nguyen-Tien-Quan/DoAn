@@ -1,3 +1,7 @@
+<?php
+$base = '/DoAn/DoAnTotNghiep/public/';
+?>
+
 <main class="container about-page">
     <div class="about-hero">
         <h1>Về TRQshop</h1>

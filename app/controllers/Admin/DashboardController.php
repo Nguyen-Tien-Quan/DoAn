@@ -248,59 +248,95 @@ function handleHardDeleteVoucher() {
 }
 /**
  * 📈 Lấy dữ liệu biểu đồ doanh thu
- * @param string $type (day | month)
  */
 function getRevenueChart($type = 'day') {
+
     $conn = getDB();
 
     switch ($type) {
 
+        // ===== WEEK =====
         case 'week':
+
             $sql = "
-                SELECT YEARWEEK(created_at, 1) as label,
-                       SUM(final_amount) as revenue
+                SELECT
+                    YEARWEEK(created_at, 1) AS sort_key,
+                    CONCAT('Tuần ', WEEK(MIN(created_at), 1)) AS label,
+                    SUM(total_amount) AS revenue
                 FROM orders
                 WHERE status = 'completed'
                 GROUP BY YEARWEEK(created_at, 1)
-                ORDER BY label ASC
+                ORDER BY sort_key ASC
                 LIMIT 6
             ";
+
         break;
 
+        // ===== MONTH =====
         case 'month':
+
             $sql = "
-                SELECT DATE_FORMAT(created_at, '%Y-%m') as label,
-                       SUM(final_amount) as revenue
+                SELECT
+                    DATE_FORMAT(MIN(created_at), '%Y-%m') AS sort_key,
+                    DATE_FORMAT(MIN(created_at), '%m/%Y') AS label,
+                    SUM(total_amount) AS revenue
                 FROM orders
                 WHERE status = 'completed'
-                GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-                ORDER BY label ASC
+                GROUP BY YEAR(created_at), MONTH(created_at)
+                ORDER BY sort_key ASC
                 LIMIT 6
             ";
+
         break;
 
-        default: // day
+        // ===== DAY =====
+        default:
+
             $sql = "
-                SELECT DATE(created_at) as label,
-                       SUM(final_amount) as revenue
+                SELECT
+                    DATE(MIN(created_at)) AS sort_key,
+                    DATE_FORMAT(MIN(created_at), '%d/%m') AS label,
+                    SUM(total_amount) AS revenue
                 FROM orders
                 WHERE status = 'completed'
                 GROUP BY DATE(created_at)
-                ORDER BY label ASC
+                ORDER BY sort_key ASC
                 LIMIT 7
             ";
     }
 
-    return $conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-}
+    $stmt = $conn->query($sql);
 
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+/**
+ * 📊 So sánh doanh thu hôm nay / hôm qua
+ */
 function getRevenueCompare() {
+
     $conn = getDB();
 
     $sql = "
         SELECT
-        COALESCE(SUM(CASE WHEN DATE(created_at)=CURDATE() THEN final_amount END),0) as today,
-        COALESCE(SUM(CASE WHEN DATE(created_at)=CURDATE()-1 THEN final_amount END),0) as yesterday
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN DATE(created_at) = CURDATE()
+                    THEN total_amount
+                END
+            ),0
+        ) AS today,
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+                    THEN total_amount
+                END
+            ),0
+        ) AS yesterday
+
         FROM orders
         WHERE status = 'completed'
     ";
@@ -308,19 +344,31 @@ function getRevenueCompare() {
     return $conn->query($sql)->fetch(PDO::FETCH_ASSOC);
 }
 
+
+/**
+ * 🔥 Top sản phẩm bán chạy
+ */
 function getTopProducts($limit = 5) {
+
     $conn = getDB();
 
     return $conn->query("
         SELECT
             p.id,
             p.name,
-            SUM(oi.quantity) as total_sold
+            SUM(oi.quantity) AS total_sold
+
         FROM order_items oi
-        JOIN products p ON p.id = oi.product_id
-        GROUP BY p.id
+
+        JOIN products p
+        ON p.id = oi.product_id
+
+        GROUP BY p.id, p.name
+
         ORDER BY total_sold DESC
+
         LIMIT $limit
+
     ")->fetchAll(PDO::FETCH_ASSOC);
 }
 

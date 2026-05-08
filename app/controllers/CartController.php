@@ -3,114 +3,212 @@
 // ==================== CART ====================
 function addToCart()
 {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 
+    // ===== CHECK LOGIN =====
     if (!isset($_SESSION['user'])) {
-        $_SESSION['error'] = "Bạn chưa đăng nhập!";
+
+        $_SESSION['error'] = "Bạn cần đăng nhập để thêm giỏ hàng";
+
         header("Location: index.php?url=login");
         exit;
     }
 
-    $id         = $_GET['id'] ?? 0;
-    $quantity   = max(1, (int)($_POST['quantity'] ?? 1));
-    $variantId  = $_POST['variant_id'] ?? null;
-    $toppingIds = $_POST['toppings'] ?? [];
+    // ===== LẤY PRODUCT ID =====
+    $id = 0;
 
-    if (!$id) {
-        header("Location: index.php");
-        exit;
+    // ưu tiên POST
+    if (isset($_POST['product_id'])) {
+        $id = (int)$_POST['product_id'];
     }
 
-    $product = getProductById($id);
-    if (!$product) {
-        header("Location: index.php");
-        exit;
+    // fallback GET
+    if ($id <= 0 && isset($_GET['id'])) {
+        $id = (int)$_GET['id'];
     }
 
-    // ---- KIỂM TRA TỒN KHO ----
-    $availableStock = null; // null = không giới hạn (nếu DB chưa có stock)
+    if ($id <= 0) {
 
-    if ($variantId) {
-        $variant = getVariantById($variantId);
-        if (!$variant) {
-            $_SESSION['error'] = "Biến thể sản phẩm không hợp lệ!";
-            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
-            exit;
-        }
-        // Nếu có cột stock_quantity thì lấy, không thì mặc định 999
-        $availableStock = isset($variant['stock_quantity']) ? (int)$variant['stock_quantity'] : 999;
-    } else {
-        // Sản phẩm không có variant: lấy stock từ bảng products (nếu có)
-        $availableStock = isset($product['stock_quantity']) ? (int)$product['stock_quantity'] : 999;
-    }
+        $_SESSION['error'] = "Sản phẩm không hợp lệ";
 
-    // Chỉ kiểm tra khi stock có giới hạn
-    if ($availableStock !== null && $quantity > $availableStock) {
-        $_SESSION['error'] = "Số lượng vượt quá tồn kho. Chỉ còn $availableStock sản phẩm.";
         header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
         exit;
     }
 
-    // ---- TÍNH GIÁ ----
-    $basePrice    = (float)$product['base_price'];
+    // ===== QUANTITY =====
+    $quantity = max(1, (int)($_POST['quantity'] ?? 1));
+
+    // ===== VARIANT =====
+    $variantId = isset($_POST['variant_id'])
+        ? (int)$_POST['variant_id']
+        : 0;
+
+    // ===== TOPPINGS =====
+    $toppingIds = $_POST['toppings'] ?? [];
+
+    if (!is_array($toppingIds)) {
+        $toppingIds = [];
+    }
+
+    // ===== PRODUCT =====
+    $product = getProductById($id);
+
+    if (!$product) {
+
+        $_SESSION['error'] = "Không tìm thấy sản phẩm";
+
+        header("Location: index.php");
+        exit;
+    }
+
+    // ===== STOCK =====
+    $availableStock = isset($product['stock_quantity'])
+        ? (int)$product['stock_quantity']
+        : 999;
+
+    // ===== VARIANT INFO =====
+    $variant = null;
     $variantPrice = 0;
-    $variantName  = null;
+    $variantName = null;
 
-    if ($variantId) {
+    if ($variantId > 0) {
+
         $variant = getVariantById($variantId);
-        if ($variant) {
-            $variantPrice = (float)($variant['price'] ?? 0);
-            $variantName  = $variant['variant_name'] ?? '';
-        }
-    }
 
-    $toppingTotal = 0;
-    $toppingList  = [];
-    if (!empty($toppingIds)) {
-        foreach ($toppingIds as $tid) {
-            $t = getToppingById($tid);
-            if ($t) {
-                $toppingTotal += (float)($t['price'] ?? 0);
-                $toppingList[] = [
-                    'id'    => $t['id'],
-                    'name'  => $t['name'],
-                    'price' => (float)$t['price']
-                ];
-            }
-        }
-    }
+        if (!$variant) {
 
-    $finalPrice = $basePrice + $variantPrice + $toppingTotal;
-    $key = $id . '_' . ($variantId ?? 0) . '_' . implode('-', $toppingIds);
+            $_SESSION['error'] = "Biến thể không hợp lệ";
 
-    if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
-
-    // Cập nhật giỏ hàng
-    if (isset($_SESSION['cart'][$key])) {
-        $newQty = $_SESSION['cart'][$key]['quantity'] + $quantity;
-        if ($availableStock !== null && $newQty > $availableStock) {
-            $_SESSION['error'] = "Tổng số lượng trong giỏ vượt quá tồn kho ($availableStock)";
             header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
             exit;
         }
+
+        $availableStock = isset($variant['stock_quantity'])
+            ? (int)$variant['stock_quantity']
+            : $availableStock;
+
+        $variantPrice = (float)($variant['price'] ?? 0);
+
+        $variantName = $variant['variant_name'] ?? null;
+    }
+
+    // ===== CHECK STOCK =====
+    if ($quantity > $availableStock) {
+
+        $_SESSION['error'] = "Chỉ còn {$availableStock} sản phẩm trong kho";
+
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+        exit;
+    }
+
+    // ===== PRICE =====
+    $basePrice = (float)($product['base_price'] ?? 0);
+
+    $discount = (float)($product['discount_percent'] ?? 0);
+
+    $discountedBase = $basePrice;
+
+    // giảm %
+    if ($discount > 0) {
+
+        $discountedBase = $basePrice
+            - ($basePrice * $discount / 100);
+    }
+
+    // nếu có final_price thì ưu tiên
+    if (!empty($product['final_price'])) {
+
+        $discountedBase = (float)$product['final_price'];
+    }
+
+    // ===== TOPPINGS =====
+    $toppingTotal = 0;
+
+    $toppingList = [];
+
+    foreach ($toppingIds as $tid) {
+
+        $tid = (int)$tid;
+
+        if ($tid <= 0) continue;
+
+        $t = getToppingById($tid);
+
+        if ($t) {
+
+            $toppingTotal += (float)$t['price'];
+
+            $toppingList[] = [
+                'id'    => $t['id'],
+                'name'  => $t['name'],
+                'price' => (float)$t['price']
+            ];
+        }
+    }
+
+    // ===== FINAL PRICE =====
+    $unitPrice = $discountedBase
+        + $variantPrice
+        + $toppingTotal;
+
+    // ===== CART KEY =====
+    $key = $id
+        . '_'
+        . ($variantId ?: 0)
+        . '_'
+        . implode('-', $toppingIds);
+
+    // ===== INIT CART =====
+    if (!isset($_SESSION['cart'])) {
+        $_SESSION['cart'] = [];
+    }
+
+    // ===== UPDATE EXIST =====
+    if (isset($_SESSION['cart'][$key])) {
+
+        $newQty = $_SESSION['cart'][$key]['quantity']
+            + $quantity;
+
+        if ($newQty > $availableStock) {
+
+            $_SESSION['error'] = "Vượt quá tồn kho ({$availableStock})";
+
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+            exit;
+        }
+
         $_SESSION['cart'][$key]['quantity'] = $newQty;
+
     } else {
+
+        // ===== ADD NEW =====
         $_SESSION['cart'][$key] = [
-            'id'       => $product['id'],
-            'name'     => $product['name'],
-            'image'    => $product['image'],
-            'price'    => $finalPrice,
+
+            'id' => $product['id'],
+
+            'name' => $product['name'] ?? 'Sản phẩm',
+
+            'image' => $product['image'] ?? 'default-product.png',
+
+            'price' => $unitPrice,
+
             'quantity' => $quantity,
-            'variant'  => $variantName ? [
+
+            'variant' => $variant ? [
                 'id'    => $variantId,
                 'name'  => $variantName,
                 'price' => $variantPrice
             ] : null,
+
             'toppings' => $toppingList
         ];
     }
 
-    $_SESSION['success'] = "Đã thêm sản phẩm vào giỏ hàng!";
+    // ===== SUCCESS =====
+    $_SESSION['success'] = "Đã thêm vào giỏ hàng";
+
     header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
     exit;
 }

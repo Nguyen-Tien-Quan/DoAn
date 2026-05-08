@@ -6,6 +6,8 @@ $favIds = $favIds ?? [];
 $categories = $categories ?? [];
 $variants = $variants ?? [];
 $allCategories = $allCategories ?? [];
+
+
 ?>
 
 <style>
@@ -377,6 +379,57 @@ $allCategories = $allCategories ?? [];
         background: rgba(255,255,255,0.8); z-index: 100;
         display: flex; align-items: center; justify-content: center; border-radius: 12px;
     }
+
+    .product-card__img-wrap {
+    position: relative;
+}
+
+.product-discount-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(45deg, #ef4444, #f97316);
+    color: #fff;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
+.product-sale-price {
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.product-price-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card__price.old {
+    text-decoration: line-through;
+    font-size: 12px;
+    color: #999;
+}
+
+.product-card__price.sale {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+.product-discount-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
 </style>
 
 
@@ -492,6 +545,11 @@ $allCategories = $allCategories ?? [];
                             <a href="index.php?url=product&id=<?= $product['id'] ?>">
                                 <img src="<?= $base ?>assets/img/product/<?= $product['image'] ?>" class="product-card__thumb" />
                             </a>
+                            <?php if (!empty($product['is_on_sale']) && $product['discount_percent'] > 0): ?>
+                                <div class="product-discount-badge">
+                                    -<?= (int)$product['discount_percent'] ?>%
+                                </div>
+                            <?php endif; ?>
                             <button class="like-btn product-card__like-btn <?= in_array($product['id'], $favIds) ? 'like-btn--liked' : '' ?>" data-id="<?= $product['id'] ?>">
                                 <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
                                 <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
@@ -504,7 +562,27 @@ $allCategories = $allCategories ?? [];
                             <p class="product-card__brand"><?= htmlspecialchars($product['brand']) ?></p>
                         <?php endif; ?>
                         <div class="product-card__row">
-                            <span class="product-card__price"><?= number_format($product['base_price'] ?? 0) ?>đ</span>
+
+                            <?php if (!empty($product['is_on_sale']) && !empty($product['discount_percent'])): ?>
+                                <div class="product-price-wrap">
+                                    <span class="product-card__price old">
+                                        <?= number_format($product['base_price'] ?? 0) ?>đ
+                                    </span>
+
+                                    <span class="product-card__price sale">
+                                        <?= number_format($product['final_price'] ?? $product['base_price']) ?>đ
+                                    </span>
+                                </div>
+
+                                <div class="product-discount-badge">
+                                    -<?= (int)$product['discount_percent'] ?>%
+                                </div>
+                            <?php else: ?>
+                                <span class="product-card__price">
+                                    <?= number_format($product['base_price'] ?? 0) ?>đ
+                                </span>
+                            <?php endif; ?>
+
                             <img src="<?= $base ?>assets/icons/star.svg" class="product-card__star" />
                             <span><?= $product['rating'] ?? '4.5' ?></span>
                         </div>

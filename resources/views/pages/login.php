@@ -5,74 +5,40 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $error = '';
-$conn = getDB(); // kết nối PDO
 
-// --- Tự động đăng nhập nếu có cookie remember_me ---
-if (!isset($_SESSION['user']) && isset($_COOKIE['remember_me'])) {
-    $token = $_COOKIE['remember_me'];
-    $stmt = $conn->prepare("SELECT * FROM users WHERE remember_token = ? AND status = 1");
-    $stmt->execute([$token]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($user) {
-        $_SESSION['user'] = $user;
-        // gia hạn cookie 30 ngày
-        setcookie('remember_me', $token, time() + 30*24*60*60, '/', '', false, true);
-        header("Location: index.php");
-        exit;
-    } else {
-        // xóa cookie nếu token không hợp lệ
-        setcookie('remember_me', '', time() - 3600, '/', '', false, true);
-    }
-}
-
-// --- Xử lý form đăng nhập ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $remember = isset($_POST['remember']);
-
-    // kiểm tra email tồn tại
-    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? AND status = 1");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user'] = $user;
-
-        if ($remember) {
-            // tạo token ngẫu nhiên và lưu vào DB + cookie 30 ngày
-            $token = bin2hex(random_bytes(32));
-            $update = $conn->prepare("UPDATE users SET remember_token = ? WHERE id = ?");
-            $update->execute([$token, $user['id']]);
-            setcookie('remember_me', $token, time() + 30*24*60*60, '/', '', false, true);
-        } else {
-            // xóa cookie và token nếu không tích ghi nhớ
-            setcookie('remember_me', '', time() - 3600, '/', '', false, true);
-            $update = $conn->prepare("UPDATE users SET remember_token = NULL WHERE id = ?");
-            $update->execute([$user['id']]);
-        }
-
-        header("Location: index.php"); // chuyển hướng sau đăng nhập
-        exit;
-    } else {
-        $error = '❌ Email hoặc mật khẩu không đúng';
-    }
+    $error = handleLogin();
 }
 
-// nếu muốn, email input tự điền từ cookie (token) hoặc session
+// email autofill
 $rememberedEmail = '';
+
 if (isset($_SESSION['user'])) {
+
     $rememberedEmail = $_SESSION['user']['email'];
+
 } elseif (isset($_COOKIE['remember_me'])) {
-    // tùy chọn: lấy email từ DB theo token
+
+    $conn = getDB();
+
     $token = $_COOKIE['remember_me'];
-    $stmt = $conn->prepare("SELECT email FROM users WHERE remember_token = ? AND status = 1");
+
+    $stmt = $conn->prepare("
+        SELECT email
+        FROM users
+        WHERE remember_token = ?
+        LIMIT 1
+    ");
+
     $stmt->execute([$token]);
+
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($row) $rememberedEmail = $row['email'];
+
+    if ($row) {
+        $rememberedEmail = $row['email'];
+    }
 }
 ?>
-
 <main class="auth">
     <div class="auth__intro d-md-none">
         <img src="<?= $base ?>assets/img/auth/intro.svg" alt="" class="auth__intro-img" />

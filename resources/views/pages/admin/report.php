@@ -1,248 +1,688 @@
 <?php
-$report_type = $report_type ?? 'daily';
-$start_date = $start_date ?? date('Y-m-01');
-$end_date = $end_date ?? date('Y-m-d');
-$month = $month ?? date('m');
-$year = $year ?? date('Y');
-$revenue = $revenue ?? 0;
-$orders = $orders ?? [];
+
+$conn = getDB();
+
+$base = $base ?? '/';
+
+// =========================
+// DEFAULT DATA
+// =========================
+$promo = $promo ?? [];
+$products = $products ?? [];
+
+$banner = $banner ?? [
+    'title'     => $promo['name'] ?? 'Flash Sale',
+    'desc'      => $promo['description'] ?? 'Ưu đãi cực sốc chỉ trong thời gian giới hạn',
+    'image'     => !empty($promo['image'])
+        ? $base . $promo['image']
+        : $base . 'assets/img/promo/default.jpg',
+    'end_time'  => $promo['end_date']
+        ?? date('Y-m-d H:i:s', strtotime('+1 day'))
+];
+
 ?>
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Báo cáo doanh thu</h1>
+
+<style>
+.promotion-page{
+    padding:40px 0 80px;
+    background:#f5f7fb;
+}
+
+/* =========================
+   HEADER
+========================= */
+.page-header{
+    text-align:center;
+    margin-bottom:35px;
+}
+
+.page-header h1{
+    font-size:42px;
+    font-weight:800;
+    color:#111827;
+    margin-bottom:10px;
+}
+
+.page-header p{
+    color:#6b7280;
+    font-size:16px;
+}
+
+/* =========================
+   BANNER
+========================= */
+.promo-banner{
+    position:relative;
+    overflow:hidden;
+    border-radius:30px;
+    margin-bottom:50px;
+    height:420px;
+    box-shadow:0 20px 50px rgba(0,0,0,.15);
+}
+
+.promo-banner img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    filter:brightness(.55);
+    transition:.4s;
+}
+
+.promo-banner:hover img{
+    transform:scale(1.05);
+}
+
+.promo-overlay{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(
+        to right,
+        rgba(0,0,0,.75),
+        rgba(0,0,0,.25)
+    );
+}
+
+.promo-content{
+    position:absolute;
+    top:50%;
+    left:60px;
+    transform:translateY(-50%);
+    z-index:2;
+    max-width:550px;
+    color:#fff;
+}
+
+.promo-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 16px;
+    border-radius:999px;
+    background:rgba(255,255,255,.18);
+    backdrop-filter:blur(10px);
+    margin-bottom:18px;
+    font-size:14px;
+    font-weight:600;
+}
+
+.promo-content h2{
+    font-size:48px;
+    font-weight:800;
+    line-height:1.2;
+    margin-bottom:15px;
+}
+
+.promo-content p{
+    font-size:17px;
+    line-height:1.7;
+    opacity:.95;
+    margin-bottom:25px;
+}
+
+/* =========================
+   COUNTDOWN
+========================= */
+.countdown-wrap{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+}
+
+.time-box{
+    width:90px;
+    padding:14px 10px;
+    border-radius:18px;
+    text-align:center;
+    background:rgba(255,255,255,.18);
+    backdrop-filter:blur(10px);
+}
+
+.time-box strong{
+    display:block;
+    font-size:28px;
+    font-weight:800;
+    color:#fff;
+}
+
+.time-box span{
+    font-size:13px;
+    opacity:.9;
+}
+
+/* =========================
+   GRID
+========================= */
+.promo-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:28px;
+}
+
+/* =========================
+   CARD
+========================= */
+.promo-card{
+    position:relative;
+    background:#fff;
+    border-radius:26px;
+    overflow:hidden;
+    transition:.35s;
+    box-shadow:0 10px 35px rgba(0,0,0,.08);
+}
+
+.promo-card:hover{
+    transform:translateY(-10px);
+    box-shadow:0 18px 40px rgba(0,0,0,.12);
+}
+
+.sale-badge{
+    position:absolute;
+    top:18px;
+    left:18px;
+    z-index:2;
+    background:linear-gradient(135deg,#ff512f,#dd2476);
+    color:#fff;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:700;
+    box-shadow:0 8px 20px rgba(221,36,118,.35);
+}
+
+.product-thumb{
+    height:230px;
+    background:linear-gradient(to bottom,#fff,#f3f4f6);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+}
+
+.product-thumb a{
+    width:100%;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.product-thumb img{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    transition:.35s;
+}
+
+.promo-card:hover .product-thumb img{
+    transform:scale(1.08);
+}
+
+.product-body{
+    padding:22px;
+}
+
+.product-category{
+    font-size:13px;
+    color:#f97316;
+    font-weight:700;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+.product-title{
+    font-size:22px;
+    font-weight:800;
+    color:#111827;
+    margin-bottom:12px;
+    line-height:1.4;
+    min-height:62px;
+}
+
+.product-title a{
+    text-decoration:none;
+    color:inherit;
+}
+
+.product-title a:hover{
+    color:#f97316;
+}
+
+.price-wrap{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:14px;
+}
+
+.old-price{
+    text-decoration:line-through;
+    color:#9ca3af;
+    font-size:16px;
+}
+
+.new-price{
+    font-size:28px;
+    font-weight:800;
+    color:#ef4444;
+}
+
+.product-meta{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+    font-size:14px;
+    color:#6b7280;
+}
+
+.product-end{
+    background:#fff7ed;
+    color:#ea580c;
+    padding:8px 12px;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:18px;
+}
+
+/* =========================
+   ACTIONS
+========================= */
+.promo-actions{
+    display:flex;
+    gap:12px;
+    margin-top:15px;
+}
+
+.btn-detail{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    border-radius:16px;
+    border:2px solid #f97316;
+    color:#f97316;
+    font-weight:700;
+    transition:.3s;
+    background:#fff;
+    min-height:54px;
+}
+
+.btn-detail:hover{
+    background:#fff7ed;
+}
+
+.add-cart-form{
+    flex:1;
+}
+
+.btn-buy{
+    width:100%;
+    min-height:54px;
+    border:none;
+    border-radius:16px;
+    padding:15px;
+    background:linear-gradient(135deg,#f97316,#ef4444);
+    color:#fff;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.btn-buy:hover{
+    transform:translateY(-2px);
+    opacity:.92;
+}
+
+.empty-box{
+    text-align:center;
+    padding:80px 20px;
+    border-radius:24px;
+    background:#fff;
+    box-shadow:0 10px 30px rgba(0,0,0,.05);
+}
+
+.empty-box h3{
+    font-size:28px;
+    margin-bottom:10px;
+}
+
+.empty-box p{
+    color:#6b7280;
+}
+
+/* =========================
+   MOBILE
+========================= */
+@media(max-width:768px){
+
+    .promo-banner{
+        height:520px;
+    }
+
+    .promo-content{
+        left:25px;
+        right:25px;
+    }
+
+    .promo-content h2{
+        font-size:34px;
+    }
+
+    .page-header h1{
+        font-size:32px;
+    }
+
+    .countdown-wrap{
+        gap:10px;
+    }
+
+    .time-box{
+        width:72px;
+    }
+
+    .time-box strong{
+        font-size:22px;
+    }
+
+    .promo-actions{
+        flex-direction:column;
+    }
+}
+</style>
+
+<main class="container promotion-page">
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <h1>🔥 Khuyến mãi hot hôm nay</h1>
+        <p>Săn deal cực mạnh - số lượng có hạn - ưu đãi cập nhật liên tục</p>
     </div>
 
-    <!-- Form lọc -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <form method="GET" class="form-inline">
-                <input type="hidden" name="url" value="report">
-                <div class="form-group mr-2">
-                    <label class="mr-2">Loại báo cáo:</label>
-                    <select name="type" class="form-control" id="reportType">
-                        <option value="daily" <?= $report_type == 'daily' ? 'selected' : '' ?>>Theo ngày</option>
-                        <option value="monthly" <?= $report_type == 'monthly' ? 'selected' : '' ?>>Theo tháng</option>
-                    </select>
-                </div>
-                <div id="dailyRange" style="display: <?= $report_type == 'daily' ? 'inline-block' : 'none' ?>">
-                    <div class="form-group mr-2">
-                        <label class="mr-2">Từ ngày:</label>
-                        <input type="date" name="start_date" class="form-control" value="<?= htmlspecialchars($start_date) ?>">
-                    </div>
-                    <div class="form-group mr-2">
-                        <label class="mr-2">Đến ngày:</label>
-                        <input type="date" name="end_date" class="form-control" value="<?= htmlspecialchars($end_date) ?>">
-                    </div>
-                </div>
-                <div id="monthlyRange" style="display: <?= $report_type == 'monthly' ? 'inline-block' : 'none' ?>">
-                    <div class="form-group mr-2">
-                        <label class="mr-2">Tháng:</label>
-                        <select name="month" class="form-control">
-                            <?php for ($m = 1; $m <= 12; $m++): ?>
-                                <option value="<?= str_pad($m,2,'0',STR_PAD_LEFT) ?>" <?= (isset($month) && $month == str_pad($m,2,'0',STR_PAD_LEFT)) ? 'selected' : '' ?>><?= $m ?></option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
-                    <div class="form-group mr-2">
-                        <label class="mr-2">Năm:</label>
-                        <select name="year" class="form-control">
-                            <?php for ($y = date('Y')-2; $y <= date('Y'); $y++): ?>
-                                <option value="<?= $y ?>" <?= (isset($year) && $year == $y) ? 'selected' : '' ?>><?= $y ?></option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary">Xem báo cáo</button>
-                <a href="?url=report&export=1&type=<?= urlencode($report_type) ?>&start_date=<?= urlencode($start_date) ?>&end_date=<?= urlencode($end_date) ?>&month=<?= urlencode($month ?? '') ?>&year=<?= urlencode($year ?? '') ?>" class="btn btn-success ml-2">Xuất CSV</a>
-            </form>
-        </div>
-    </div>
+    <!-- BANNER -->
+    <div class="promo-banner">
 
-    <!-- Tổng doanh thu -->
-    <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Tổng doanh thu</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= number_format($revenue) ?>đ</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <img
+            src="<?= htmlspecialchars($banner['image']) ?>"
+            alt="promotion"
+        >
+
+        <div class="promo-overlay"></div>
+
+        <div class="promo-content">
+
+            <div class="promo-badge">
+                ⚡ Flash Sale đang diễn ra
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Số đơn hàng</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= count($orders) ?></div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+
+            <h2>
+                <?= htmlspecialchars($banner['title']) ?>
+            </h2>
+
+            <p>
+                <?= htmlspecialchars($banner['desc']) ?>
+            </p>
+
+            <div
+                class="countdown-wrap"
+                id="countdown"
+                data-end="<?= htmlspecialchars($banner['end_time']) ?>"
+            >
+
+                <div class="time-box">
+                    <strong id="days">00</strong>
+                    <span>Ngày</span>
                 </div>
+
+                <div class="time-box">
+                    <strong id="hours">00</strong>
+                    <span>Giờ</span>
+                </div>
+
+                <div class="time-box">
+                    <strong id="minutes">00</strong>
+                    <span>Phút</span>
+                </div>
+
+                <div class="time-box">
+                    <strong id="seconds">00</strong>
+                    <span>Giây</span>
+                </div>
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Biểu đồ doanh thu (nếu có dữ liệu) -->
-    <?php if (!empty($orders)): ?>
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Biểu đồ doanh thu theo ngày</h6>
-        </div>
-        <div class="card-body">
-            <canvas id="revenueChart" width="100%" height="30"></canvas>
-        </div>
-    </div>
-    <?php endif; ?>
+    <!-- PRODUCT GRID -->
+    <div class="promo-grid">
 
-    <!-- Danh sách đơn hàng -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Chi tiết đơn hàng từ <?= htmlspecialchars($start_date) ?> đến <?= htmlspecialchars($end_date) ?></h6>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Mã đơn</th>
-                            <th>Khách hàng</th>
-                            <th>Tổng tiền</th>
-                            <th>Thanh toán</th>
-                            <th>Trạng thái</th>
-                            <th>Ngày tạo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (count($orders) == 0): ?>
-                            <tr><td colspan="6" class="text-center">Không có đơn hàng nào trong khoảng thời gian này</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($orders as $order): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($order['order_code']) ?></td>
-                                <td><?= htmlspecialchars($order['full_name'] ?? 'Khách lẻ') ?></td>
-                                <td><?= number_format($order['final_amount']) ?>đ</td>
-                                <td>
-                                    <?php if ($order['payment_status'] == 'paid'): ?>
-                                        <span class="badge badge-success">Đã thanh toán</span>
-                                    <?php elseif ($order['payment_status'] == 'pending'): ?>
-                                        <span class="badge badge-warning">Chờ thanh toán</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-secondary"><?= $order['payment_status'] ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php
-                                    $statusLabels = [
-                                        'pending' => ['Chờ xác nhận', 'secondary'],
-                                        'confirmed' => ['Đã xác nhận', 'info'],
-                                        'preparing' => ['Đang chuẩn bị', 'primary'],
-                                        'ready_for_delivery' => ['Sẵn sàng giao', 'info'],
-                                        'delivering' => ['Đang giao', 'warning'],
-                                        'completed' => ['Hoàn thành', 'success'],
-                                        'cancelled' => ['Đã hủy', 'danger']
-                                    ];
-                                    $status = $order['status'];
-                                    $label = $statusLabels[$status] ?? [$status, 'light'];
-                                    ?>
-                                    <span class="badge badge-<?= $label[1] ?>"><?= $label[0] ?></span>
-                                </td>
-                                <td><?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+        <?php if (!empty($products)): ?>
+
+            <?php foreach ($products as $item): ?>
+
+                <?php
+
+                    $item = $item ?? [];
+
+                    $id = (int)($item['id'] ?? 0);
+
+                    $name = $item['name'] ?? 'Sản phẩm';
+
+                    $image = !empty($item['image'])
+                        ? $base . 'assets/img/product/' . $item['image']
+                        : $base . 'assets/img/default-product.png';
+
+                    $category = $item['category_name'] ?? 'Danh mục';
+
+                    $sold = (int)($item['sold_count'] ?? 0);
+
+                    $price = (float)($item['base_price'] ?? 0);
+
+                    $final = !empty($item['final_price'])
+                        ? (float)$item['final_price']
+                        : $price;
+
+                    $discount = (int)($item['discount_percent'] ?? 0);
+
+                    $endDate = !empty($item['end_date'])
+                        ? date('d/m/Y H:i', strtotime($item['end_date']))
+                        : '--';
+
+                ?>
+
+                <div class="promo-card">
+
+                    <?php if ($discount > 0): ?>
+                        <div class="sale-badge">
+                            -<?= $discount ?>%
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- IMAGE CLICK -->
+                    <div class="product-thumb">
+
+                        <a href="<?= $base ?>index.php?url=product&id=<?= $id ?>">
+
+                            <img
+                                src="<?= htmlspecialchars($image) ?>"
+                                alt="<?= htmlspecialchars($name) ?>"
+                            >
+
+                        </a>
+
+                    </div>
+
+                    <div class="product-body">
+
+                        <div class="product-category">
+                            <?= htmlspecialchars($category) ?>
+                        </div>
+
+                        <!-- TITLE CLICK -->
+                        <h3 class="product-title">
+
+                            <a href="<?= $base ?>index.php?url=product&id=<?= $id ?>">
+
+                                <?= htmlspecialchars($name) ?>
+
+                            </a>
+
+                        </h3>
+
+                        <div class="price-wrap">
+
+                            <span class="new-price">
+                                <?= number_format($final) ?>đ
+                            </span>
+
+                            <?php if ($final < $price): ?>
+
+                                <span class="old-price">
+                                    <?= number_format($price) ?>đ
+                                </span>
+
+                            <?php endif; ?>
+
+                        </div>
+
+                        <div class="product-meta">
+
+                            <span>
+                                🔥 Đã bán <?= number_format($sold) ?>
+                            </span>
+
+                            <span>
+                                ⭐ Hot deal
+                            </span>
+
+                        </div>
+
+                        <div class="product-end">
+
+                            ⏰ Kết thúc:
+                            <?= $endDate ?>
+
+                        </div>
+
+                        <!-- ACTIONS -->
+                        <div class="promo-actions">
+
+                            <!-- DETAIL -->
+                            <a
+                                href="<?= $base ?>index.php?url=product&id=<?= $id ?>"
+                                class="btn-detail"
+                            >
+                                Chi tiết
+                            </a>
+
+                            <!-- ADD CART -->
+                            <form
+                                action="<?= $base ?>index.php?url=add-cart&id=<?= $id ?>"
+                                method="POST"
+                                class="add-cart-form"
+                            >
+
+                                <input
+                                    type="hidden"
+                                    name="quantity"
+                                    value="1"
+                                >
+
+                                <button type="submit" class="btn-buy">
+                                    🛒 Mua ngay
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            <?php endforeach; ?>
+
+        <?php else: ?>
+
+            <div class="empty-box">
+
+                <h3>😢 Hiện chưa có khuyến mãi</h3>
+
+                <p>
+                    Vui lòng quay lại sau để săn deal mới.
+                </p>
+
             </div>
-        </div>
+
+        <?php endif; ?>
+
     </div>
-</div>
+
+</main>
 
 <script>
-// Toggle hiển thị form theo loại báo cáo
-document.getElementById('reportType').addEventListener('change', function() {
-    if (this.value == 'daily') {
-        document.getElementById('dailyRange').style.display = 'inline-block';
-        document.getElementById('monthlyRange').style.display = 'none';
-    } else {
-        document.getElementById('dailyRange').style.display = 'none';
-        document.getElementById('monthlyRange').style.display = 'inline-block';
-    }
-});
+const countdown = document.getElementById('countdown');
 
-<?php if (!empty($orders)): ?>
-// Vẽ biểu đồ doanh thu (Chart.js)
-document.addEventListener("DOMContentLoaded", function() {
-    var ctx = document.getElementById('revenueChart').getContext('2d');
+if (countdown) {
 
-    // Nhóm doanh thu theo ngày từ dữ liệu orders
-    var orders = <?= json_encode($orders) ?>;
-    var revenueByDate = {};
-    orders.forEach(function(order) {
-        var date = order.created_at.split(' ')[0]; // Lấy phần ngày YYYY-MM-DD
-        if (!revenueByDate[date]) revenueByDate[date] = 0;
-        revenueByDate[date] += parseFloat(order.final_amount);
-    });
+    const endTime = new Date(
+        countdown.dataset.end
+    ).getTime();
 
-    var sortedDates = Object.keys(revenueByDate).sort();
-    var revenues = sortedDates.map(d => revenueByDate[d]);
-    var labels = sortedDates.map(d => {
-        var parts = d.split('-');
-        return parts[2] + '/' + parts[1]; // dd/mm
-    });
+    function updateCountdown() {
 
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Doanh thu (đ)',
-                data: revenues,
-                backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                borderColor: 'rgba(78, 115, 223, 1)',
-                borderWidth: 2,
-                pointRadius: 3,
-                pointBackgroundColor: 'rgba(78, 115, 223, 1)',
-                pointBorderColor: '#fff',
-                pointHoverRadius: 5,
-                tension: 0.1,
-                fill: true
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return new Intl.NumberFormat('vi-VN').format(value) + 'đ';
-                        }
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return 'Doanh thu: ' + new Intl.NumberFormat('vi-VN').format(context.raw) + 'đ';
-                        }
-                    }
-                }
-            }
+        const now = new Date().getTime();
+
+        const distance = endTime - now;
+
+        if (distance <= 0) {
+
+            document.getElementById('days').innerText = '00';
+            document.getElementById('hours').innerText = '00';
+            document.getElementById('minutes').innerText = '00';
+            document.getElementById('seconds').innerText = '00';
+
+            return;
         }
-    });
-});
-<?php endif; ?>
+
+        const days = Math.floor(
+            distance / (1000 * 60 * 60 * 24)
+        );
+
+        const hours = Math.floor(
+            (distance % (1000 * 60 * 60 * 24))
+            / (1000 * 60 * 60)
+        );
+
+        const minutes = Math.floor(
+            (distance % (1000 * 60 * 60))
+            / (1000 * 60)
+        );
+
+        const seconds = Math.floor(
+            (distance % (1000 * 60))
+            / 1000
+        );
+
+        document.getElementById('days').innerText =
+            String(days).padStart(2, '0');
+
+        document.getElementById('hours').innerText =
+            String(hours).padStart(2, '0');
+
+        document.getElementById('minutes').innerText =
+            String(minutes).padStart(2, '0');
+
+        document.getElementById('seconds').innerText =
+            String(seconds).padStart(2, '0');
+    }
+
+    updateCountdown();
+
+    setInterval(updateCountdown, 1000);
+}
 </script>

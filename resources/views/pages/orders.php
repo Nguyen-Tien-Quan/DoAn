@@ -11,6 +11,7 @@ if (!function_exists('renderOrder')) {
     justify-content:space-between;
     align-items:center;
     margin-bottom:20px;
+    margin-top: 30px;
 }
 
 .btn-back{
@@ -325,7 +326,12 @@ if (!function_exists('renderOrder')) {
 
 <main class="order-page">
 <div class="container">
-
+    <div class="checkout-container">
+            <ul class="breadcrumbs checkout-page__breadcrumbs">
+                <li><a href="./" class="breadcrumbs__link">Trang chủ <img src="<?= $base ?>assets/icons/arrow-right.svg" /></a></li>
+                <li><a href="#!" class="breadcrumbs__link breadcrumbs__link--current">Đơn hàng của tôi</a></li>
+            </ul>
+        </div>
     <div class="order-header">
         <h1>📦 Đơn hàng của tôi</h1>
         <a href="<?= $base ?>" class="btn-back">← Tiếp tục mua sắm</a>

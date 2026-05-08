@@ -65,9 +65,14 @@ $phone = $defaultAddress['phone'] ?? '';
 $hasPhone = !empty(trim($phone));
 
 // ===================== TOTAL =====================
-$shipping_fee = 10000;
+$shipping_fee = ($subtotal >= 100000) ? 0 : 10000;
+
+// ===================== TOTAL =====================
 $total = $subtotal - $discount + $shipping_fee;
-if ($total < 0) $total = 0;
+
+if ($total < 0) {
+    $total = 0;
+}
 
 // ===================== FORMAT =====================
 if (!function_exists('vnd')) {
@@ -189,8 +194,14 @@ if (!function_exists('vnd')) {
                                                         <small class="payment-item__note">Miễn phí vận chuyển cho đơn hàng trên <?= vnd(100000) ?></small>
                                                     </div>
                                                     <span class="cart-info__checkbox payment-item__checkbox">
-                                                        <input type="radio" name="delivery-method-alt" value="standard" data-fee="0" checked />
-                                                        <span class="payment-item__cost">Miễn phí</span>
+                                                        <input type="radio"
+                                                            name="delivery-method"
+                                                            value="standard"
+                                                            data-fee="<?= $shipping_fee ?>"
+                                                            checked />
+                                                        <span class="payment-item__cost">
+                                                            <?= $shipping_fee == 0 ? 'Miễn phí' : vnd($shipping_fee) ?>
+                                                        </span>
                                                     </span>
                                                 </div>
                                             </article>
@@ -323,8 +334,14 @@ if (!function_exists('vnd')) {
                                                         <small class="payment-item__note">Miễn phí vận chuyển cho đơn hàng trên <?= vnd(100000) ?></small>
                                                     </div>
                                                     <span class="cart-info__checkbox payment-item__checkbox">
-                                                        <input type="radio" name="delivery-method" value="fedex" data-fee="0" checked />
-                                                        <span class="payment-item__cost">Miễn phí</span>
+                                                        <input type="radio"
+                                                            name="delivery-method"
+                                                            value="standard"
+                                                            data-fee="<?= $shipping_fee ?>"
+                                                            checked />
+                                                        <span class="payment-item__cost">
+                                                            <?= $shipping_fee == 0 ? 'Miễn phí' : vnd($shipping_fee) ?>
+                                                        </span>
                                                     </span>
                                                 </div>
                                             </article>
@@ -567,7 +584,7 @@ if (!function_exists('vnd')) {
         };
 
         // ========== PROCESS ORDER (dùng chung) ==========
-       async function processOrder(paymentMethod, shippingMethod, shippingFee) {
+               async function processOrder(paymentMethod, shippingMethod, shippingFee) {
             const btn = document.getElementById('alt-pay-btn') || document.getElementById('pay-btn');
             if (btn) {
                 btn.disabled = true;
@@ -576,7 +593,7 @@ if (!function_exists('vnd')) {
 
             try {
                 if (paymentMethod === 'cash' || paymentMethod === 'cod') {
-                    // ========== COD ==========
+                    // COD
                     const payload = {
                         shipping_address_id: <?= $defaultAddress['id'] ?? 'null' ?>,
                         shipping_method: shippingMethod,
@@ -593,18 +610,13 @@ if (!function_exists('vnd')) {
                     const data = await res.json();
 
                     if (data.success) {
-                        showAlert('🎉 Đặt hàng thành công!',
-                            `Mã đơn hàng: <strong>${data.order_code}</strong><br>Cảm ơn bạn đã mua hàng!`,
-                            () => {
-                                window.location.href = `index.php?url=thank-you&order_code=${data.order_code}`;
-                            }
-                        );
+                        // Chuyển thẳng sang trang Đơn hàng của tôi
+                        window.location.href = 'index.php?url=orders';
                     } else {
-                        throw new Error(data.message || 'Tạo đơn thất bại');
+                        alert(data.message || 'Đặt hàng thất bại');
                     }
-
                 } else {
-                    // ========== Thanh toán Online ==========
+                    // Online payment (giữ nguyên logic cũ)
                     const payload = {
                         shipping_address_id: <?= $defaultAddress['id'] ?? 'null' ?>,
                         shipping_method: shippingMethod,
@@ -623,18 +635,12 @@ if (!function_exists('vnd')) {
                     if (data.success && data.payment_url) {
                         window.location.href = data.payment_url;
                     } else {
-                        throw new Error(data.message || 'Không lấy được link thanh toán');
+                        alert(data.message || 'Không lấy được link thanh toán');
                     }
                 }
-
             } catch (err) {
                 console.error(err);
-                showAlert('❌ Lỗi', err.message || 'Đặt hàng thất bại');
-
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerText = 'Xác nhận thanh toán';
-                }
+                alert('Lỗi kết nối: ' + err.message);
             }
         }
 

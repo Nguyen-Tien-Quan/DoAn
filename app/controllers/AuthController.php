@@ -11,80 +11,122 @@ $error = '';
  * Xử lý login
  */
 function handleLogin() {
+
     $conn = getDB();
 
     $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $password = trim($_POST['password'] ?? '');
     $remember = isset($_POST['remember']);
 
-    // Validate
-    if (empty($email) || empty($password)) {
+    // ======================
+    // VALIDATE
+    // ======================
+    if ($email === '' || $password === '') {
         return "❌ Vui lòng nhập email và mật khẩu";
     }
 
-    // Tìm user
-    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+    // ======================
+    // TÌM USER THEO EMAIL
+    // ======================
+    $stmt = $conn->prepare("
+        SELECT *
+        FROM users
+        WHERE email = ?
+        LIMIT 1
+    ");
+
     $stmt->execute([$email]);
+
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // ======================
+    // KHÔNG TỒN TẠI
+    // ======================
     if (!$user) {
-        return "❌ Không tồn tại tài khoản";
+        return "❌ Tài khoản không tồn tại";
     }
 
-    // Check password
+    // ======================
+    // CHECK STATUS
+    // ======================
+    if ((int)$user['status'] !== 1) {
+        return "❌ Tài khoản đã bị khóa";
+    }
+
+    // ======================
+    // CHECK PASSWORD
+    // ======================
     if (!password_verify($password, $user['password'])) {
         return "❌ Sai mật khẩu";
     }
 
-    // Check status (nếu có khóa tài khoản)
-    if (isset($user['status']) && $user['status'] == 0) {
-        return "❌ Tài khoản đã bị khóa";
-    }
-
-    // ✅ Lưu session (xóa password cho an toàn)
+    // ======================
+    // LOGIN SUCCESS
+    // ======================
     unset($user['password']);
+
     $_SESSION['user'] = $user;
 
-    // ✅ Remember Me
+    // ======================
+    // REMEMBER ME
+    // ======================
     if ($remember) {
+
         $token = bin2hex(random_bytes(32));
 
-        $update = $conn->prepare("UPDATE users SET remember_token = ? WHERE id = ?");
+        $update = $conn->prepare("
+            UPDATE users
+            SET remember_token = ?
+            WHERE id = ?
+        ");
+
         $update->execute([$token, $user['id']]);
 
         setcookie('remember_me', $token, [
-            'expires' => time() + 30*24*60*60,
-            'path' => '/',
+            'expires'  => time() + (30 * 24 * 60 * 60),
+            'path'     => '/',
             'httponly' => true,
-            'secure' => false // đổi true nếu dùng HTTPS
+            'secure'   => false,
+            'samesite' => 'Lax'
         ]);
+
     } else {
+
         setcookie('remember_me', '', time() - 3600, '/');
 
-        $update = $conn->prepare("UPDATE users SET remember_token = NULL WHERE id = ?");
+        $update = $conn->prepare("
+            UPDATE users
+            SET remember_token = NULL
+            WHERE id = ?
+        ");
+
         $update->execute([$user['id']]);
     }
 
-    // ✅ PHÂN QUYỀN REDIRECT
-    switch ($user['role_id']) {
+    // ======================
+    // REDIRECT ROLE
+    // ======================
+    switch ((int)$user['role_id']) {
+
         case 1:
-            header("Location: admin.php"); // admin
+            header("Location: admin.php");
             break;
+
         case 2:
-            header("Location: staff.php"); // nhân viên
+            header("Location: staff.php");
             break;
+
         case 4:
-            header("Location: shipper.php"); // shipper - THÊM MỚI
+            header("Location: shipper.php");
             break;
-        case 3:
+
         default:
-            header("Location: index.php"); // user
+            header("Location: index.php");
             break;
     }
 
     exit;
 }
-
 /**
  * Xử lý tự động login nếu có cookie remember_me
  */
@@ -149,9 +191,10 @@ function handleRegister() {
         return "❌ Mật khẩu xác nhận không khớp";
     }
 
-    // Check email
+    // Check email tồn tại
     $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->execute([$email]);
+
     if ($stmt->fetch()) {
         return "❌ Email đã tồn tại";
     }
@@ -159,35 +202,112 @@ function handleRegister() {
     // Hash password
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-    // ✅ tạo username random
-    $randomNumber = rand(1000, 9999);
-    $name = "user_" . $randomNumber;
-
-    // ❗ tránh trùng (xịn hơn)
+    // Tạo username random
     do {
-        $stmt = $conn->prepare("SELECT id FROM users WHERE name = ?");
-        $stmt->execute([$name]);
-        $exists = $stmt->fetch();
+        $randomNumber = rand(1000, 9999);
+        $name = "user_" . $randomNumber;
 
-        if ($exists) {
-            $randomNumber = rand(1000, 9999);
-            $name = "user_" . $randomNumber;
-        }
-    } while ($exists);
+        $check = $conn->prepare("SELECT id FROM users WHERE name = ?");
+        $check->execute([$name]);
 
-    // Insert
-    $stmt = $conn->prepare("
-        INSERT INTO users (name, email, password, role_id, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 1, NOW(), NOW())
-    ");
+    } while ($check->fetch());
 
-    $roleId = 3;
+    try {
 
-    if ($stmt->execute([$name, $email, $hashedPassword, $roleId])) {
+        $conn->beginTransaction();
+
+        // ======================
+        // INSERT USERS
+        // ======================
+        $stmt = $conn->prepare("
+            INSERT INTO users (
+                role_id,
+                name,
+                email,
+                password,
+                phone,
+                avatar,
+                status,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                ?, ?, ?, ?, ?, ?, 1, NOW(), NOW()
+            )
+        ");
+
+        $roleId = 3;
+
+        $defaultPhone = '';
+        $defaultAvatar = 'default.png';
+
+        $stmt->execute([
+            $roleId,
+            $name,
+            $email,
+            $hashedPassword,
+            $defaultPhone,
+            $defaultAvatar
+        ]);
+
+        // Lấy user_id mới
+        $userId = $conn->lastInsertId();
+
+        // ======================
+        // INSERT CUSTOMER MẶC ĐỊNH
+        // ======================
+        $customerStmt = $conn->prepare("
+            INSERT INTO customers (
+                user_id,
+                full_name,
+                phone,
+                email,
+                address,
+                gender,
+                birthday,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+            )
+        ");
+
+        $customerStmt->execute([
+            $userId,
+            $name,
+            '',
+            $email,
+            '',
+            'other',
+            null
+        ]);
+
+        // ======================
+        // TẠO CART MẶC ĐỊNH
+        // ======================
+        $cartStmt = $conn->prepare("
+            INSERT INTO carts (
+                user_id,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                ?, NOW(), NOW()
+            )
+        ");
+
+        $cartStmt->execute([$userId]);
+
+        $conn->commit();
+
         return "✅ Đăng ký thành công!";
-    } else {
-        $error = $stmt->errorInfo();
-        return "❌ Đăng ký thất bại: " . ($error[2] ?? 'Không xác định');
+
+    } catch (Exception $e) {
+
+        $conn->rollBack();
+
+        return "❌ Lỗi đăng ký: " . $e->getMessage();
     }
 }
 /**

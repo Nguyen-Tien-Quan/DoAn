@@ -489,7 +489,8 @@ function getParentCategories() {
 
 
 // ================== THÊM MỚI: LẤY KHUYẾN MÃI ĐANG DIỄN RA ==================
-function getActivePromotion() {
+function getActivePromotion()
+{
     $conn = getDB();
 
     $stmt = $conn->prepare("
@@ -500,34 +501,69 @@ function getActivePromotion() {
         ORDER BY id DESC
         LIMIT 1
     ");
+
     $stmt->execute();
 
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-function getPromotionProducts($promotion) {
-    if (!$promotion) return [];
-
+/*
+|--------------------------------------------------------------------------
+| LẤY DANH SÁCH SẢN PHẨM KHUYẾN MÃI
+|--------------------------------------------------------------------------
+*/
+function getPromotionProducts()
+{
     $conn = getDB();
 
-    // Lấy sản phẩm random để áp khuyến mãi
     $stmt = $conn->prepare("
-        SELECT id, name, image, base_price
-        FROM products
-        WHERE status = 1
-        ORDER BY RAND()
-        LIMIT 8
+        SELECT
+            p.id,
+            p.name,
+            p.slug,
+            p.image,
+            p.base_price,
+            p.final_price,
+            p.discount_percent,
+            p.sold_count,
+            c.name AS category_name,
+            pp.end_date
+        FROM promotion_products pp
+        INNER JOIN products p ON p.id = pp.product_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        WHERE pp.status = 1
+        AND NOW() BETWEEN pp.start_date AND pp.end_date
+        ORDER BY p.sold_count DESC, p.id DESC
     ");
+
     $stmt->execute();
 
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-    // Gán discount từ promotion
-    foreach ($products as &$p) {
-        $p['discount'] = $promotion['discount_percent'];
-    }
+/*
+|--------------------------------------------------------------------------
+| DATA TRANG PROMOTION
+|--------------------------------------------------------------------------
+*/
+function getPromotionPageData()
+{
+    global $base;
 
-    return $products;
+    $promo = getActivePromotion();
+
+    $banner = [
+        'title' => $promo['name'] ?? 'Flash Sale',
+        'desc' => $promo['description'] ?? 'Ưu đãi cực sốc chỉ trong thời gian giới hạn',
+        'image' => $base . ($promo['image'] ?? 'assets/img/promo/default.jpg'),
+        'end_time' => $promo['end_date'] ?? date('Y-m-d H:i:s', strtotime('+1 day'))
+    ];
+
+    return [
+        'promo' => $promo,
+        'banner' => $banner,
+        'products' => getPromotionProducts()
+    ];
 }
 
 ?>

@@ -59,7 +59,20 @@ $hasStock = $totalStock > 0;
 // ========== LẤY DANH SÁCH YÊU THÍCH (từ controller truyền vào) ==========
 $favIds = $favIds ?? [];
 $isFavorited = in_array($product['id'], $favIds);
+
+$basePrice = (float)$product['base_price'];
+$discount = (float)($product['discount_percent'] ?? 0);
+
+$finalPrice = $basePrice;
+
+if ($discount > 0) {
+    $finalPrice = round($basePrice - ($basePrice * $discount / 100), 2);
+}
+
+$discountedBasePrice = $finalPrice;
 ?>
+
+
 <style>
 /* =========================
    VARIANT (SIZE)
@@ -384,6 +397,8 @@ $isFavorited = in_array($product['id'], $favIds);
     border-left: 4px solid #fff;
     border-radius: 8px !important;
 }
+
+
 </style>
 
 <main class="product-page">
@@ -457,7 +472,7 @@ $isFavorited = in_array($product['id'], $favIds);
                                             <div class="variant-list">
                                                 <?php foreach ($variants as $v): ?>
                                                     <?php
-                                                    $variantStock = (int)($v['stock_quantity'] ?? 0);
+                                                    $variantStock = isset($v['stock_quantity']) ? (int)$v['stock_quantity'] : 0;
                                                     $disabled = $variantStock <= 0;
                                                     ?>
                                                     <label class="variant-item <?= $disabled ? 'disabled' : '' ?>">
@@ -524,27 +539,64 @@ $isFavorited = in_array($product['id'], $favIds);
                                 <div class="col-7 col-xxl-6 col-xl-12">
                                     <!-- PRICE -->
                                     <div class="prod-info__card">
+
+                                        <!-- PRICE + DISCOUNT -->
                                         <div class="prod-info__row">
-                                            <span class="prod-info__price" id="prod-price"><?= number_format($product['base_price']) ?>đ</span>
-                                            <span class="prod-info__tax">- 10%</span>
+                                            <span class="prod-info__price" id="prod-price">
+                                                <?= number_format($finalPrice) ?>đ
+                                            </span>
+
+                                            <?php if ($discount > 0): ?>
+                                                <span class="prod-info__tax">
+                                                    -<?= $discount ?>%
+                                                </span>
+
+                                                <del style="color:#999;font-size:13px;margin-left:8px;">
+                                                    <?= number_format($basePrice) ?>đ
+                                                </del>
+                                            <?php endif; ?>
                                         </div>
-                                        <p class="prod-info__total-price" id="prod-total-price"><?= number_format($product['base_price']) ?>đ</p>
+
+                                        <!-- TOTAL PRICE -->
+                                        <p class="prod-info__total-price" id="prod-total-price">
+                                            <?= number_format($finalPrice) ?>đ
+                                        </p>
+
+                                        <!-- SOLD -->
+                                        <div style="display:flex;gap:16px;font-size:13px;margin:8px 0;color:#666;">
+                                            <span>📦 Đã bán: <b><?= number_format($product['sold_count'] ?? 0) ?></b></span>
+                                            <span>🔥 Giảm: <b><?= $discount ?>%</b></span>
+                                        </div>
+
+                                        <!-- QUANTITY -->
                                         <div class="qty">
                                             <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
                                             <input type="number" class="qty-input" name="quantity" value="1" min="1">
                                             <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
                                         </div>
+
                                         <!-- ADD TO CART / LIKE -->
                                         <div class="prod-info__row">
-                                            <button type="submit" onclick="addCart()" class="btn btn--primary prod-info__add-to-cart" <?= !$hasStock ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '' ?>>
-                                                <?= $hasStock ? 'Add to cart' : 'Hết hàng' ?>
+                                            <button
+                                                type="submit"
+                                                onclick="addCart()"
+                                                class="btn btn--primary prod-info__add-to-cart"
+                                                <?= !$hasStock ? 'disabled' : '' ?>
+                                                style="<?= !$hasStock ? 'opacity:0.5; cursor:not-allowed;' : '' ?>"
+                                            >
+                                                <?= $hasStock ? 'Thêm vào giỏ hàng' : 'Hết hàng' ?>
                                             </button>
-                                            <!-- Nút like với class động -->
-                                            <button type="button" class="like-btn prod-info__like-btn <?= $isFavorited ? 'like-btn--liked' : '' ?>" data-id="<?= $product['id'] ?>">
+
+                                            <button
+                                                type="button"
+                                                class="like-btn prod-info__like-btn <?= $isFavorited ? 'like-btn--liked' : '' ?>"
+                                                data-id="<?= $product['id'] ?>"
+                                            >
                                                 <img src="<?= $base ?>assets/icons/heart.svg" class="like-btn__icon icon" />
                                                 <img src="<?= $base ?>assets/icons/heart-red.svg" class="like-btn__icon--liked" />
                                             </button>
                                         </div>
+
                                     </div>
                                 </div>
 
@@ -773,30 +825,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ===== UPDATE TOTAL =====
     function updateTotal() {
-        const basePrice = <?= $product['base_price'] ?>;
-        const variant = document.querySelector('input[name="variant_id"]:checked');
 
+        const basePrice = <?= $discountedBasePrice ?>; // đã giảm giá sẵn
+
+        const variant = document.querySelector('input[name="variant_id"]:checked');
         const variantPrice = variant ? Number(variant.dataset.price) : 0;
 
         let toppingTotal = 0;
-        let toppingCount = 0;
 
         document.querySelectorAll('input[name="toppings[]"]:checked').forEach(cb => {
             toppingTotal += Number(cb.dataset.price);
-            toppingCount++;
         });
-
-        const toppingSpan = document.getElementById('topping-count');
-        if (toppingSpan) toppingSpan.innerText = "(" + toppingCount + ")";
 
         const qty = Number(qtyInput.value) || 1;
 
-        const finalPrice = (basePrice + variantPrice + toppingTotal) * qty;
+        const unitPrice = basePrice + variantPrice + toppingTotal;
+        const finalPrice = unitPrice * qty;
 
-        priceEl.innerText = (basePrice + variantPrice).toLocaleString() + 'đ';
+        priceEl.innerText = unitPrice.toLocaleString() + 'đ';
         totalEl.innerText = finalPrice.toLocaleString() + 'đ';
     }
-
     // ===== UPDATE STOCK =====
     function updateVariantStock() {
         const selected = document.querySelector('input[name="variant_id"]:checked');
@@ -852,6 +900,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const first = [...variants].find(v => !v.disabled);
         if (first && !document.querySelector('input[name="variant_id"]:checked')) {
             first.checked = true;
+            first.dispatchEvent(new Event('change'));
         }
     }
 

@@ -528,31 +528,14 @@ switch ($url) {
 
     case 'promotion':
 
-     // Lấy khuyến mãi đang chạy
-        $promo = getActivePromotion();
+        $promotionData = getPromotionPageData();
 
-        if ($promo) {
-            $banner = [
-                'title' => $promo['name'],
-                'desc' => $promo['description'],
-                'image' => $base . $promo['image'],
-                'end_time' => $promo['end_date']
-            ];
-
-            $products = getPromotionProducts($promo);
-        } else {
-            // fallback nếu không có khuyến mãi
-            $banner = [
-                'title' => 'Hiện chưa có khuyến mãi',
-                'desc' => 'Vui lòng quay lại sau',
-                'image' => $base . 'assets/img/promo/default.jpg',
-                'end_time' => date('Y-m-d H:i:s', strtotime('+1 day'))
-            ];
-
-            $products = [];
-        }
+        $promo = $promotionData['promo'];
+        $banner = $promotionData['banner'];
+        $products = $promotionData['products'];
 
         $view = view('promotion');
+
     break;
 
     case 'contact':
@@ -564,7 +547,6 @@ switch ($url) {
     break;
 
     // ==================== HOME & DEFAULT ====================
-        // ==================== HOME & DEFAULT ====================
     case 'home':
     default:
         $page = max(1, (int)($_GET['page'] ?? 1));

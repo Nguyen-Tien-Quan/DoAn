@@ -29,6 +29,7 @@ require_once __DIR__ . '/../app/controllers/Admin/ProductController.php';
 require_once __DIR__ . '/../app/controllers/Admin/UserController.php';
 require_once __DIR__ . '/../app/controllers/Admin/OrderController.php';
 require_once __DIR__ . '/../app/controllers/Admin/ReviewController.php';
+require_once __DIR__ . '/../app/controllers/Admin/ProfileController.php';
 
 
 // ======================
@@ -84,8 +85,24 @@ switch ($url) {
         $view = view('dashboard');
     break;
 
+    case 'profile':
+
+        // update profile
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            updateProfile();
+        }
+
+        $profile = getProfile($_SESSION['user']['id']);
+
+        $success = $_SESSION['success'] ?? null;
+        $error   = $_SESSION['error'] ?? null;
+
+        unset($_SESSION['success'], $_SESSION['error']);
+
+        $view = view('profile');
+    break;
+
     // ===== CATEGORY =====
-        // ===== CATEGORY =====
     case 'categories':
         // XỬ LÝ CÁC HÀNH ĐỘNG TRƯỚC KHI LOAD DANH SÁCH
         if (isset($_GET['soft_delete'])) {
@@ -433,24 +450,95 @@ switch ($url) {
         break;
 
     case 'reviews':
-    $page = $_GET['page'] ?? 1;
+
+    // ======================
+    // HANDLE REVIEW ACTIONS
+    // ======================
+
+    $actionResult = handleReviewActions();
+
+    $success = $actionResult['success'] ?? null;
+    $error   = $actionResult['error'] ?? null;
+
+    // ======================
+    // PAGINATION
+    // ======================
+
+    $page = isset($_GET['page'])
+        ? max(1, (int)$_GET['page'])
+        : 1;
+
+    $limit = 15;
+
+    // ======================
+    // FILTERS
+    // ======================
 
     $filters = [
-        'search' => $_GET['search'] ?? '',
-        'product_id' => $_GET['product_id'] ?? 0,
-        'rating' => $_GET['rating'] ?? 0,
-        'status' => $_GET['status'] ?? -1
+
+        'search' => trim($_GET['search'] ?? ''),
+
+        'product_id' => isset($_GET['product_id'])
+            ? (int)$_GET['product_id']
+            : 0,
+
+        'rating' => isset($_GET['rating'])
+            ? (int)$_GET['rating']
+            : 0,
+
+        'status' => isset($_GET['status'])
+            ? (int)$_GET['status']
+            : -1
     ];
 
-    $result = getReviews($page, 15, $filters);
+    // ======================
+    // GET REVIEWS
+    // ======================
 
-    $reviews = $result['data'];
-    $total = $result['total'];
+    $result = getReviews($page, $limit, $filters);
+
+    $reviews = $result['data'] ?? [];
+
+    $total = $result['total'] ?? 0;
+
+    $totalPages = ceil($total / $limit);
+
+    // ======================
+    // PRODUCTS FILTER
+    // ======================
 
     $products = getProductsForFilter();
 
+    // ======================
+    // FILTER VARIABLES
+    // ======================
+
+    $search          = $filters['search'];
+    $product_filter  = $filters['product_id'];
+    $rating_filter   = $filters['rating'];
+    $status_filter   = $filters['status'];
+
+    // ======================
+    // FLASH SESSION
+    // ======================
+
+    if (isset($_SESSION['success'])) {
+        $success = $_SESSION['success'];
+        unset($_SESSION['success']);
+    }
+
+    if (isset($_SESSION['error'])) {
+        $error = $_SESSION['error'];
+        unset($_SESSION['error']);
+    }
+
+    // ======================
+    // VIEW
+    // ======================
+
     $view = view('reviews');
-    break;
+
+break;
 
     case 'vouchers':
 
