@@ -14,24 +14,14 @@ function checkLogin() {
 
 // ================== GET DATA ==================
 function getSettingsData() {
-
     checkLogin();
     $userId = $_SESSION['user']['id'];
     $conn = getDB();
 
     $stmt = $conn->prepare("
         SELECT
-            u.id,
-            u.name,
-            u.email,
-            u.phone,
-            u.avatar,
-
-            c.full_name,
-            c.gender,
-            c.birthday,
-            c.address AS customer_address
-
+            u.id, u.name, u.email, u.phone, u.avatar, u.role_id,
+            c.full_name, c.gender, c.birthday, c.address AS customer_address
         FROM users u
         LEFT JOIN customers c ON c.user_id = u.id
         WHERE u.id = ?
@@ -41,22 +31,28 @@ function getSettingsData() {
     $stmt->execute([$userId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$row) return null;
+    if (!$row) {
+        $_SESSION['settings_error'] = 'Không tìm thấy thông tin người dùng';
+        header('Location: index.php?url=home');
+        exit;
+    }
 
     $user = [
-        'id'        => $row['id'],
-        'name'      => $row['name'] ?? '',
-        'email'     => $row['email'] ?? '',
-        'phone'     => $row['phone'] ?? '',
-        'avatar'    => $row['avatar'] ?? '',
+        'id'            => $row['id'],
+        'name'          => $row['name'] ?? '',
+        'email'         => $row['email'] ?? '',
+        'phone'         => $row['phone'] ?? '',
+        'avatar'        => $row['avatar'] ?? '',
+        'role_id'       => $row['role_id'],
 
-        'full_name' => $row['full_name'] ?? '',
-        'gender'    => $row['gender'] ?? '',
-        'birthday'  => $row['birthday'] ?? '',
-        'address'   => $row['customer_address'] ?? '',
+        // Customer info
+        'full_name'     => $row['full_name'] ?? '',
+        'gender'        => $row['gender'] ?? '',
+        'birthday'      => $row['birthday'] ?? '',
+        'address'       => $row['customer_address'] ?? '',
     ];
 
-    // ================= ADDRESS (FIX KHÔNG DÙNG tap) =================
+    // Load addresses
     $stmt = $conn->prepare("
         SELECT * FROM shipping_addresses
         WHERE user_id = ?
@@ -65,22 +61,21 @@ function getSettingsData() {
     $stmt->execute([$userId]);
     $addresses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ================= NOTIFICATION =================
+    // Load notifications
     $stmt = $conn->prepare("
         SELECT * FROM notifications
         WHERE user_id = ?
-        ORDER BY created_at DESC
-        LIMIT 20
+        ORDER BY created_at DESC LIMIT 20
     ");
     $stmt->execute([$userId]);
     $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     return [
-        'user' => $user,
-        'addresses' => $addresses,
+        'user'          => $user,
+        'addresses'     => $addresses,
         'notifications' => $notifications,
-        'success' => $_SESSION['settings_success'] ?? null,
-        'error' => $_SESSION['settings_error'] ?? null,
+        'success'       => $_SESSION['settings_success'] ?? null,
+        'error'         => $_SESSION['settings_error'] ?? null,
     ];
 }
 
@@ -96,95 +91,82 @@ function updateProfile() {
     $userId = $_SESSION['user']['id'];
     $conn   = getDB();
 
-    $name     = trim($_POST['name'] ?? '');
-    $email    = trim($_POST['email'] ?? '');
-    $phone    = trim($_POST['phone'] ?? '');
+    $name      = trim($_POST['name'] ?? '');
+    $email     = trim($_POST['email'] ?? '');
+    $phone     = trim($_POST['phone'] ?? '');
 
-    $fullName = trim($_POST['full_name'] ?? '');
-    $gender   = $_POST['gender'] ?? '';
-    $birthday = $_POST['birthday'] ?? '';
-    $address  = trim($_POST['address'] ?? '');
+    $fullName  = trim($_POST['full_name'] ?? '');
+    $gender    = $_POST['gender'] ?? '';
+    $birthday  = $_POST['birthday'] ?? '';
+    $address   = trim($_POST['address'] ?? '');
 
     if (empty($name) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $_SESSION['settings_error'] = 'Dữ liệu không hợp lệ';
+        $_SESSION['settings_error'] = 'Tên và Email không hợp lệ';
         header('Location: index.php?url=settings');
         exit;
     }
 
-    // ================= AVATAR FIX CHUẨN =================
+    // ================= UPLOAD AVATAR =================
     $avatarName = $_SESSION['user']['avatar'] ?? '';
 
     if (!empty($_FILES['avatar']['name']) && $_FILES['avatar']['error'] === 0) {
-
-        // 👉 FIX PATH CHUẨN XAMPP (QUAN TRỌNG NHẤT)
         $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/DoAn/DoAnTotNghiep/public/assets/img/avatars/';
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
         $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
-
-        $allow = ['jpg', 'jpeg', 'png', 'webp'];
-
-        if (!in_array($ext, $allow)) {
-            $_SESSION['settings_error'] = 'File không hợp lệ';
+        if (!in_array($ext, ['jpg','jpeg','png','webp'])) {
+            $_SESSION['settings_error'] = 'Chỉ chấp nhận file ảnh';
             header('Location: index.php?url=settings');
             exit;
         }
 
-        // 👉 tạo tên file mới
         $avatarName = 'avatar_' . $userId . '_' . time() . '.' . $ext;
-
         $targetPath = $uploadDir . $avatarName;
 
-        // 👉 debug nếu cần
-        // var_dump($targetPath); exit;
-
-        if (!move_uploaded_file($_FILES['avatar']['tmp_name'], $targetPath)) {
-            $_SESSION['settings_error'] = 'Upload ảnh thất bại';
-            header('Location: index.php?url=settings');
-            exit;
+        if (move_uploaded_file($_FILES['avatar']['tmp_name'], $targetPath)) {
+            // Xóa avatar cũ nếu có
+            if (!empty($_SESSION['user']['avatar'])) {
+                $oldFile = $uploadDir . $_SESSION['user']['avatar'];
+                if (file_exists($oldFile)) unlink($oldFile);
+            }
         }
     }
 
     // ================= UPDATE USERS =================
     $conn->prepare("
-        UPDATE users
-        SET name=?, email=?, phone=?, avatar=?
-        WHERE id=?
+        UPDATE users SET name=?, email=?, phone=?, avatar=? WHERE id=?
     ")->execute([$name, $email, $phone, $avatarName, $userId]);
 
-    // ================= UPSERT CUSTOMERS =================
-    $stmt = $conn->prepare("SELECT id FROM customers WHERE user_id=?");
+    // ================= UPDATE / INSERT CUSTOMERS =================
+    $stmt = $conn->prepare("SELECT id FROM customers WHERE user_id = ?");
     $stmt->execute([$userId]);
 
     if ($stmt->fetch()) {
         $conn->prepare("
             UPDATE customers
-            SET full_name=?, phone=?, gender=?, birthday=?, address=?, updated_at=NOW()
+            SET full_name=?, gender=?, birthday=?, address=?, updated_at=NOW()
             WHERE user_id=?
-        ")->execute([$fullName, $phone, $gender, $birthday, $address, $userId]);
+        ")->execute([$fullName, $gender, $birthday, $address, $userId]);
     } else {
         $conn->prepare("
-            INSERT INTO customers (user_id, full_name, phone, gender, birthday, address, created_at)
-            VALUES (?,?,?,?,?,?,NOW())
-        ")->execute([$userId, $fullName, $phone, $gender, $birthday, $address]);
+            INSERT INTO customers (user_id, full_name, gender, birthday, address, created_at)
+            VALUES (?,?,?,?,?,NOW())
+        ")->execute([$userId, $fullName, $gender, $birthday, $address]);
     }
 
-    // ================= SYNC SESSION =================
+    // ================= ĐỒNG BỘ SESSION (QUAN TRỌNG) =================
     $_SESSION['user'] = array_merge($_SESSION['user'], [
-        'name'      => $name,
-        'email'     => $email,
-        'phone'     => $phone,
-        'avatar'    => $avatarName,
-        'gender'    => $gender,
-        'birthday'  => $birthday,
-        'address'   => $address,
-        'full_name' => $fullName
+        'name'       => $name,
+        'email'      => $email,
+        'phone'      => $phone,
+        'avatar'     => $avatarName,
+        'full_name'  => $fullName,
+        'gender'     => $gender,
+        'birthday'   => $birthday,
+        'address'    => $address,
     ]);
 
-    $_SESSION['settings_success'] = 'Cập nhật thành công';
+    $_SESSION['settings_success'] = 'Cập nhật thông tin thành công!';
     header('Location: index.php?url=settings');
     exit;
 }

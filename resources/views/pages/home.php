@@ -696,20 +696,48 @@ function initCategorySlider() {
         } else {
             prevBtn.style.display = 'block';
             nextBtn.style.display = 'block';
-            prevBtn.classList.toggle('disabled', slider.scrollLeft <= 0);
-            nextBtn.classList.toggle('disabled', slider.scrollLeft >= maxScroll - 1);
         }
     }
 
     prevBtn.addEventListener('click', () => {
-        slider.scrollBy({ left: -300, behavior: 'smooth' });
+        slider.scrollBy({ left: -250, behavior: 'smooth' });
     });
+
     nextBtn.addEventListener('click', () => {
-        slider.scrollBy({ left: 300, behavior: 'smooth' });
+        slider.scrollBy({ left: 250, behavior: 'smooth' });
+    });
+
+    // ================= AUTO SCROLL =================
+    let autoScroll = setInterval(() => {
+        const maxScroll = slider.scrollWidth - slider.clientWidth;
+
+        if (slider.scrollLeft >= maxScroll) {
+            slider.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+            slider.scrollBy({ left: 250, behavior: 'smooth' });
+        }
+    }, 3000); // 3 giây chạy 1 lần
+
+    // Pause khi hover
+    slider.addEventListener('mouseenter', () => {
+        clearInterval(autoScroll);
+    });
+
+    slider.addEventListener('mouseleave', () => {
+        autoScroll = setInterval(() => {
+            const maxScroll = slider.scrollWidth - slider.clientWidth;
+
+            if (slider.scrollLeft >= maxScroll) {
+                slider.scrollTo({ left: 0, behavior: 'smooth' });
+            } else {
+                slider.scrollBy({ left: 250, behavior: 'smooth' });
+            }
+        }, 3000);
     });
 
     slider.addEventListener('scroll', updateButtons);
     window.addEventListener('resize', updateButtons);
+
     updateButtons();
 }
 

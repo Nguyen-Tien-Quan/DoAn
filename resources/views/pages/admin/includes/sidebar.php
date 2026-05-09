@@ -10,6 +10,10 @@ $role = match ($roleId) {
 };
 ?>
 
+<style>
+
+</style>
+
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
     <!-- BRAND -->

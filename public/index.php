@@ -457,6 +457,15 @@ switch ($url) {
         $product['variants'] = getVariantsByProductId($product['id']) ?? [];
         $product['toppings'] = getToppingsByProductId($product['id']) ?? [];
 
+        // =========================
+        // LOAD SẢN PHẨM TƯƠNG TỰ
+        // =========================
+        $similarProducts = getSimilarProducts(
+            $product['category_id'],
+            $product['id'],
+            8
+        );
+
         $view = view('product-detail');
         break;
 

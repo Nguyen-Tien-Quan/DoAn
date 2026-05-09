@@ -42,7 +42,7 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
                     </a>
                 </li>
                 <li>
-                    <a href="#!" class="breadcrumbs__link breadcrumbs__link--current">Thanh toán</a>
+                    <a href="#!" class="breadcrumbs__link breadcrumbs__link--current">Giỏ hàng</a>
                 </li>
             </ul>
         </div>
@@ -127,9 +127,9 @@ if ($totalAfterDiscount < 0) $totalAfterDiscount = 0;
                                         <button class="cart-info__checkout-all btn btn--danger btn--rounded js-toggle btn-delete-all" toggle-target="#delete-all-confirm">
                                             Xóa tất cả
                                         </button>
-                                        <a href="<?= $base ?>index.php?url=checkout" class="cart-info__checkout-all btn btn--primary btn--rounded">
-                                            Thanh toán tất cả
-                                        </a>
+                                        <!-- <a href="<?= $base ?>index.php?url=checkout" class="cart-info__checkout-all btn btn--primary btn--rounded">
+                                        Thanh toán tất cả
+                                        </a> -->
                                     </div>
                                 </div>
                             </div>

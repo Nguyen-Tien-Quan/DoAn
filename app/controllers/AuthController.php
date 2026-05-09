@@ -10,76 +10,82 @@ $error = '';
 /**
  * Xử lý login
  */
+/**
+ * Xử lý login
+ */
 function handleLogin() {
 
     $conn = getDB();
 
-    $email = trim($_POST['email'] ?? '');
+    $email    = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
     $remember = isset($_POST['remember']);
 
-    // ======================
-    // VALIDATE
-    // ======================
     if ($email === '' || $password === '') {
         return "❌ Vui lòng nhập email và mật khẩu";
     }
 
     // ======================
-    // TÌM USER THEO EMAIL
+    // LẤY USER + CUSTOMER DATA
     // ======================
     $stmt = $conn->prepare("
-        SELECT *
-        FROM users
-        WHERE email = ?
+        SELECT
+            u.*,
+            c.full_name,
+            c.gender,
+            c.birthday,
+            c.address AS customer_address
+        FROM users u
+        LEFT JOIN customers c ON c.user_id = u.id
+        WHERE u.email = ?
         LIMIT 1
     ");
 
     $stmt->execute([$email]);
-
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // ======================
-    // KHÔNG TỒN TẠI
-    // ======================
     if (!$user) {
         return "❌ Tài khoản không tồn tại";
     }
 
-    // ======================
-    // CHECK STATUS
-    // ======================
     if ((int)$user['status'] !== 1) {
         return "❌ Tài khoản đã bị khóa";
     }
 
-    // ======================
-    // CHECK PASSWORD
-    // ======================
     if (!password_verify($password, $user['password'])) {
         return "❌ Sai mật khẩu";
     }
 
     // ======================
-    // LOGIN SUCCESS
+    // XÓA PASSWORD TRƯỚC KHI LƯU SESSION
     // ======================
     unset($user['password']);
 
-    $_SESSION['user'] = $user;
+    // ======================
+    // ĐỒNG BỘ SESSION ĐẦY ĐỦ
+    // ======================
+    $_SESSION['user'] = [
+        'id'            => $user['id'],
+        'name'          => $user['name'],
+        'email'         => $user['email'],
+        'phone'         => $user['phone'],
+        'avatar'        => $user['avatar'],
+        'role_id'       => $user['role_id'],
+
+        // Dữ liệu từ bảng customers
+        'full_name'     => $user['full_name'] ?? '',
+        'gender'        => $user['gender'] ?? '',
+        'birthday'      => $user['birthday'] ?? '',
+        'address'       => $user['customer_address'] ?? '',
+    ];
 
     // ======================
     // REMEMBER ME
     // ======================
     if ($remember) {
-
         $token = bin2hex(random_bytes(32));
 
-        $update = $conn->prepare("
-            UPDATE users
-            SET remember_token = ?
-            WHERE id = ?
-        ");
-
+        $update = $conn->prepare("UPDATE users SET remember_token = ? WHERE id = ?");
         $update->execute([$token, $user['id']]);
 
         setcookie('remember_me', $token, [
@@ -89,37 +95,25 @@ function handleLogin() {
             'secure'   => false,
             'samesite' => 'Lax'
         ]);
-
     } else {
-
         setcookie('remember_me', '', time() - 3600, '/');
-
-        $update = $conn->prepare("
-            UPDATE users
-            SET remember_token = NULL
-            WHERE id = ?
-        ");
-
-        $update->execute([$user['id']]);
+        $conn->prepare("UPDATE users SET remember_token = NULL WHERE id = ?")
+             ->execute([$user['id']]);
     }
 
     // ======================
-    // REDIRECT ROLE
+    // REDIRECT THEO ROLE
     // ======================
     switch ((int)$user['role_id']) {
-
         case 1:
             header("Location: admin.php");
             break;
-
         case 2:
             header("Location: staff.php");
             break;
-
         case 4:
             header("Location: shipper.php");
             break;
-
         default:
             header("Location: index.php");
             break;

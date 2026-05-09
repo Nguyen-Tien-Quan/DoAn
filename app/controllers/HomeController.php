@@ -360,26 +360,34 @@ function getProductsByCategoryId($categoryId, $limit = 4) {
 }
 
 // ========== THÊM MỚI: LẤY SẢN PHẨM TƯƠNG TỰ ==========
-function getSimilarProducts($productId, $categoryId, $limit = 4) {
+function getSimilarProducts($categoryId, $currentId, $limit = 8)
+{
     $conn = getDB();
-    $limit = (int)$limit;
-    $sql = "
-        SELECT id, name, image, base_price,
-               (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE product_id = p.id AND status = 1) as avg_rating
-        FROM products p
-        WHERE category_id = ? AND id != ? AND status = 1
-        ORDER BY id DESC
-        LIMIT " . $limit;
-    $stmt = $conn->prepare($sql);
-    $stmt->execute([$categoryId, $productId]);
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    // Đảm bảo mỗi sản phẩm có trường images (mảng)
-    foreach ($products as &$prod) {
-        $prod['images'] = [$prod['image']];
-    }
-    return $products;
-}
 
+    // ép kiểu int để tránh SQL Injection
+    $categoryId = (int)$categoryId;
+    $currentId  = (int)$currentId;
+    $limit      = (int)$limit;
+
+    $sql = "
+        SELECT *
+        FROM products
+        WHERE category_id = :category_id
+        AND id != :current_id
+        AND status = 1
+        ORDER BY RAND()
+        LIMIT $limit
+    ";
+
+    $stmt = $conn->prepare($sql);
+
+    $stmt->execute([
+        ':category_id' => $categoryId,
+        ':current_id'  => $currentId
+    ]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 // ========== THÊM MỚI: LẤY DANH SÁCH YÊU THÍCH CỦA USER ==========
 function getUserFavorites($userId) {
     $conn = getDB();
@@ -486,6 +494,7 @@ function getParentCategories() {
     $stmt->execute([$rootId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
 
 
 // ================== THÊM MỚI: LẤY KHUYẾN MÃI ĐANG DIỄN RA ==================

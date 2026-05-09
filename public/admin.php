@@ -248,7 +248,7 @@ switch ($url) {
 
     // ===== ORDERS =====
     case 'orders':
-
+    $conn = getDB();
     header('Content-Type: text/html; charset=utf-8');
 
     // ================= UPDATE STATUS =================
@@ -288,7 +288,7 @@ switch ($url) {
         }
 
         try {
-            $conn = getDB();
+
             $conn->beginTransaction();
 
             $stmt = $conn->prepare("

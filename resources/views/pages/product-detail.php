@@ -616,9 +616,9 @@ $discountedBasePrice = $finalPrice;
         <div class="product-container">
             <div class="prod-tab js-tabs">
                 <ul class="prod-tab__list">
-                    <li class="prod-tab__item tab-btn prod-tab__item--current" data-tab="tab-desc">Description</li>
-                    <li class="prod-tab__item tab-btn" data-tab="tab-review">Review (<?= count($reviews) ?>)</li>
-                    <li class="prod-tab__item tab-btn" data-tab="tab-similar">Similar</li>
+                    <li class="prod-tab__item tab-btn prod-tab__item--current" data-tab="tab-desc">Mô Tả</li>
+                    <li class="prod-tab__item tab-btn" data-tab="tab-review">Đánh Giá (<?= count($reviews) ?>)</li>
+                    <li class="prod-tab__item tab-btn" data-tab="tab-similar">Tương Tự</li>
                 </ul>
 
                 <div class="prod-tab__contents">
@@ -745,7 +745,17 @@ $discountedBasePrice = $finalPrice;
                                     👍 Hữu ích (<span class="like-count"><?= $rev['likes'] ?? 0 ?></span>)
                                 </div>
                                 <div class="review-card__top">
-                                    <img src="<?= $base ?>assets/img/avatars/<?= $rev['avatar'] ?? 'avatar-1.png' ?>" class="review-card__avatar">
+                                    <?php
+                                        $avatar = !empty($rev['avatar'])
+                                            ? $rev['avatar']
+                                            : 'avatar-default.png';
+                                        ?>
+
+                                        <img
+                                            src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($avatar) ?>"
+                                            class="review-card__avatar"
+                                            onerror="this.src='<?= $base ?>assets/img/avatars/avatar-default.png'"
+                                        >
                                     <div class="review-card__info">
                                         <div class="review-card__name"><?= htmlspecialchars($rev['full_name']) ?></div>
                                         <div class="review-card__stars">
@@ -772,6 +782,110 @@ $discountedBasePrice = $finalPrice;
                         <?php endif; ?>
                     </div>
 
+                    <!-- SIMILAR -->
+                    <div class="prod-tab__content" id="tab-similar">
+
+                        <?php if (!empty($similarProducts)): ?>
+
+                            <div class="row row-cols-6 row-cols-xl-4 row-cols-lg-3 row-cols-md-2 row-cols-sm-1 g-2">
+
+                                <?php foreach ($similarProducts as $sp): ?>
+
+                                    <?php
+                                        $img = !empty($sp['image'])
+                                            ? $sp['image']
+                                            : (!empty($sp['images']) ? explode(',', $sp['images'])[0] : 'default.png');
+
+                                        $price = (float)($sp['base_price'] ?? 0);
+                                        $discount = (float)($sp['discount_percent'] ?? 0);
+
+                                        $final = $discount > 0
+                                            ? $price - ($price * $discount / 100)
+                                            : $price;
+
+                                        $isLiked = in_array($sp['id'], $favIds ?? []);
+                                    ?>
+
+                                    <div class="col">
+
+                                        <article class="product-card">
+
+                                            <!-- IMAGE -->
+                                            <div class="product-card__img-wrap">
+
+                                                <a href="<?= $base ?>index.php?url=product&id=<?= $sp['id'] ?>">
+                                                    <img
+                                                        src="<?= $base ?>assets/img/product/<?= $img ?>"
+                                                        alt="<?= htmlspecialchars($sp['name']) ?>"
+                                                        class="product-card__thumb"
+                                                    />
+                                                </a>
+
+                                                <!-- LIKE -->
+                                                <button
+                                                    class="like-btn product-card__like-btn <?= $isLiked ? 'like-btn--liked' : '' ?>"
+                                                    data-id="<?= $sp['id'] ?>"
+                                                    type="button"
+                                                >
+                                                    <img
+                                                        src="<?= $base ?>assets/icons/heart.svg"
+                                                        class="like-btn__icon icon"
+                                                    />
+                                                    <img
+                                                        src="<?= $base ?>assets/icons/heart-red.svg"
+                                                        class="like-btn__icon--liked"
+                                                    />
+                                                </button>
+
+                                            </div>
+
+                                            <!-- TITLE -->
+                                            <h3 class="product-card__title">
+                                                <a href="<?= $base ?>index.php?url=product&id=<?= $sp['id'] ?>">
+                                                    <?= htmlspecialchars($sp['name']) ?>
+                                                </a>
+                                            </h3>
+
+                                            <!-- BRAND / CATEGORY -->
+                                            <p class="product-card__brand">
+                                                <?= htmlspecialchars($sp['category_name'] ?? 'Food') ?>
+                                            </p>
+
+                                            <!-- PRICE + RATING -->
+                                            <div class="product-card__row">
+
+                                                <span class="product-card__price">
+                                                    <?= number_format($final) ?>đ
+                                                </span>
+
+                                                <img
+                                                    src="<?= $base ?>assets/icons/star.svg"
+                                                    class="product-card__star"
+                                                />
+
+                                                <span class="product-card__score">
+                                                    <?= $sp['avg_rating'] ?? 0 ?>
+                                                </span>
+
+                                            </div>
+
+                                        </article>
+
+                                    </div>
+
+                                <?php endforeach; ?>
+
+                            </div>
+
+                        <?php else: ?>
+
+                            <div class="review-empty">
+                                Không có sản phẩm tương tự 😢
+                            </div>
+
+                        <?php endif; ?>
+
+                    </div>
 
                 </div>
             </div>

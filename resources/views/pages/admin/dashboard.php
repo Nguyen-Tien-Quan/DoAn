@@ -1,3 +1,4 @@
+
 <?php
 $role = $_SESSION['user']['role_id'] ?? 0;
 
@@ -23,8 +24,23 @@ body{
     background:#f4f6fb;
 }
 
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
 .dashboard-page{
     padding:24px;
+    width:100%;
+    overflow:hidden;
+}
+
+.dashboard-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:25px;
+    flex-wrap:wrap;
 }
 
 .dashboard-title{
@@ -37,6 +53,10 @@ body{
     color:#6b7280;
     font-size:14px;
 }
+
+/* =========================================================
+   CARDS
+========================================================= */
 
 .dashboard-card{
     border:none;
@@ -84,6 +104,10 @@ body{
     margin-top:6px;
 }
 
+/* =========================================================
+   SECTION
+========================================================= */
+
 .dashboard-section{
     border:none;
     border-radius:20px;
@@ -110,6 +134,10 @@ body{
     padding:20px;
 }
 
+/* =========================================================
+   CHART
+========================================================= */
+
 .dashboard-chart{
     border:none;
     border-radius:20px;
@@ -131,7 +159,17 @@ body{
 .chart-wrapper{
     position:relative;
     height:350px;
+    width:100%;
+    overflow:hidden;
 }
+
+canvas{
+    max-width:100% !important;
+}
+
+/* =========================================================
+   PRODUCTS
+========================================================= */
 
 .dashboard-product-item{
     padding:15px 0;
@@ -148,10 +186,32 @@ body{
     padding:30px 0;
 }
 
+/* =========================================================
+   GRID FIX
+========================================================= */
+
+.row{
+    margin-left:-10px;
+    margin-right:-10px;
+}
+
+.row > div{
+    padding-left:10px;
+    padding-right:10px;
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
 @media(max-width:768px){
 
     .dashboard-page{
-        padding:15px;
+        padding:15px 10px;
+    }
+
+    .dashboard-header{
+        align-items:flex-start;
     }
 
     .dashboard-title{
@@ -162,22 +222,92 @@ body{
         font-size:24px;
     }
 
+    .dashboard-card .card-body{
+        padding:18px;
+    }
+
+    .dashboard-icon{
+        width:52px;
+        height:52px;
+        font-size:18px;
+    }
+
     .chart-wrapper{
         height:280px;
+    }
+
+    .dashboard-chart .card-header{
+        flex-direction:column;
+        align-items:flex-start !important;
+        gap:10px;
+    }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media(max-width:576px){
+
+    .dashboard-page{
+        padding:10px 0;
+    }
+
+    .dashboard-title{
+        font-size:22px;
+    }
+
+    .dashboard-sub{
+        font-size:13px;
+    }
+
+    .dashboard-card{
+        border-radius:16px;
+    }
+
+    .dashboard-section{
+        border-radius:16px;
+    }
+
+    .dashboard-chart{
+        border-radius:16px;
+    }
+
+    .dashboard-value{
+        font-size:22px;
+    }
+
+    .dashboard-label{
+        font-size:12px;
+    }
+
+    .dashboard-mini{
+        font-size:12px;
+    }
+
+    .dashboard-card .card-body{
+        padding:16px;
+    }
+
+    .dashboard-section .card-body{
+        padding:18px;
+    }
+
+    .dashboard-chart .card-body{
+        padding:15px;
+    }
+
+    .chart-wrapper{
+        height:240px;
     }
 }
 
 </style>
 
-<div id="content-wrapper" class="d-flex flex-column">
-<div id="content">
-
-<?php require_once 'includes/topbar.php'; ?>
-
-<div class="container-fluid dashboard-page">
+<div class="dashboard-page">
 
     <!-- HEADER -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <div class="dashboard-header">
 
         <div>
 
@@ -205,7 +335,7 @@ body{
     <div class="row">
 
         <!-- REVENUE -->
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-sm-6 mb-4">
 
             <div class="card dashboard-card">
 
@@ -247,7 +377,7 @@ body{
         </div>
 
         <!-- ORDERS -->
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-sm-6 mb-4">
 
             <div class="card dashboard-card">
 
@@ -284,7 +414,7 @@ body{
         </div>
 
         <!-- PRODUCTS -->
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-sm-6 mb-4">
 
             <div class="card dashboard-card">
 
@@ -321,7 +451,7 @@ body{
         </div>
 
         <!-- CUSTOMERS -->
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-3 col-md-6 col-sm-6 mb-4">
 
             <div class="card dashboard-card">
 
@@ -487,20 +617,22 @@ body{
     </div>
 
 </div>
-</div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-
 <script>
 
-const chartLabels = <?= json_encode(array_column($chartData ?? [], 'label')) ?>;
-const chartRevenue = <?= json_encode(array_column($chartData ?? [], 'revenue')) ?>;
+const chartLabels =
+<?= json_encode(array_column($chartData ?? [], 'label')) ?>;
 
-const ctx = document.getElementById('revenueChart').getContext('2d');
+const chartRevenue =
+<?= json_encode(array_column($chartData ?? [], 'revenue')) ?>;
 
-const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+const ctx =
+document.getElementById('revenueChart').getContext('2d');
+
+const gradient =
+ctx.createLinearGradient(0, 0, 0, 350);
 
 gradient.addColorStop(0, 'rgba(78,115,223,0.35)');
 gradient.addColorStop(1, 'rgba(78,115,223,0)');
@@ -571,4 +703,5 @@ new Chart(ctx, {
         }
     }
 });
+
 </script>
