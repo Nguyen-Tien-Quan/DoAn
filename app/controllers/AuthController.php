@@ -233,7 +233,7 @@ function handleRegister() {
         $roleId = 3;
 
         $defaultPhone = '';
-        $defaultAvatar = 'default.png';
+        $defaultAvatar = 'avatar-default.png';
 
         $stmt->execute([
             $roleId,

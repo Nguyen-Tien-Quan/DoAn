@@ -12,7 +12,6 @@ function checkLogin() {
     }
 }
 
-// ================== GET DATA ==================
 function getSettingsData() {
     checkLogin();
     $userId = $_SESSION['user']['id'];
@@ -21,7 +20,10 @@ function getSettingsData() {
     $stmt = $conn->prepare("
         SELECT
             u.id, u.name, u.email, u.phone, u.avatar, u.role_id,
-            c.full_name, c.gender, c.birthday, c.address AS customer_address
+            c.full_name,
+            c.gender,
+            c.birthday,
+            c.address AS customer_address
         FROM users u
         LEFT JOIN customers c ON c.user_id = u.id
         WHERE u.id = ?
@@ -37,6 +39,7 @@ function getSettingsData() {
         exit;
     }
 
+    // Tạo mảng user đầy đủ từ DB (luôn lấy dữ liệu mới nhất)
     $user = [
         'id'            => $row['id'],
         'name'          => $row['name'] ?? '',
@@ -45,7 +48,6 @@ function getSettingsData() {
         'avatar'        => $row['avatar'] ?? '',
         'role_id'       => $row['role_id'],
 
-        // Customer info
         'full_name'     => $row['full_name'] ?? '',
         'gender'        => $row['gender'] ?? '',
         'birthday'      => $row['birthday'] ?? '',
@@ -70,6 +72,9 @@ function getSettingsData() {
     $stmt->execute([$userId]);
     $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Đồng bộ lại session để các trang khác cũng thấy dữ liệu mới
+    $_SESSION['user'] = array_merge($_SESSION['user'] ?? [], $user);
+
     return [
         'user'          => $user,
         'addresses'     => $addresses,
@@ -78,7 +83,6 @@ function getSettingsData() {
         'error'         => $_SESSION['settings_error'] ?? null,
     ];
 }
-
 // ================== UPDATE PROFILE ==================
 function updateProfile() {
     checkLogin();

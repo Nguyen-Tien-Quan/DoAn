@@ -210,45 +210,244 @@ function handleRestoreUser() {
 
 // Xóa vĩnh viễn
 function handleHardDeleteUser() {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
     $pdo = getDB();
+
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
     $current_user_id = $_SESSION['user']['id'] ?? 0;
     $is_super_admin = ($current_user_id == 1);
 
+    // ================= VALIDATE =================
+
+    if ($id <= 0) {
+        $_SESSION['error'] = 'ID không hợp lệ.';
+        header('Location: admin.php?url=users');
+        exit;
+    }
+
+    // Không cho tự xóa
     if ($id == $current_user_id) {
         $_SESSION['error'] = 'Bạn không thể xóa chính mình.';
         header('Location: admin.php?url=users');
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT role_id FROM users WHERE id = ?");
+    // Lấy thông tin user
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->execute([$id]);
-    $target_role = $stmt->fetchColumn();
 
-    if ($target_role == 1 && $id == 1 && !$is_super_admin) {
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        $_SESSION['error'] = 'Người dùng không tồn tại.';
+        header('Location: admin.php?url=users');
+        exit;
+    }
+
+    // Chặn xóa super admin
+    if ($user['role_id'] == 1 && $id == 1 && !$is_super_admin) {
         $_SESSION['error'] = 'Bạn không thể xóa super admin.';
         header('Location: admin.php?url=users');
         exit;
     }
 
-    $checkOrder = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ?");
+    // ================= CHECK ORDERS =================
+
+    $checkOrder = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM orders
+        WHERE user_id = ?
+    ");
+
     $checkOrder->execute([$id]);
+
     if ($checkOrder->fetchColumn() > 0) {
-        $_SESSION['error'] = "Không thể xóa vĩnh viễn vì người dùng đã có đơn hàng.";
+
+        $_SESSION['error'] = 'Không thể xóa vì người dùng đã có đơn hàng.';
+
         header('Location: admin.php?url=users');
         exit;
     }
 
-    $stmtAv = $pdo->prepare("SELECT avatar FROM users WHERE id = ?");
-    $stmtAv->execute([$id]);
-    $avatar = $stmtAv->fetchColumn();
-    if ($avatar && file_exists($avatar) && strpos($avatar, 'uploads/avatars/') === 0) {
-        unlink($avatar);
+    try {
+
+        $pdo->beginTransaction();
+
+        // =================================================
+        // XÓA CART ITEMS
+        // =================================================
+
+        try {
+
+            $cartStmt = $pdo->prepare("
+                SELECT id
+                FROM carts
+                WHERE user_id = ?
+            ");
+
+            $cartStmt->execute([$id]);
+
+            $cartIds = $cartStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (!empty($cartIds)) {
+
+                $placeholders = implode(',', array_fill(0, count($cartIds), '?'));
+
+                $deleteCartItems = $pdo->prepare("
+                    DELETE FROM cart_items
+                    WHERE cart_id IN ($placeholders)
+                ");
+
+                $deleteCartItems->execute($cartIds);
+            }
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA CARTS
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM carts
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA FAVORITES
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM favorites
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA REVIEWS
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM reviews
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA NOTIFICATIONS
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM notifications
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA CUSTOMERS
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM customers
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA ADDRESSES
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM addresses
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA USER TOKENS
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM user_tokens
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA SESSION LOGIN
+        // =================================================
+
+        try {
+
+            $pdo->prepare("
+                DELETE FROM login_logs
+                WHERE user_id = ?
+            ")->execute([$id]);
+
+        } catch (Exception $e) {}
+
+        // =================================================
+        // XÓA AVATAR
+        // =================================================
+
+        $avatar = $user['avatar'] ?? '';
+
+        if (
+            !empty($avatar) &&
+            strpos($avatar, 'uploads/avatars/') !== false &&
+            file_exists($avatar)
+        ) {
+            unlink($avatar);
+        }
+
+        // =================================================
+        // XÓA USER
+        // =================================================
+
+        $deleteUser = $pdo->prepare("
+            DELETE FROM users
+            WHERE id = ?
+        ");
+
+        $deleteUser->execute([$id]);
+
+        $pdo->commit();
+
+        $_SESSION['success'] = 'Đã xóa vĩnh viễn người dùng.';
+
+    } catch (Exception $e) {
+
+        $pdo->rollBack();
+
+        $_SESSION['error'] = 'Lỗi khi xóa: ' . $e->getMessage();
     }
 
-    $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
-    $_SESSION['success'] = "Đã xóa vĩnh viễn người dùng.";
     header('Location: admin.php?url=users');
     exit;
 }

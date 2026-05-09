@@ -343,8 +343,6 @@ function getRevenueCompare() {
 
     return $conn->query($sql)->fetch(PDO::FETCH_ASSOC);
 }
-
-
 /**
  * 🔥 Top sản phẩm bán chạy
  */

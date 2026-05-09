@@ -279,10 +279,11 @@ document.addEventListener('DOMContentLoaded', function () {
         toast.className = `toast ${type}`;
         toast.innerText = message;
         container.appendChild(toast);
-        setTimeout(() => toast.remove(), 3500);
+
+        setTimeout(() => toast.remove(), 3000);
     }
 
-    // ================= TOGGLE MODAL (FIX CHUẨN) =================
+    // ================= TOGGLE MODAL =================
     function toggleModal(modalId, show = true) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
@@ -296,8 +297,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Mở modal
-    document.querySelectorAll('.js-toggle, .user-address__btn, .user-address__link').forEach(btn => {
+    // Mở modal Thêm / Sửa
+    document.querySelectorAll('.js-toggle').forEach(btn => {
         btn.addEventListener('click', function (e) {
             e.preventDefault();
             const target = this.getAttribute('toggle-target');
@@ -307,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Đóng modal khi click Overlay
+    // Đóng modal bằng overlay
     document.querySelectorAll('.modal__overlay').forEach(overlay => {
         overlay.addEventListener('click', function () {
             const modal = this.closest('.modal');
@@ -315,37 +316,31 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Đóng modal bằng nút X
-    document.querySelectorAll('.modal__close').forEach(btn => {
+    // Đóng modal bằng nút Hủy
+    document.querySelectorAll('.btn--text').forEach(btn => {
         btn.addEventListener('click', function () {
             const modal = this.closest('.modal');
             if (modal) toggleModal(modal.id, false);
         });
     });
 
-    // Đóng modal bằng nút Hủy (Cancel)
-    document.querySelectorAll('.btn--text, .modal__btn.btn--text').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const modal = this.closest('.modal');
-            if (modal) toggleModal(modal.id, false);
-        });
-    });
-
-    // ================= CITY MODAL =================
+    // ================= CITY DIALOG =================
     const cities = ["Hà Nội","TP. Hồ Chí Minh","Đà Nẵng","Hải Phòng","Cần Thơ","An Giang","Bà Rịa - Vũng Tàu","Bắc Giang","Bắc Kạn","Bạc Liêu","Bắc Ninh","Bến Tre","Bình Định","Bình Dương","Bình Phước","Bình Thuận","Cà Mau","Cao Bằng","Đắk Lắk","Đắk Nông","Điện Biên","Đồng Nai","Đồng Tháp","Gia Lai","Hà Giang","Hà Nam","Hà Tĩnh","Hải Dương","Hậu Giang","Hòa Bình","Hưng Yên","Khánh Hòa","Kiên Giang","Kon Tum","Lai Châu","Lâm Đồng","Lạng Sơn","Lào Cai","Long An","Nam Định","Nghệ An","Ninh Bình","Ninh Thuận","Phú Thọ","Phú Yên","Quảng Bình","Quảng Nam","Quảng Ngãi","Quảng Ninh","Quảng Trị","Sóc Trăng","Sơn La","Tây Ninh","Thái Bình","Thái Nguyên","Thanh Hóa","Thừa Thiên Huế","Tiền Giang","Trà Vinh","Tuyên Quang","Vĩnh Long","Vĩnh Phúc","Yên Bái"];
 
+    const cityInput = document.getElementById('city-input');
+    const cityDialog = document.getElementById('city-dialog');
     const citySearch = document.getElementById('city-search');
     const cityList = document.getElementById('city-list');
 
     if (cityList) {
-        function renderCities(filtered) {
+        function renderCities(filteredCities) {
             cityList.innerHTML = '';
-            filtered.forEach(city => {
+            filteredCities.forEach(city => {
                 const li = document.createElement('li');
                 li.className = 'form__option';
                 li.textContent = city;
                 li.onclick = () => {
-                    document.getElementById('city-input').value = city;
+                    cityInput.value = city;
                     toggleModal('city-dialog', false);
                 };
                 cityList.appendChild(li);
@@ -355,8 +350,8 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCities(cities);
 
         if (citySearch) {
-            citySearch.addEventListener('input', function () {
-                const val = this.value.toLowerCase().trim();
+            citySearch.addEventListener('input', () => {
+                const val = citySearch.value.toLowerCase().trim();
                 const filtered = cities.filter(c => c.toLowerCase().includes(val));
                 renderCities(filtered.length ? filtered : cities);
             });
@@ -374,75 +369,89 @@ document.addEventListener('DOMContentLoaded', function () {
             form.querySelector('[name="phone"]').value = this.dataset.phone || '';
             form.querySelector('[name="address"]').value = this.dataset.address || '';
             form.querySelector('[name="city"]').value = this.dataset.city || '';
-            form.querySelector('[name="is_default"]').checked = this.dataset.is_default === '1';
 
-            document.querySelector('#add-new-address .modal__heading').innerText = 'Cập nhật địa chỉ';
+            const isDefaultCheckbox = form.querySelector('[name="is_default"]');
+            if (isDefaultCheckbox) isDefaultCheckbox.checked = this.dataset.is_default === '1';
+
+            document.querySelector('#add-new-address .modal__heading').textContent = 'Cập nhật địa chỉ';
             toggleModal('add-new-address', true);
         });
     });
 
-    // Reset form khi mở thêm mới
+    // Reset form khi thêm mới
     document.querySelectorAll('.user-address__btn, .user-address__link').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', function () {
             const form = document.getElementById('add-address-form');
             if (form) {
                 form.reset();
                 form.querySelector('[name="address_id"]').value = '';
-                document.querySelector('#add-new-address .modal__heading').innerText = 'Thêm địa chỉ mới';
+                document.querySelector('#add-new-address .modal__heading').textContent = 'Thêm địa chỉ mới';
             }
             toggleModal('add-new-address', true);
         });
     });
 
-    // ================= FORM SUBMIT =================
-    const form = document.getElementById('add-address-form');
-    if (form) {
-        form.addEventListener('submit', function (e) {
+    // ================= SUBMIT FORM =================
+    const addressForm = document.getElementById('add-address-form');
+    if (addressForm) {
+        addressForm.addEventListener('submit', function (e) {
             e.preventDefault();
+
+            const formData = new FormData(this);
 
             fetch(this.action, {
                 method: 'POST',
-                body: new FormData(this)
+                body: formData
             })
             .then(res => res.json())
             .then(data => {
-                showToast(data.message || (data.success ? 'Thành công!' : 'Thất bại'),
-                          data.success ? 'success' : 'error');
+                showToast(data.message, data.success ? 'success' : 'error');
 
                 if (data.success) {
-                    setTimeout(() => location.reload(), 800);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 800);
                 }
             })
-            .catch(() => showToast('Lỗi kết nối', 'error'));
+            .catch(() => {
+                showToast('Lỗi kết nối server', 'error');
+            });
         });
     }
 
     // ================= DELETE ADDRESS =================
     document.querySelectorAll('.delete-address-btn').forEach(btn => {
         btn.addEventListener('click', function () {
-            if (!confirm('Bạn có chắc muốn xóa địa chỉ này?')) return;
+            if (!confirm('Xóa địa chỉ này?')) return;
 
             fetch('index.php?url=delete-shipping-address', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'id=' + this.dataset.id
             })
             .then(res => res.json())
             .then(data => {
                 showToast(data.message || 'Đã xóa', data.success ? 'success' : 'error');
-                if (data.success) setTimeout(() => location.reload(), 800);
+                if (data.success) {
+                    setTimeout(() => location.reload(), 800);
+                }
             })
             .catch(() => showToast('Lỗi kết nối', 'error'));
         });
     });
 
-    // Radio address
-    const hiddenInput = document.getElementById('selected_address');
+    // Radio chọn địa chỉ
     document.querySelectorAll('input[name="shipping_address_id"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            if (hiddenInput) hiddenInput.value = radio.value;
+        radio.addEventListener('change', function () {
+            document.getElementById('selected_address').value = this.value;
         });
     });
 
+    // Trigger radio mặc định đầu tiên
+    const firstRadio = document.querySelector('input[name="shipping_address_id"]');
+    if (firstRadio) {
+        firstRadio.checked = true;
+        document.getElementById('selected_address').value = firstRadio.value;
+    }
 });
 </script>

@@ -151,12 +151,12 @@ switch ($url) {
         $view = view('shipping');
         break;
 
-        case 'add-shipping-address':
+    case 'add-shipping-address':
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             header('Content-Type: application/json; charset=utf-8');
-            addShippingAddress();   // hàm này trả về JSON và exit
+            addShippingAddress();   
             exit;
         }
         break;
