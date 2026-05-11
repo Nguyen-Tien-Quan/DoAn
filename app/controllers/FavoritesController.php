@@ -7,8 +7,6 @@ $conn = getDB();
 $user = $_SESSION['user'] ?? null;
 
 // Lấy danh sách favorite
-
-
 function getFavorites() {
     global $user, $conn;
     if (!$user) return [];
@@ -89,6 +87,7 @@ function removeFavoriteByProduct($productId) {
     return $stmt->execute([$productId, $user['id']]);
 }
 
+// Xóa tất cả favorite (theo danh sách product_id)
 function deleteAllFavorite()
 {
     session_start();

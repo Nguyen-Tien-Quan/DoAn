@@ -156,7 +156,7 @@ switch ($url) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             header('Content-Type: application/json; charset=utf-8');
-            addShippingAddress();   
+            addShippingAddress();
             exit;
         }
         break;
@@ -269,9 +269,9 @@ switch ($url) {
         vnpayReturn();
         exit;
 
-    case 'momo-create':
-        createMoMoPayment();
-        exit;
+    // case 'momo-create':
+    //     createMoMoPayment();
+    //     exit;
 
     case 'place-order':
         placeOrder();
@@ -448,6 +448,11 @@ switch ($url) {
 
         // reviews
         $product['reviews'] = getReviewsByProductId($product['id']) ?? [];
+
+        $canReview = false;
+        if (isset($_SESSION['user']['id'])) {
+            $canReview = hasUserPurchasedProduct($_SESSION['user']['id'], $product['id']);
+        }
 
         // rating
         $ratingData = getAverageRating($product['id']);

@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// kiểm tra đã login chưa (dùng cho tất cả các function trong này)
 function checkLogin() {
     if (!isset($_SESSION['user'])) {
         header('Location: index.php?url=login');
@@ -12,6 +13,7 @@ function checkLogin() {
     }
 }
 
+// lấy dữ liệu cần thiết để hiển thị trang settings (thông tin user, địa chỉ, thông báo)
 function getSettingsData() {
     checkLogin();
     $userId = $_SESSION['user']['id'];
@@ -277,6 +279,7 @@ function markNotificationRead() {
     exit;
 }
 
+// câp nhật lại session nếu có thay đổi thông tin (dùng sau khi update profile)
 function updateAddress() {
     checkLogin();
     $conn = getDB();
@@ -305,6 +308,7 @@ function updateAddress() {
     exit;
 }
 
+// dánh dấu tất cả thông báo là đã đọc (dùng cho nút "Đánh dấu tất cả đã đọc")
 function markAllRead() {
     checkLogin();
     $conn = getDB();

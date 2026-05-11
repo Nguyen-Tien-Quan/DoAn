@@ -99,9 +99,7 @@ if (!function_exists('vnd')) {
                                                             class="cart-info__checkbox-input"
                                                         />
                                                     </label>
-
                                                 </div>
-
 
                                                 <div class="address-card__info">
                                                     <h3 class="address-card__title">Tên khách hàng: <?= htmlspecialchars($addr['full_name']) ?></h3>
@@ -129,15 +127,12 @@ if (!function_exists('vnd')) {
                                                     </button>
 
                                                     <button
-                                                    class="cart-info__edit-btn  delete-address-btn btn-delete"
-                                                    data-id="<?= $addr['id'] ?>" style="margin-left: 10px;"
-                                                >
-                                                    <img src="<?= $base ?>assets/icons/trash.svg" />
-                                                    Xóa
-                                                </button>
+                                                    class="cart-info__edit-btn delete-address-btn"
+                                                    data-id="<?= $addr['id'] ?>" style="margin-left: 10px;">
+                                                        <img src="<?= $base ?>assets/icons/trash.svg" />
+                                                        Xóa
+                                                    </button>
                                                 </div>
-
-
                                             </div>
                                         </article>
                                     <?php endforeach; ?>
@@ -188,9 +183,10 @@ if (!function_exists('vnd')) {
                             <span><?= vnd($total) ?></span>
                         </div>
 
-                        <form action="index.php?url=payment" method="POST">
+                        <form action="index.php?url=payment" method="POST" id="shipping-form">
                             <input type="hidden" name="shipping_address_id" id="selected_address" value="">
-                            <button type="submit" class="cart-info__next-btn btn btn--primary btn--rounded" <?= empty($addresses) ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '' ?>>
+                            <button type="submit" class="cart-info__next-btn btn btn--primary btn--rounded"
+                                    <?= empty($addresses) ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '' ?>>
                                 Tiếp tục đến thanh toán
                             </button>
                         </form>
@@ -259,7 +255,7 @@ if (!function_exists('vnd')) {
             </div>
             <div class="modal__bottom">
                 <button type="button" class="btn btn--small btn--text modal__btn js-toggle" toggle-target="#add-new-address">Hủy</button>
-                <button type="submit" class="btn btn--small btn--primary modal__btn">Lưu địa chỉ</button>
+                <button type="submit" class="btn btn--small btn--primary modal__btn" id="save-address-btn">Lưu địa chỉ</button>
             </div>
         </form>
     </div>
@@ -308,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Đóng modal bằng overlay
+    // Đóng modal
     document.querySelectorAll('.modal__overlay').forEach(overlay => {
         overlay.addEventListener('click', function () {
             const modal = this.closest('.modal');
@@ -316,7 +312,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Đóng modal bằng nút Hủy
     document.querySelectorAll('.btn--text').forEach(btn => {
         btn.addEventListener('click', function () {
             const modal = this.closest('.modal');
@@ -324,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ================= CITY DIALOG =================
+    // City Dialog (giữ nguyên)
     const cities = ["Hà Nội","TP. Hồ Chí Minh","Đà Nẵng","Hải Phòng","Cần Thơ","An Giang","Bà Rịa - Vũng Tàu","Bắc Giang","Bắc Kạn","Bạc Liêu","Bắc Ninh","Bến Tre","Bình Định","Bình Dương","Bình Phước","Bình Thuận","Cà Mau","Cao Bằng","Đắk Lắk","Đắk Nông","Điện Biên","Đồng Nai","Đồng Tháp","Gia Lai","Hà Giang","Hà Nam","Hà Tĩnh","Hải Dương","Hậu Giang","Hòa Bình","Hưng Yên","Khánh Hòa","Kiên Giang","Kon Tum","Lai Châu","Lâm Đồng","Lạng Sơn","Lào Cai","Long An","Nam Định","Nghệ An","Ninh Bình","Ninh Thuận","Phú Thọ","Phú Yên","Quảng Bình","Quảng Nam","Quảng Ngãi","Quảng Ninh","Quảng Trị","Sóc Trăng","Sơn La","Tây Ninh","Thái Bình","Thái Nguyên","Thanh Hóa","Thừa Thiên Huế","Tiền Giang","Trà Vinh","Tuyên Quang","Vĩnh Long","Vĩnh Phúc","Yên Bái"];
 
     const cityInput = document.getElementById('city-input');
@@ -358,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ================= EDIT ADDRESS =================
+    // ================= EDIT & ADD =================
     document.querySelectorAll('.edit-address-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             const form = document.getElementById('add-address-form');
@@ -378,7 +373,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Reset form khi thêm mới
     document.querySelectorAll('.user-address__btn, .user-address__link').forEach(btn => {
         btn.addEventListener('click', function () {
             const form = document.getElementById('add-address-form');
@@ -391,11 +385,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ================= SUBMIT FORM =================
+    // ================= SUBMIT FORM - FIX DOUBLE SUBMIT =================
     const addressForm = document.getElementById('add-address-form');
     if (addressForm) {
         addressForm.addEventListener('submit', function (e) {
-            e.preventDefault();
+            e.preventDefault();                     // Ngăn double submit
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
 
             const formData = new FormData(this);
 
@@ -406,15 +402,15 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(res => res.json())
             .then(data => {
                 showToast(data.message, data.success ? 'success' : 'error');
-
                 if (data.success) {
-                    setTimeout(() => {
-                        location.reload();
-                    }, 800);
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    if (submitBtn) submitBtn.disabled = false;
                 }
             })
             .catch(() => {
                 showToast('Lỗi kết nối server', 'error');
+                if (submitBtn) submitBtn.disabled = false;
             });
         });
     }
@@ -440,18 +436,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Radio chọn địa chỉ
+    // ================= RADIO =================
     document.querySelectorAll('input[name="shipping_address_id"]').forEach(radio => {
         radio.addEventListener('change', function () {
             document.getElementById('selected_address').value = this.value;
         });
     });
 
-    // Trigger radio mặc định đầu tiên
     const firstRadio = document.querySelector('input[name="shipping_address_id"]');
     if (firstRadio) {
         firstRadio.checked = true;
         document.getElementById('selected_address').value = firstRadio.value;
+    }
+
+    // ================= SUBMIT TO PAYMENT =================
+    const shippingForm = document.getElementById('shipping-form');
+    if (shippingForm) {
+        shippingForm.addEventListener('submit', function (e) {
+            const selectedId = document.getElementById('selected_address').value;
+            if (!selectedId) {
+                e.preventDefault();
+                showToast('Vui lòng chọn một địa chỉ giao hàng!', 'error');
+            }
+        });
     }
 });
 </script>

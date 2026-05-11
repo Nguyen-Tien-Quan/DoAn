@@ -35,14 +35,12 @@ function getShippingAddresses($user_id) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// Thêm hoặc cập nhật địa chỉ giao hàng
 function addShippingAddress() {
     header('Content-Type: application/json; charset=utf-8');
 
     if (!isset($_SESSION['user'])) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Vui lòng đăng nhập'
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Vui lòng đăng nhập']);
         exit;
     }
 
@@ -56,121 +54,64 @@ function addShippingAddress() {
     $city       = trim($_POST['city'] ?? '');
     $is_default = isset($_POST['is_default']) ? 1 : 0;
 
-    // ================= VALIDATE =================
     if (!$full_name || !$phone || !$address || !$city) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Vui lòng nhập đầy đủ thông tin'
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Vui lòng nhập đầy đủ thông tin']);
         exit;
     }
 
-    // ================= FIX PHONE =================
+    // Fix phone
     $phone = preg_replace('/\D/', '', $phone);
-
-    // convert +84 -> 0
-    if (substr($phone, 0, 2) === '84') {
-        $phone = '0' . substr($phone, 2);
-    }
-
+    if (substr($phone, 0, 2) === '84') $phone = '0' . substr($phone, 2);
     if (!preg_match('/^0[0-9]{9}$/', $phone)) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Số điện thoại phải 10 số và bắt đầu bằng 0'
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Số điện thoại không hợp lệ']);
         exit;
     }
 
     try {
+        $conn->beginTransaction();
 
-        // ================= CHECK DUPLICATE (ONLY ADD) =================
-        $check = $conn->prepare("
-            SELECT id FROM shipping_addresses
-            WHERE user_id = ?
-            AND phone = ?
-            AND address = ?
-            AND city = ?
-        ");
-        $check->execute([$user_id, $phone, $address, $city]);
-
-        $exist = $check->fetchColumn();
-
-        if ($exist && !$address_id) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Địa chỉ này đã tồn tại'
-            ]);
-            exit;
-        }
-
-        // ================= HANDLE DEFAULT =================
+        // Set default
         if ($is_default == 1) {
-            $conn->prepare("
-                UPDATE shipping_addresses
-                SET is_default = 0
-                WHERE user_id = ?
-            ")->execute([$user_id]);
+            $conn->prepare("UPDATE shipping_addresses SET is_default = 0 WHERE user_id = ?")
+                 ->execute([$user_id]);
         }
 
-        // ================= UPDATE =================
         if ($address_id) {
-
+            // UPDATE
             $stmt = $conn->prepare("
                 UPDATE shipping_addresses
-                SET full_name = ?,
-                    phone = ?,
-                    address = ?,
-                    city = ?,
-                    is_default = ?
+                SET full_name = ?, phone = ?, address = ?, city = ?, is_default = ?
                 WHERE id = ? AND user_id = ?
             ");
-
-            $ok = $stmt->execute([
-                $full_name,
-                $phone,
-                $address,
-                $city,
-                $is_default,
-                $address_id,
-                $user_id
-            ]);
-
-            echo json_encode([
-                'success' => $ok,
-                'message' => $ok ? 'Cập nhật địa chỉ thành công' : 'Cập nhật thất bại'
-            ]);
-            exit;
+            $ok = $stmt->execute([$full_name, $phone, $address, $city, $is_default, $address_id, $user_id]);
+            $msg = 'Cập nhật địa chỉ thành công';
+        } else {
+            // INSERT - Cho phép nhiều địa chỉ
+            $stmt = $conn->prepare("
+                INSERT INTO shipping_addresses
+                (user_id, full_name, phone, address, city, is_default, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $ok = $stmt->execute([$user_id, $full_name, $phone, $address, $city, $is_default]);
+            $msg = 'Thêm địa chỉ thành công';
         }
 
-        // ================= INSERT =================
-        $stmt = $conn->prepare("
-            INSERT INTO shipping_addresses
-            (user_id, full_name, phone, address, city, is_default, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
-        ");
+        // Đồng bộ customers
+        $conn->prepare("
+            UPDATE customers
+            SET full_name = ?, phone = ?, address = ?
+            WHERE user_id = ?
+        ")->execute([$full_name, $phone, $address . ', ' . $city, $user_id]);
 
-        $ok = $stmt->execute([
-            $user_id,
-            $full_name,
-            $phone,
-            $address,
-            $city,
-            $is_default
-        ]);
+        $conn->commit();
 
-        echo json_encode([
-            'success' => $ok,
-            'message' => $ok ? 'Thêm địa chỉ thành công' : 'Thêm thất bại'
-        ]);
-        exit;
+        echo json_encode(['success' => true, 'message' => $msg]);
 
     } catch (Exception $e) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Lỗi hệ thống: ' . $e->getMessage()
-        ]);
-        exit;
+        $conn->rollBack();
+        echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
     }
+    exit;
 }
 
 // ---------- ĐẶT HÀNG (từ form shipping → payment) ----------
@@ -271,6 +212,7 @@ function placeOrder() {
     }
 }
 
+// Gửi email khi đặt hàng thành công
 function sendOrderSuccessEmail($order_code, $total, $payment_method = 'cod') {
     if (!class_exists('MailService')) {
         error_log("MailService class not found");
@@ -292,6 +234,7 @@ function sendOrderSuccessEmail($order_code, $total, $payment_method = 'cod') {
     return MailService::send('nguyentienquan1st@gmail.com', 'Đơn hàng mới #' . $order_code, $html);
 }
 
+// tạo đơn hàng qua API (dùng cho trang thanh toán)
 function createOrderAPI() {
     header('Content-Type: application/json');
 
@@ -581,6 +524,7 @@ function createOrderAPI() {
     exit;
 }
 
+// Danh sách đơn hàng của user
 function listOrders() {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (!isset($_SESSION['user'])) {
@@ -618,6 +562,7 @@ function listOrders() {
 
 }
 
+// Chi tiết đơn hàng
 function orderDetail() {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (!isset($_SESSION['user'])) {
@@ -669,6 +614,7 @@ function orderDetail() {
 
 }
 
+// Hủy đơn hàng
 function cancelOrder() {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (!isset($_SESSION['user'])) {
@@ -707,6 +653,8 @@ function cancelOrder() {
     exit;
 }
 
+
+// chạy khi load trang danh sách đơn hàng (dùng cho infinite scroll)
 function loadOrders() {
     if (session_status() === PHP_SESSION_NONE) session_start();
 

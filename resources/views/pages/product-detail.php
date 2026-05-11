@@ -674,6 +674,7 @@ $discountedBasePrice = $finalPrice;
 
                     <!-- Review Tab -->
                     <div class="prod-tab__content" id="tab-review">
+
                         <!-- FILTER -->
                         <div class="review-filter">
                             <a class="<?= $filterStar=='all'?'active':'' ?>" href="<?= $base ?>index.php?url=product&id=<?= $product['id'] ?>&star=all">Tất cả</a>
@@ -712,12 +713,21 @@ $discountedBasePrice = $finalPrice;
                             </div>
                         </div>
 
-                        <!-- REVIEW FORM -->
-                        <?php if(isset($_SESSION['user'])): ?>
+                        <!-- THÔNG BÁO KHI CHƯA MUA HÀNG -->
+                        <?php if(isset($_SESSION['user']) && !$canReview): ?>
+                            <div style="background:#fff3cd; padding:20px; border-radius:12px; margin:20px 0; text-align:center; border:1px solid #ffeaa7;">
+                                <strong>🔒 Bạn chưa mua sản phẩm này.</strong><br>
+                                <small>Chỉ những khách hàng đã từng đặt và nhận hàng mới có thể đánh giá.</small>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- REVIEW FORM - CHỈ HIỂN THỊ KHI ĐÃ ĐĂNG NHẬP VÀ ĐÃ MUA -->
+                        <?php if(isset($_SESSION['user']) && $canReview): ?>
                             <form method="POST" action="<?= $base ?>index.php?url=add-review" class="review-form" enctype="multipart/form-data">
                                 <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+
                                 <div class="review-form__group">
-                                    <label>Đánh giá:</label>
+                                    <label>Đánh giá của bạn:</label>
                                     <div class="star-input">
                                         <?php for($i=5;$i>=1;$i--): ?>
                                             <input type="radio" name="rating" value="<?= $i ?>" id="star<?= $i ?>" required>
@@ -725,16 +735,24 @@ $discountedBasePrice = $finalPrice;
                                         <?php endfor; ?>
                                     </div>
                                 </div>
+
                                 <div class="review-form__group">
-                                    <textarea name="comment" rows="3" required placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."></textarea>
+                                    <textarea name="comment" rows="4" required placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."></textarea>
                                 </div>
+
                                 <div class="review-form__group">
-                                    <label>Ảnh thực tế (tuỳ chọn):</label>
+                                    <label>Ảnh thực tế (tối đa 5 ảnh):</label>
                                     <input type="file" name="images[]" multiple accept="image/*">
                                 </div>
+
                                 <div class="review-images" id="previewImages"></div>
-                                <button class="btn btn--primary">Gửi đánh giá</button>
+
+                                <button type="submit" class="btn btn--primary">Gửi đánh giá</button>
                             </form>
+                        <?php elseif(!isset($_SESSION['user'])): ?>
+                            <div class="review-form" style="text-align:center; padding:25px; background:#f8f9fa; border-radius:12px;">
+                                <p>Vui lòng <a href="<?= $base ?>index.php?url=login" style="color:#ff4d4f; font-weight:600;">đăng nhập</a> để đánh giá sản phẩm.</p>
+                            </div>
                         <?php endif; ?>
 
                         <!-- REVIEW LIST -->
@@ -746,16 +764,11 @@ $discountedBasePrice = $finalPrice;
                                 </div>
                                 <div class="review-card__top">
                                     <?php
-                                        $avatar = !empty($rev['avatar'])
-                                            ? $rev['avatar']
-                                            : 'avatar-default.png';
-                                        ?>
-
-                                        <img
-                                            src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($avatar) ?>"
-                                            class="review-card__avatar"
-                                            onerror="this.src='<?= $base ?>assets/img/avatars/avatar-default.png'"
-                                        >
+                                        $avatar = !empty($rev['avatar']) ? $rev['avatar'] : 'avatar-default.png';
+                                    ?>
+                                    <img src="<?= $base ?>assets/img/avatars/<?= htmlspecialchars($avatar) ?>"
+                                        class="review-card__avatar"
+                                        onerror="this.src='<?= $base ?>assets/img/avatars/avatar-default.png'">
                                     <div class="review-card__info">
                                         <div class="review-card__name"><?= htmlspecialchars($rev['full_name']) ?></div>
                                         <div class="review-card__stars">
@@ -767,19 +780,22 @@ $discountedBasePrice = $finalPrice;
                                     </div>
                                 </div>
                                 <div class="review-card__content"><?= nl2br(htmlspecialchars($rev['comment'])) ?></div>
+
                                 <?php if(!empty($rev['images'])): ?>
                                     <div class="review-images">
                                         <?php foreach(explode(',', $rev['images']) as $img): ?>
-                                            <img src="<?= $base ?>uploads/review/<?= $img ?>">
+                                            <img src="<?= $base ?>uploads/review/<?= trim($img) ?>">
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
                             <?php endforeach; ?>
                         </div>
+
                         <?php if(empty($reviewsShow)): ?>
                             <div class="review-empty">Chưa có đánh giá nào 😢</div>
                         <?php endif; ?>
+
                     </div>
 
                     <!-- SIMILAR -->
@@ -894,7 +910,7 @@ $discountedBasePrice = $finalPrice;
 </main>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
 
     // ===== TOAST =====
     function showToast(message, type = 'error') {
@@ -1044,25 +1060,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ===== LIKE REVIEW =====
     window.likeReview = function (id, el) {
-        fetch("index.php?url=like-review&id=" + id)
+        fetch("index.php?url=like-review&id=" + id, { method: 'POST' })
             .then(res => res.text())
             .then(data => {
-                el.innerText = "👍 Đã thích (" + data + ")";
-            });
+                el.innerHTML = `👍 Đã thích (${data})`;
+            })
+            .catch(() => showToast("Không thể like lúc này", "error"));
     };
 
     // ===== PREVIEW IMAGE =====
     const input = document.querySelector('input[name="images[]"]');
     const preview = document.getElementById('previewImages');
 
-    if (input) {
+    if (input && preview) {
         input.addEventListener('change', function () {
             preview.innerHTML = '';
-            [...this.files].forEach(file => {
+            [...this.files].slice(0, 5).forEach(file => {   // giới hạn 5 ảnh
                 const reader = new FileReader();
                 reader.onload = e => {
                     const img = document.createElement('img');
                     img.src = e.target.result;
+                    img.style.width = '80px';
+                    img.style.height = '80px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '8px';
                     preview.appendChild(img);
                 };
                 reader.readAsDataURL(file);

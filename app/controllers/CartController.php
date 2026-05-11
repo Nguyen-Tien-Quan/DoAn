@@ -1,6 +1,7 @@
 <?php
 
 // ==================== CART ====================
+// 👉 Thêm vào giỏ hàng
 function addToCart()
 {
     if (session_status() === PHP_SESSION_NONE) {
@@ -212,6 +213,8 @@ function addToCart()
     header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
     exit;
 }
+
+// 👉 Cập nhật giỏ hàng (tăng/giảm số lượng)
 function updateCart()
 {
     if (session_status() === PHP_SESSION_NONE) {
@@ -264,6 +267,7 @@ function updateCart()
     exit;
 }
 
+// 👉 Xóa 1 sản phẩm khỏi giỏ hàng
 function removeCart()
 {
     if (session_status() === PHP_SESSION_NONE) {
@@ -282,6 +286,7 @@ function removeCart()
     exit;
 }
 
+// 👉 Xóa tất cả giỏ hàng
 function removeAllCart()
 {
     if (session_status() === PHP_SESSION_NONE) {
@@ -296,6 +301,7 @@ function removeAllCart()
     exit;
 }
 
+// 👉 Lấy thông tin giỏ hàng
 function getCart($asJson = true) {
     $data = [
         'items' => $_SESSION['cart'] ?? [],
@@ -318,6 +324,7 @@ function getCart($asJson = true) {
     return $data; // ✅ QUAN TRỌNG
 }
 
+// 👉 Lấy thông tin giỏ hàng (dành cho trang checkout)
 function getCartItems($user_id) {
     $conn = getDB();
     $stmt = $conn->prepare("
@@ -331,6 +338,7 @@ function getCartItems($user_id) {
     return $stmt->fetchAll();
 }
 
+// 👉 Lưu sản phẩm yêu thích (thêm vào favorite và xóa khỏi cart)
 function saveToFavorite()
 {
     if (session_status() === PHP_SESSION_NONE) session_start();
@@ -363,6 +371,7 @@ function saveToFavorite()
     exit;
 }
 
+// 👉 Thêm tất cả sản phẩm yêu thích vào giỏ hàng
 function addFavoriteToCart()
 {
     if (session_status() === PHP_SESSION_NONE) session_start();
@@ -410,6 +419,7 @@ function addFavoriteToCart()
 
 // ==================== COUPON (VOUCHER) ====================
 
+// 👉 Lấy danh sách mã giảm giá đang hoạt động
 function getActiveCoupons() {
     header('Content-Type: application/json');
     $conn = getDB();
@@ -442,6 +452,8 @@ function getActiveCoupons() {
     ]);
     exit;
 }
+
+// 👉 Áp dụng mã giảm giá
 function applyCoupon() {
     header('Content-Type: application/json');
 
@@ -531,6 +543,8 @@ function applyCoupon() {
     ]);
     exit;
 }
+
+// 👉 Xóa mã giảm giá
 function clearCoupon() {
     if (session_status() === PHP_SESSION_NONE) session_start();
     unset($_SESSION['discount'], $_SESSION['coupon_code'], $_SESSION['coupon_data']);

@@ -1,5 +1,14 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+
+// Lấy danh sách FAQ từ database
+$faqs = [];
+if (isset($db)) {
+    $stmt = $db->query("SELECT * FROM support_articles
+                       WHERE status = 1
+                       ORDER BY sort_order ASC, id DESC");
+    $faqs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 
 <style>
@@ -10,26 +19,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     --text-main: #111827;
     --text-sub: #6b7280;
     --text-faq: #4b5563;
-
     --primary: linear-gradient(45deg, #4f46e5, #9333ea);
     --shadow-1: rgba(0,0,0,0.08);
     --shadow-2: rgba(0,0,0,0.12);
 }
 
-/* ===== DARK MODE ===== */
 html.dark {
     --bg-page: linear-gradient(135deg, #1e2230, #151821);
     --card-bg: #2a2f3c;
     --text-main: #ffffff;
     --text-sub: #b9babe;
     --text-faq: #d1d5db;
-
     --primary: linear-gradient(45deg, #6366f1, #8b5cf6);
-    --shadow-1: rgba(0,0,0,0.3);
-    --shadow-2: rgba(0,0,0,0.5);
 }
 
-/* ===== BACKGROUND ===== */
+/* ===== PAGE ===== */
 .page-support {
     padding: 50px 0;
     background: var(--bg-page);
@@ -42,7 +46,6 @@ html.dark {
     text-align: center;
     margin-bottom: 50px;
 }
-
 .page-header h1 {
     font-size: 36px;
     font-weight: 700;
@@ -50,7 +53,6 @@ html.dark {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
-
 .page-header p {
     color: var(--text-sub);
     font-size: 15px;
@@ -74,27 +76,10 @@ html.dark {
     position: relative;
     overflow: hidden;
 }
-
-.support-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 20px;
-    padding: 1px;
-    background: var(--primary);
-    -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-}
-
 .support-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 20px 40px var(--shadow-2);
 }
-
-/* ===== ICON ===== */
 .support-icon {
     width: 60px;
     height: 60px;
@@ -107,21 +92,11 @@ html.dark {
     color: #fff;
     font-size: 24px;
 }
-
-/* ===== TEXT ===== */
-.support-card h3 {
-    font-size: 20px;
-    margin-bottom: 10px;
-}
-
-.support-card p {
-    color: var(--text-sub);
-    font-size: 14px;
-    margin-bottom: 12px;
-}
+.support-card h3 { font-size: 20px; margin-bottom: 10px; }
+.support-card p { color: var(--text-sub); font-size: 14px; margin-bottom: 12px; }
 
 /* ===== BUTTON ===== */
-.btn {
+.btns {
     display: inline-block;
     padding: 12px 22px;
     border-radius: 999px;
@@ -130,13 +105,11 @@ html.dark {
     text-decoration: none;
     transition: 0.25s;
 }
-
-.btn-primary {
+.btns-primary {
     background: var(--primary);
     color: #fff;
 }
-
-.btn-primary:hover {
+.btns-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(79,70,229,0.4);
 }
@@ -148,12 +121,19 @@ html.dark {
     margin-left: auto;
     margin-right: auto;
 }
-
 .faq-section h2 {
     text-align: center;
     margin-bottom: 25px;
 }
-
+.faq-search {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto 30px;
+    padding: 14px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 50px;
+    font-size: 16px;
+}
 .faq-item {
     background: var(--card-bg);
     border-radius: 14px;
@@ -161,7 +141,6 @@ html.dark {
     box-shadow: 0 5px 15px var(--shadow-1);
     overflow: hidden;
 }
-
 .faq-item summary {
     padding: 15px 18px;
     cursor: pointer;
@@ -169,93 +148,20 @@ html.dark {
     list-style: none;
     position: relative;
 }
-
 .faq-item summary::after {
     content: "+";
     position: absolute;
     right: 20px;
 }
-
 .faq-item[open] summary::after {
     content: "-";
 }
-
 .faq-item p {
     padding: 0 18px 15px;
     color: var(--text-faq);
 }
-</style>
 
-<main class="container page-support">
-
-    <!-- HEADER -->
-    <div class="page-header">
-        <h1>🎧 Trung tâm hỗ trợ</h1>
-        <p>Chúng tôi luôn sẵn sàng hỗ trợ bạn 24/7</p>
-    </div>
-
-    <!-- GRID -->
-    <div class="support-grid">
-
-        <!-- CHAT -->
-        <div class="support-card">
-            <div class="support-icon">💬</div>
-            <h3>Chat trực tuyến</h3>
-            <p>Nhận hỗ trợ ngay lập tức từ nhân viên</p>
-            <a href="#" class="btn btn-primary" onclick="openChat()">Chat ngay</a>
-        </div>
-
-        <!-- EMAIL -->
-        <div class="support-card">
-            <div class="support-icon">📧</div>
-            <h3>Email hỗ trợ</h3>
-            <p>support@trqshop.com</p>
-            <p>Phản hồi trong 24 giờ</p>
-            <a href="mailto:support@trqshop.com" class="btn btn-primary">Gửi email</a>
-        </div>
-
-        <!-- PHONE -->
-        <div class="support-card">
-            <div class="support-icon">📞</div>
-            <h3>Hotline</h3>
-            <p>1900 1234</p>
-            <p>8:00 - 21:00 mỗi ngày</p>
-        </div>
-
-    </div>
-
-    <!-- FAQ -->
-    <div class="faq-section">
-        <h2>❓ Câu hỏi thường gặp</h2>
-
-        <details class="faq-item">
-            <summary>Làm sao để đặt hàng?</summary>
-            <p>Chọn sản phẩm → Thêm vào giỏ → Thanh toán → Xác nhận đơn.</p>
-        </details>
-
-        <details class="faq-item">
-            <summary>Phí vận chuyển?</summary>
-            <p>10.000đ với đơn dưới 200k, miễn phí từ 200k.</p>
-        </details>
-
-    </div>
-
-</main>
-<!-- ===== FLOAT CHAT BUTTON ===== -->
-<div id="chat-toggle">💬</div>
-
-<!-- ===== CHAT BOX ===== -->
-<div id="chat-box">
-    <div class="chat-header">
-        Hỗ trợ
-        <span onclick="toggleChat()">✖</span>
-    </div>
-    <div id="chat-content" class="chat-content"></div>
-    <input id="chat-input" class="chat-input" placeholder="Nhập tin nhắn...">
-</div>
-
-<style>
-/* ===== CHAT FLOAT BUTTON ===== */
+/* ===== CHAT ===== */
 #chat-toggle {
     position: fixed;
     bottom: 110px;
@@ -273,8 +179,6 @@ html.dark {
     z-index: 9999;
     box-shadow: 0 10px 25px rgba(0,0,0,0.25);
 }
-
-/* ===== CHAT BOX ===== */
 #chat-box {
     position: fixed;
     bottom: 180px;
@@ -289,8 +193,6 @@ html.dark {
     overflow: hidden;
     z-index: 9999;
 }
-
-/* HEADER */
 .chat-header {
     background: linear-gradient(45deg, #4f46e5, #9333ea);
     color: #fff;
@@ -299,16 +201,12 @@ html.dark {
     display: flex;
     justify-content: space-between;
 }
-
-/* CONTENT */
 .chat-content {
     flex: 1;
     padding: 10px;
     overflow-y: auto;
     background: #f9fafb;
 }
-
-/* MESSAGE */
 .chat-msg {
     padding: 8px 12px;
     background: #e5e7eb;
@@ -316,8 +214,6 @@ html.dark {
     margin-bottom: 6px;
     display: inline-block;
 }
-
-/* INPUT */
 .chat-input {
     border: none;
     border-top: 1px solid #eee;
@@ -327,51 +223,133 @@ html.dark {
 }
 </style>
 
+<main class="container page-support">
+
+    <!-- HEADER -->
+    <div class="page-header">
+        <h1>🎧 Trung tâm hỗ trợ</h1>
+        <p>Chúng tôi luôn sẵn sàng hỗ trợ bạn 24/7</p>
+    </div>
+
+    <!-- GRID -->
+    <div class="support-grid">
+        <div class="support-card">
+            <div class="support-icon">💬</div>
+            <h3>Chat trực tuyến</h3>
+            <p>Nhận hỗ trợ ngay lập tức từ nhân viên</p>
+            <a href="#" class="btns btns-primary" onclick="openChat()">Chat ngay</a>
+        </div>
+
+        <div class="support-card">
+            <div class="support-icon">📧</div>
+            <h3>Email hỗ trợ</h3>
+            <p>support@trqshop.com</p>
+            <p>Phản hồi trong 24 giờ</p>
+            <a href="mailto:support@trqshop.com" class="btns btns-primary">Gửi email</a>
+        </div>
+
+        <div class="support-card">
+            <div class="support-icon">📞</div>
+            <h3>Hotline</h3>
+            <p>1900 1234</p>
+            <p>8:00 - 21:00 mỗi ngày</p>
+        </div>
+    </div>
+
+    <!-- TRA CỨU ĐƠN HÀNG -->
+    <div style="max-width:600px; margin:40px auto; background:var(--card-bg); padding:25px; border-radius:16px; box-shadow:0 10px 30px var(--shadow-1);">
+        <h3 style="text-align:center; margin-bottom:15px;">🔍 Tra cứu đơn hàng</h3>
+        <input type="text" id="order_code" placeholder="Nhập mã đơn hàng (ORD001)" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd;">
+        <button onclick="trackOrder()" class="btns btns-primary" style="width:100%; margin-top:10px;">Tra cứu</button>
+        <div id="order-result" style="margin-top:15px;"></div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section">
+        <h2>❓ Câu hỏi thường gặp</h2>
+        <input type="text" id="faq-search" class="faq-search" placeholder="🔎 Tìm kiếm câu hỏi...">
+
+        <?php foreach($faqs as $faq): ?>
+        <details class="faq-item">
+            <summary><?= htmlspecialchars($faq['question']) ?></summary>
+            <p><?= nl2br(htmlspecialchars($faq['answer'])) ?></p>
+        </details>
+        <?php endforeach; ?>
+
+        <?php if(empty($faqs)): ?>
+        <p style="text-align:center; color:#888;">Chưa có câu hỏi thường gặp.</p>
+        <?php endif; ?>
+    </div>
+
+</main>
+
+<!-- FLOAT CHAT BUTTON -->
+<div id="chat-toggle">💬</div>
+
+<!-- CHAT BOX -->
+<div id="chat-box">
+    <div class="chat-header">
+        Hỗ trợ
+        <span onclick="toggleChat()">✖</span>
+    </div>
+    <div id="chat-content" class="chat-content"></div>
+    <input id="chat-input" class="chat-input" placeholder="Nhập tin nhắn...">
+</div>
+
 <script>
-// toggle chat
+// Tra cứu đơn hàng
+async function trackOrder() {
+    const code = document.getElementById('order_code').value.trim();
+    const result = document.getElementById('order-result');
+    if (!code) {
+        result.innerHTML = `<div style="color:red;">Vui lòng nhập mã đơn hàng!</div>`;
+        return;
+    }
+    try {
+        const res = await fetch('index.php?url=track-order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `order_code=${encodeURIComponent(code)}`
+        });
+        const data = await res.json();
+        if (data.success) {
+            result.innerHTML = `<div style="background:#d1fae5;color:#065f46;padding:12px;border-radius:8px;">${data.message}</div>`;
+        } else {
+            result.innerHTML = `<div style="background:#fee2e2;color:#b91c1c;padding:12px;border-radius:8px;">${data.message}</div>`;
+        }
+    } catch(e) {
+        result.innerHTML = `<div style="color:red;">Lỗi kết nối!</div>`;
+    }
+}
+
+// Chat functions
 function toggleChat() {
     const box = document.getElementById('chat-box');
     box.style.display = (box.style.display === 'flex') ? 'none' : 'flex';
 }
-
-// mở từ nút "Chat ngay"
 function openChat() {
     document.getElementById('chat-box').style.display = 'flex';
-    loadChat();
 }
-
-// click icon
 document.getElementById('chat-toggle').onclick = toggleChat;
 
-// gửi tin nhắn
+// Chat input
 document.getElementById('chat-input').addEventListener('keypress', function(e){
     if(e.key === 'Enter'){
         let msg = this.value.trim();
         if(!msg) return;
-
-        fetch('index.php?url=support-chat', {
-            method:'POST',
-            headers:{'Content-Type':'application/x-www-form-urlencoded'},
-            body:`message=${encodeURIComponent(msg)}`
-        }).then(()=> loadChat());
-
+        const content = document.getElementById('chat-content');
+        content.innerHTML += `<div class="chat-msg" style="background:#4f46e5;color:white;">${msg}</div>`;
         this.value = '';
+        content.scrollTop = content.scrollHeight;
     }
 });
 
-// load chat
-function loadChat(){
-    fetch('index.php?url=support-get')
-    .then(res=>res.json())
-    .then(data=>{
-        let html='';
-        data.forEach(m=>{
-            html += `<div class="chat-msg">${m}</div>`;
-        });
-        document.getElementById('chat-content').innerHTML = html;
+// Tìm kiếm FAQ
+document.getElementById('faq-search').addEventListener('input', function(){
+    let term = this.value.toLowerCase();
+    document.querySelectorAll('.faq-item').forEach(item => {
+        let q = item.querySelector('summary').textContent.toLowerCase();
+        item.style.display = q.includes(term) ? '' : 'none';
     });
-}
-
-// auto refresh
-setInterval(loadChat, 2000);
+});
 </script>

@@ -1,7 +1,5 @@
 <?php
 require_once __DIR__ . '/../../../config/database.php';
-
-
 function getFlash($key) {
     if (!empty($_SESSION[$key])) {
         $msg = $_SESSION[$key];
@@ -11,7 +9,6 @@ function getFlash($key) {
     return '';
 }
 
-// lấy dữ liệu chung cho dashboard
 function getDashboardData() {
     $pdo = getDB();
 
@@ -47,7 +44,6 @@ function getDashboardData() {
     ];
 }
 
-// đảm bảo bảng voucher tồn tại
 function ensureVoucherTable() {
     $conn = getDB();
     // Bảng vouchers
@@ -78,7 +74,6 @@ function ensureVoucherTable() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 }
 
-// lấy danh sách voucher với phân trang và filter
 function getVouchers($page = 1, $limit = 15, $filters = []) {
     $conn = getDB();
     $offset = ($page - 1) * $limit;
@@ -128,7 +123,6 @@ function getVouchers($page = 1, $limit = 15, $filters = []) {
     ];
 }
 
-// thêm voucher mới
 function handleAddVoucher() {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         header('Location: admin.php?url=vouchers');
@@ -161,7 +155,6 @@ function handleAddVoucher() {
     exit;
 }
 
-// vô hiệu mã (soft delete)
 function handleDeleteVoucher() {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
@@ -174,7 +167,6 @@ function handleDeleteVoucher() {
     exit;
 }
 
-// kích hoạt lại mã
 function handleRestoreVoucher() {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
@@ -187,7 +179,6 @@ function handleRestoreVoucher() {
     exit;
 }
 
-// kiểm tra xem user đã favorite sản phẩm chưa
 function handleEditVoucher() {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         header('Location: admin.php?url=vouchers');
@@ -235,7 +226,6 @@ function handleEditVoucher() {
     exit;
 }
 
-// xóa vĩnh viễn mã (hard delete) - chỉ khi chưa từng được sử dụng
 function handleHardDeleteVoucher() {
     $id = (int)($_GET['id'] ?? 0);
     if ($id <= 0) return;

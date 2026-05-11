@@ -1,7 +1,5 @@
 <?php
 $base = '/DoAn/DoAnTotNghiep/public/';
-
-
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -3,6 +3,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+
+// phân trang sản phẩm với bộ lọc
 function pagination() {
     $conn = getDB();
 
@@ -29,12 +31,14 @@ function pagination() {
     ];
 }
 
+// Lấy tất cả sản phẩm (không phân trang, dùng cho trang chủ)
 function getProducts() {
     $conn = getDB();
     $stmt = $conn->query("SELECT * FROM products");
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// Lấy sản phẩm theo ID (dùng cho trang chi tiết)
 function getProductById($id) {
     $conn = getDB();
 
@@ -59,6 +63,7 @@ function getProductById($id) {
     return $product;
 }
 
+// Lấy sản phẩm theo slug (dùng cho trang chi tiết)
 function getReviewsByProductId($productId) {
     $conn = getDB();
 
@@ -74,6 +79,7 @@ function getReviewsByProductId($productId) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// Lấy đánh giá trung bình của sản phẩm
 function getAverageRating($productId) {
     $conn = getDB();
 
@@ -88,6 +94,7 @@ function getAverageRating($productId) {
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+// lấy size (variant) theo id sản phẩm
 function getVariantsByProductId($productId) {
     $conn = getDB();
     $stmt = $conn->prepare("
@@ -98,19 +105,7 @@ function getVariantsByProductId($productId) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function getToppingsByProductId($productId) {
-    $conn = getDB();
-
-    $stmt = $conn->prepare("
-        SELECT t.*
-        FROM toppings t
-        JOIN product_toppings pt ON t.id = pt.topping_id
-        WHERE pt.product_id = ? AND t.status = 1
-    ");
-    $stmt->execute([$productId]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
+// lấy size (variant) theo id
 function getVariantById($id) {
     $conn = getDB();
 
@@ -128,6 +123,28 @@ function getVariantById($id) {
     return $variant;
 }
 
+// Lấy tất cả variant (size) có trong hệ thống
+function getAllVariants() {
+    $conn = getDB();
+    $stmt = $conn->query("SELECT DISTINCT variant_name FROM product_variants ORDER BY variant_name");
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+// Lấy topping theo product_id
+function getToppingsByProductId($productId) {
+    $conn = getDB();
+
+    $stmt = $conn->prepare("
+        SELECT t.*
+        FROM toppings t
+        JOIN product_toppings pt ON t.id = pt.topping_id
+        WHERE pt.product_id = ? AND t.status = 1
+    ");
+    $stmt->execute([$productId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Lấy topping theo id
 function getToppingById($id) {
     $conn = getDB();
 
@@ -139,6 +156,7 @@ function getToppingById($id) {
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+// Thêm review mới
 function addReview() {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
@@ -207,6 +225,27 @@ function addReview() {
     exit;
 }
 
+/**
+ * Kiểm tra user đã từng mua sản phẩm này chưa
+ */
+function hasUserPurchasedProduct($userId, $productId) {
+    if (!$userId || !$productId) return false;
+
+    $conn = getDB();
+    $stmt = $conn->prepare("
+        SELECT COUNT(DISTINCT o.id)
+        FROM orders o
+        JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.user_id = ?
+          AND oi.product_id = ?
+          AND o.status IN ('completed', 'delivering', 'ready_for_delivery', 'confirmed')
+    ");
+    $stmt->execute([$userId, $productId]);
+
+    return $stmt->fetchColumn() > 0;
+}
+
+// lấy danh mục
 function getCategories() {
     $conn = getDB();
     $stmt = $conn->query("SELECT * FROM categories ORDER BY id ASC");
@@ -339,12 +378,7 @@ function countFilteredProducts($filters = []) {
     return $stmt->fetchColumn();
 }
 
-function getAllVariants() {
-    $conn = getDB();
-    $stmt = $conn->query("SELECT DISTINCT variant_name FROM product_variants ORDER BY variant_name");
-    return $stmt->fetchAll(PDO::FETCH_COLUMN);
-}
-
+// lấy sản phâm theo category_id (dùng cho trang danh mục)
 function getProductsByCategoryId($categoryId, $limit = 4) {
     $conn = getDB();
     $limit = (int)$limit;
@@ -448,6 +482,7 @@ function getAllCategoriesWithDepth() {
     return $flat;
 }
 
+// Hàm xây dựng cây danh mục
 function buildCatTree(array $elements, $parentId = null) {
     $branch = [];
     foreach ($elements as $el) {
@@ -462,6 +497,7 @@ function buildCatTree(array $elements, $parentId = null) {
     return $branch;
 }
 
+// Hàm trải phẳng cây danh mục kèm depth
 function flattenCatTree(array $tree, array &$result, $depth) {
     foreach ($tree as $node) {
         $result[] = [
@@ -475,7 +511,7 @@ function flattenCatTree(array $tree, array &$result, $depth) {
     }
 }
 
-
+// Lấy danh mục cha (dùng cho header)
 function getParentCategories() {
     $conn = getDB();
     // Lấy id của danh mục gốc "Thực đơn"
@@ -494,8 +530,6 @@ function getParentCategories() {
     $stmt->execute([$rootId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
-
 
 // ================== THÊM MỚI: LẤY KHUYẾN MÃI ĐANG DIỄN RA ==================
 function getActivePromotion()

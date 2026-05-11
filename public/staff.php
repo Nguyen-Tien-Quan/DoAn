@@ -13,7 +13,7 @@ if (!isset($_SESSION['user'])) {
 }
 
 // ======================
-// ROLE CHECK
+// ROLE CHECK (Chỉ Admin & Staff)
 // ======================
 if (!in_array($_SESSION['user']['role_id'], [1, 2])) {
     header('Location: ../index.php');
@@ -24,9 +24,10 @@ if (!in_array($_SESSION['user']['role_id'], [1, 2])) {
 // CONTROLLER
 // ======================
 require_once __DIR__ . '/../app/controllers/Staff/OrderController.php';
+require_once __DIR__ . '/../app/controllers/Staff/DashboardController.php';
 
 // ======================
-// VIEW HELPER (FIX ĐÃ ĐỔI orders.php)
+// VIEW HELPER
 // ======================
 function view($name, $data = [])
 {
@@ -55,15 +56,44 @@ switch ($url) {
     // DASHBOARD
     // ======================
     case 'dashboard':
-        $view = view('dashboard', []);
+        if (isset($_GET['export'])) {
+            require_once __DIR__ . '/../resources/views/pages/admin/includes/functions.php';
+            exportReportCSV();
+            exit;
+        }
+
+        $data = getDashboardData();
+        $totalOrders    = $data['totalOrders'];
+        $totalProducts  = $data['totalProducts'];
+        $totalCustomers = $data['totalCustomers'];
+        $totalRevenue   = $data['totalRevenue'];
+        $pendingOrders  = $data['pendingOrders'];
+        $lowStock       = $data['lowStock'];
+
+        // Báo cáo
+        require_once __DIR__ . '/../resources/views/pages/admin/includes/functions.php';
+        $reportData = getReportData();
+        $start_date = $reportData['start_date'];
+        $end_date   = $reportData['end_date'];
+        $report_type = $reportData['report_type'];
+        $revenue    = $reportData['revenue'];
+        $orders     = $reportData['orders'];
+        $month      = $reportData['month'];
+        $year       = $reportData['year'];
+        $type = $_GET['type'] ?? 'day';
+        $chartData = getRevenueChart($type);
+        $topProducts = getTopProducts();
+        $compare = getRevenueCompare();
+
+        $view = view('dashboard');
         break;
 
+
     // ======================
-    // ORDERS (CHỈ DÙNG orders.php)
+    // DANH SÁCH ĐƠN HÀNG
     // ======================
     case 'orders':
-
-        $page = $_GET['page'] ?? 1;
+        $page = (int)($_GET['page'] ?? 1);
         $status = $_GET['status'] ?? '';
 
         $result = staffGetOrders($page, 10, $status);
@@ -72,70 +102,69 @@ switch ($url) {
         $totalPages = $result['totalPages'] ?? 1;
         $currentPage = $page;
 
-        // 👉 FIX QUAN TRỌNG: chỉ orders.php
         $view = view('orders', [
-            'orders' => $orders,
-            'totalPages' => $totalPages,
-            'currentPage' => $currentPage,
-            'status' => $status
+            'orders'       => $orders,
+            'totalPages'   => $totalPages,
+            'currentPage'  => $currentPage,
+            'status'       => $status
         ]);
         break;
 
+
     // ======================
-    // ORDER DETAIL (vẫn dùng orders.php nếu muốn)
+    // CHI TIẾT ĐƠN HÀNG (AJAX - JSON cho Modal)
     // ======================
     case 'order-detail':
+        header('Content-Type: application/json');
 
-        $id = $_GET['id'] ?? 0;
+        $id = (int)($_GET['id'] ?? 0);
+
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID đơn hàng không hợp lệ']);
+            exit;
+        }
 
         $data = staffGetOrderDetail($id);
 
         if (!$data || !isset($data['order'])) {
-            echo "Không tìm thấy đơn";
+            echo json_encode([
+                'success' => false,
+                'message' => 'Không tìm thấy đơn hàng'
+            ]);
             exit;
         }
 
-        $view = view('orders', [
-            'order_detail' => $data['order'],
-            'items' => $data['items'] ?? []
+        echo json_encode([
+            'success' => true,
+            'order'   => $data['order'],
+            'items'   => $data['items'] ?? []
         ]);
-        break;
+        exit;
+
 
     // ======================
-    // UPDATE STATUS
+    // CẬP NHẬT TRẠNG THÁI
     // ======================
     case 'order-update':
-
         header('Content-Type: application/json');
 
-        $order_id = $_POST['order_id'] ?? 0;
-        $status = $_POST['status'] ?? '';
+        $order_id = (int)($_POST['order_id'] ?? 0);
+        $status   = $_POST['status'] ?? '';
+
+        if ($order_id <= 0 || empty($status)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin']);
+            exit;
+        }
 
         echo json_encode(staffUpdateOrderStatus($order_id, $status));
         exit;
 
-    // ======================
-    // CANCEL ORDER
-    // ======================
-    case 'order-cancel':
-
-        header('Content-Type: application/json');
-
-        $order_id = $_POST['order_id'] ?? 0;
-
-        echo json_encode(staffCancelOrder($order_id));
-        exit;
 
     // ======================
     // DEFAULT
     // ======================
     default:
-        $view = view('orders', [
-            'orders' => [],
-            'totalPages' => 1,
-            'currentPage' => 1,
-            'status' => ''
-        ]);
+        $view = view('dashboard');
         break;
 }
 

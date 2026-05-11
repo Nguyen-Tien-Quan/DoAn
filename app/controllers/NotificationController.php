@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../config/database.php';
 
 // ==================== CÁC HÀM XỬ LÝ DB ====================
 
+
+// Lấy danh sách thông báo của user
 function getNotifications($userId, $limit = 20) {
     $conn = getDB();
     $stmt = $conn->prepare("
@@ -21,6 +23,8 @@ function getNotifications($userId, $limit = 20) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+
+// Đếm số thông báo chưa đọc của user
 function countUnreadNotifications($userId) {
     $conn = getDB();
     $stmt = $conn->prepare("
@@ -31,6 +35,7 @@ function countUnreadNotifications($userId) {
     return (int)$stmt->fetchColumn();
 }
 
+// Đánh dấu 1 thông báo là đã đọc
 function markNotificationAsRead($notiId, $userId) {
     $conn = getDB();
     $stmt = $conn->prepare("
@@ -40,6 +45,7 @@ function markNotificationAsRead($notiId, $userId) {
     return $stmt->execute([$notiId, $userId]);
 }
 
+// Đánh dấu tất cả thông báo của user là đã đọc
 function markAllNotificationsAsRead($userId) {
     $conn = getDB();
     $stmt = $conn->prepare("
@@ -51,6 +57,7 @@ function markAllNotificationsAsRead($userId) {
 
 // ==================== XỬ LÝ API (JSON) ====================
 
+// Xử lý API cho phần notification (dùng cho header)
 function handleNotificationApi() {
     if (!isset($_SESSION['user'])) {
         http_response_code(401);
@@ -93,6 +100,8 @@ function handleNotificationApi() {
 
 // ==================== HIỂN THỊ TRANG DANH SÁCH ====================
 
+
+// Hiển thị trang danh sách thông báo
 function showNotificationsPage() {
     if (!isset($_SESSION['user'])) {
         header("Location: index.php?url=login");
@@ -110,4 +119,5 @@ function showNotificationsPage() {
     // Trả về đường dẫn tuyệt đối đến file view
     return __DIR__ . '/../../resources/views/pages/notifications.php';
 }
+
 ?>

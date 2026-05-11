@@ -169,6 +169,9 @@ function deletePayment(PDO $conn, int $payment_id) {
     return $stmt->rowCount();
 }
 
+/**
+ * Tạo thanh toán VNPay (chuyển hướng sang VNPay)
+ */
 function createVNPayPayment() {
 
     if (!isset($_GET['order_id']) || !isset($_GET['amount'])) {
@@ -571,78 +574,78 @@ function vnpayReturn() {
     }
 }
 
-// ====================== MOMO PAYMENT ======================
-function createMoMoPayment() {
-    if (!isset($_GET['order_id']) || !isset($_GET['amount'])) {
-        header("Location: index.php?url=home");
-        exit;
-    }
+// // ====================== MOMO PAYMENT ======================
+// function createMoMoPayment() {
+//     if (!isset($_GET['order_id']) || !isset($_GET['amount'])) {
+//         header("Location: index.php?url=home");
+//         exit;
+//     }
 
-    $order_id   = (int)$_GET['order_id'];
-    $amount     = (int)$_GET['amount'];
-    $order_code = $_GET['order_code'] ?? 'ORD' . time();
+//     $order_id   = (int)$_GET['order_id'];
+//     $amount     = (int)$_GET['amount'];
+//     $order_code = $_GET['order_code'] ?? 'ORD' . time();
 
-    // ================== CẤU HÌNH MOMO SANDBOX ==================
-    $endpoint = "https://test-payment.momo.vn/v2/gateway/api/create";
+//     // ================== CẤU HÌNH MOMO SANDBOX ==================
+//     $endpoint = "https://test-payment.momo.vn/v2/gateway/api/create";
 
-    $partnerCode = 'YOUR_MOMO_PARTNER_CODE';        // ← Thay bằng code của bạn
-    $accessKey   = 'YOUR_MOMO_ACCESS_KEY';          // ← Thay bằng Access Key
-    $secretKey   = 'YOUR_MOMO_SECRET_KEY';          // ← Thay bằng Secret Key
+//     $partnerCode = 'YOUR_MOMO_PARTNER_CODE';        // ← Thay bằng code của bạn
+//     $accessKey   = 'YOUR_MOMO_ACCESS_KEY';          // ← Thay bằng Access Key
+//     $secretKey   = 'YOUR_MOMO_SECRET_KEY';          // ← Thay bằng Secret Key
 
-    $redirectUrl = "http://localhost/DoAn/DoAnTotNghiep/public/index.php?url=payment-return&method=momo";
-    $ipnUrl      = "http://localhost/DoAn/DoAnTotNghiep/public/index.php?url=momo-ipn";
+//     $redirectUrl = "http://localhost/DoAn/DoAnTotNghiep/public/index.php?url=payment-return&method=momo";
+//     $ipnUrl      = "http://localhost/DoAn/DoAnTotNghiep/public/index.php?url=momo-ipn";
 
-    $requestId   = time() . "";
-    $orderInfo   = "Thanh toán đơn hàng " . $order_code;
-    $extraData   = "";
+//     $requestId   = time() . "";
+//     $orderInfo   = "Thanh toán đơn hàng " . $order_code;
+//     $extraData   = "";
 
-    $rawHash = "accessKey=" . $accessKey .
-               "&amount=" . $amount .
-               "&extraData=" . $extraData .
-               "&ipnUrl=" . $ipnUrl .
-               "&orderId=" . $order_code .
-               "&orderInfo=" . $orderInfo .
-               "&partnerCode=" . $partnerCode .
-               "&redirectUrl=" . $redirectUrl .
-               "&requestId=" . $requestId .
-               "&requestType=payWithMethod";
+//     $rawHash = "accessKey=" . $accessKey .
+//                "&amount=" . $amount .
+//                "&extraData=" . $extraData .
+//                "&ipnUrl=" . $ipnUrl .
+//                "&orderId=" . $order_code .
+//                "&orderInfo=" . $orderInfo .
+//                "&partnerCode=" . $partnerCode .
+//                "&redirectUrl=" . $redirectUrl .
+//                "&requestId=" . $requestId .
+//                "&requestType=payWithMethod";
 
-    $signature = hash_hmac("sha256", $rawHash, $secretKey);
+//     $signature = hash_hmac("sha256", $rawHash, $secretKey);
 
-    $data = [
-        'partnerCode'  => $partnerCode,
-        'partnerName'  => "TRQShop",
-        'storeId'      => "MomoTestStore",
-        'requestId'    => $requestId,
-        'amount'       => $amount,
-        'orderId'      => $order_code,
-        'orderInfo'    => $orderInfo,
-        'redirectUrl'  => $redirectUrl,
-        'ipnUrl'       => $ipnUrl,
-        'lang'         => 'vi',
-        'extraData'    => $extraData,
-        'requestType'  => 'payWithMethod',
-        'signature'    => $signature
-    ];
+//     $data = [
+//         'partnerCode'  => $partnerCode,
+//         'partnerName'  => "TRQShop",
+//         'storeId'      => "MomoTestStore",
+//         'requestId'    => $requestId,
+//         'amount'       => $amount,
+//         'orderId'      => $order_code,
+//         'orderInfo'    => $orderInfo,
+//         'redirectUrl'  => $redirectUrl,
+//         'ipnUrl'       => $ipnUrl,
+//         'lang'         => 'vi',
+//         'extraData'    => $extraData,
+//         'requestType'  => 'payWithMethod',
+//         'signature'    => $signature
+//     ];
 
-    $ch = curl_init($endpoint);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+//     $ch = curl_init($endpoint);
+//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+//     curl_setopt($ch, CURLOPT_POST, true);
+//     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+//     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 
-    $result = curl_exec($ch);
-    curl_close($ch);
+//     $result = curl_exec($ch);
+//     curl_close($ch);
 
-    $jsonResult = json_decode($result, true);
+//     $jsonResult = json_decode($result, true);
 
-    if (isset($jsonResult['payUrl'])) {
-        header("Location: " . $jsonResult['payUrl']);
-    } else {
-        echo "Lỗi tạo thanh toán MoMo: " . ($jsonResult['message'] ?? 'Unknown error');
-    }
-    exit;
-}
+//     if (isset($jsonResult['payUrl'])) {
+//         header("Location: " . $jsonResult['payUrl']);
+//     } else {
+//         echo "Lỗi tạo thanh toán MoMo: " . ($jsonResult['message'] ?? 'Unknown error');
+//     }
+//     exit;
+// }
 
 // Chuẩn bị thanh toán online (không tạo đơn hàng)
 function preparePayment() {
@@ -709,6 +712,7 @@ function preparePayment() {
     exit;
 }
 
+// Tạo URL thanh toán cho từng phương thức
 function generatePaymentUrl($order_id, $amount, $method, $order_code) {
     $base = 'http://' . $_SERVER['HTTP_HOST'] . '/DoAn/DoAnTotNghiep/public/';
 
@@ -728,6 +732,7 @@ function generatePaymentUrl($order_id, $amount, $method, $order_code) {
     }
 }
 
+// trả về sau khi thanh toán (dùng chung cho tất cả phương thức)
 function paymentReturn() {
     $method = $_GET['method'] ?? 'vnpay';
     $order_code = $_GET['order_code'] ?? '';

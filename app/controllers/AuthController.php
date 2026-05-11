@@ -10,9 +10,6 @@ $error = '';
 /**
  * Xử lý login
  */
-/**
- * Xử lý login
- */
 function handleLogin() {
 
     $conn = getDB();
@@ -170,6 +167,9 @@ function handleLogout() {
     exit();
 }
 
+/**
+ * Xử lý đăng ký
+ */
 function handleRegister() {
     $conn = getDB();
 
