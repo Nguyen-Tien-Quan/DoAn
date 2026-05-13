@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/database.php';
-
+require_once __DIR__ . '/../helpers/notification_helper.php';
 /**
  * Lấy tất cả payments
  */
@@ -524,6 +524,13 @@ function vnpayReturn() {
 
             // ================= COMMIT =================
             $conn->commit();
+
+            // ================= CREATE NOTIFICATION =================
+            createNotification(
+                $_SESSION['user']['id'],
+                'Đặt hàng thành công',
+                'Đơn hàng #' . $pending['order_code'] . ' của bạn đã được tạo thành công.'
+            );
 
             // ================= SEND MAIL =================
             if (file_exists(__DIR__ . '/../services/MailService.php')) {

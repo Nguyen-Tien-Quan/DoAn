@@ -8,6 +8,7 @@ $current_user_id = $current_user_id ?? 0;
 $is_super_admin = $is_super_admin ?? false;
 $totalPages = $totalPages ?? 1;
 $currentPage = $currentPage ?? 1;
+$base = '/DoAn/DoAnTotNghiep/public/';
 ?>
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">Quản lý người dùng</h1>

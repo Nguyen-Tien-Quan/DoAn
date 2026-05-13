@@ -339,12 +339,13 @@ $order = $order ?? [];
                     'pending'=>'Chờ xác nhận',
                     'confirmed'=>'Đã xác nhận',
                     'preparing'=>'Chuẩn bị',
+                    'ready_for_delivery'=>'Sẵn sàng giao',
                     'delivering'=>'Đang giao',
                     'completed'=>'Hoàn thành',
                     'cancelled'=>'Đã hủy'
                 ];
 
-                $steps = ['pending','confirmed','preparing','delivering','completed'];
+                $steps = ['pending','confirmed','preparing','ready_for_delivery','delivering','completed'];
                 $currentIndex = array_search($order['status'], $steps);
                 $percent = ($currentIndex/(count($steps)-1))*100;
                 ?>

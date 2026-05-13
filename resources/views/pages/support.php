@@ -35,7 +35,7 @@ html.dark {
 
 /* ===== PAGE ===== */
 .page-support {
-    padding: 50px 0;
+    padding: 60px 0;
     background: var(--bg-page);
     min-height: 100vh;
     color: var(--text-main);
@@ -44,10 +44,10 @@ html.dark {
 /* ===== HEADER ===== */
 .page-header {
     text-align: center;
-    margin-bottom: 50px;
+    margin-bottom: 60px;
 }
 .page-header h1 {
-    font-size: 36px;
+    font-size: 38px;
     font-weight: 700;
     background: var(--primary);
     -webkit-background-clip: text;
@@ -55,139 +55,94 @@ html.dark {
 }
 .page-header p {
     color: var(--text-sub);
-    font-size: 15px;
+    font-size: 16px;
+    max-width: 520px;
+    margin: 12px auto 0;
 }
 
-/* ===== GRID ===== */
+/* ===== GRID - FIX 3 CARD CÂN ĐỐI ===== */
 .support-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
 }
 
 /* ===== CARD ===== */
 .support-card {
     background: var(--card-bg);
-    border-radius: 20px;
-    padding: 30px 25px;
+    border-radius: 24px;
+    padding: 40px 25px;
     text-align: center;
     box-shadow: 0 10px 30px var(--shadow-1);
     transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+    height: 100%;           /* Quan trọng: card cùng chiều cao */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 .support-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px var(--shadow-2);
+    transform: translateY(-10px);
+    box-shadow: 0 25px 50px var(--shadow-2);
 }
 .support-icon {
-    width: 60px;
-    height: 60px;
-    margin: 0 auto 15px;
+    width: 78px;
+    height: 78px;
+    margin: 0 auto 20px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #4f46e5, #9333ea);
+    background: var(--primary);
     color: #fff;
-    font-size: 24px;
+    font-size: 30px;
+    box-shadow: 0 8px 20px rgba(79,70,229,0.3);
 }
-.support-card h3 { font-size: 20px; margin-bottom: 10px; }
-.support-card p { color: var(--text-sub); font-size: 14px; margin-bottom: 12px; }
+.support-card h3 {
+    font-size: 22px;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+.support-card p {
+    color: var(--text-sub);
+    font-size: 15px;
+    line-height: 1.6;
+    flex-grow: 1;
+    margin-bottom: 20px;
+}
 
 /* ===== BUTTON ===== */
 .btns {
     display: inline-block;
-    padding: 12px 22px;
+    padding: 13px 30px;
     border-radius: 999px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     text-decoration: none;
-    transition: 0.25s;
+    transition: all 0.3s ease;
+    margin-top: auto;
 }
 .btns-primary {
     background: var(--primary);
     color: #fff;
 }
 .btns-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(79,70,229,0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(79,70,229,0.4);
 }
 
-/* ===== FAQ ===== */
-.faq-section {
-    margin-top: 60px;
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-}
-.faq-section h2 {
-    text-align: center;
-    margin-bottom: 25px;
-}
-.faq-search {
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto 30px;
-    padding: 14px 20px;
-    border: 2px solid #e5e7eb;
-    border-radius: 50px;
-    font-size: 16px;
-}
-.faq-item {
-    background: var(--card-bg);
-    border-radius: 14px;
-    margin-bottom: 12px;
-    box-shadow: 0 5px 15px var(--shadow-1);
-    overflow: hidden;
-}
-.faq-item summary {
-    padding: 15px 18px;
-    cursor: pointer;
-    font-weight: 600;
-    list-style: none;
-    position: relative;
-}
-.faq-item summary::after {
-    content: "+";
-    position: absolute;
-    right: 20px;
-}
-.faq-item[open] summary::after {
-    content: "-";
-}
-.faq-item p {
-    padding: 0 18px 15px;
-    color: var(--text-faq);
-}
-
-/* ===== CHAT ===== */
-#chat-toggle {
-    position: fixed;
-    bottom: 110px;
-    right: 25px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4f46e5, #9333ea);
-    color: #fff;
-    font-size: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 9999;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-}
+/* ===== CHAT BOX - ĐÃ TĂNG KÍCH THƯỚC & ĐẸP HƠN ===== */
 #chat-box {
     position: fixed;
-    bottom: 180px;
-    right: 25px;
-    width: 340px;
-    height: 420px;
+    bottom: 90px;
+    right: 30px;
+    width: 380px;
+    height: 520px;
     background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
     display: none;
     flex-direction: column;
     overflow: hidden;
@@ -196,30 +151,33 @@ html.dark {
 .chat-header {
     background: linear-gradient(45deg, #4f46e5, #9333ea);
     color: #fff;
-    padding: 12px;
+    padding: 16px 20px;
     font-weight: 600;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    font-size: 17px;
 }
 .chat-content {
     flex: 1;
-    padding: 10px;
+    padding: 18px;
     overflow-y: auto;
     background: #f9fafb;
 }
 .chat-msg {
-    padding: 8px 12px;
-    background: #e5e7eb;
-    border-radius: 12px;
-    margin-bottom: 6px;
-    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    max-width: 85%;
+    display: flex;
 }
 .chat-input {
     border: none;
     border-top: 1px solid #eee;
-    padding: 10px;
+    padding: 16px 20px;
     width: 100%;
     outline: none;
+    font-size: 15px;
 }
 </style>
 
@@ -297,7 +255,8 @@ html.dark {
 </div>
 
 <script>
-// Tra cứu đơn hàng
+// ==================== TRA CỨU ĐƠN HÀNG ====================
+// ==================== TRA CỨU ĐƠN HÀNG ====================
 async function trackOrder() {
     const code = document.getElementById('order_code').value.trim();
     const result = document.getElementById('order-result');
@@ -322,29 +281,141 @@ async function trackOrder() {
     }
 }
 
-// Chat functions
+// ==================== CHAT FUNCTIONS ====================
 function toggleChat() {
     const box = document.getElementById('chat-box');
     box.style.display = (box.style.display === 'flex') ? 'none' : 'flex';
 }
 function openChat() {
-    document.getElementById('chat-box').style.display = 'flex';
+    const box = document.getElementById('chat-box');
+    box.style.display = 'flex';
+    document.getElementById('chat-input').focus();
 }
-document.getElementById('chat-toggle').onclick = toggleChat;
 
-// Chat input
-document.getElementById('chat-input').addEventListener('keypress', function(e){
-    if(e.key === 'Enter'){
-        let msg = this.value.trim();
-        if(!msg) return;
-        const content = document.getElementById('chat-content');
-        content.innerHTML += `<div class="chat-msg" style="background:#4f46e5;color:white;">${msg}</div>`;
+// ==================== CHAT FUNCTIONS ====================
+function toggleChat() {
+    const box = document.getElementById('chat-box');
+    box.style.display = (box.style.display === 'flex') ? 'none' : 'flex';
+}
+function openChat() {
+    const box = document.getElementById('chat-box');
+    box.style.display = 'flex';
+    // Tự động focus input
+    document.getElementById('chat-input').focus();
+}
+
+// Chat logic
+const chatContent = document.getElementById('chat-content');
+const chatInput = document.getElementById('chat-input');
+
+// Dữ liệu trả lời chatbot
+// Dữ liệu trả lời chatbot - ĐÃ MỞ RỘNG NHIỀU
+const botResponses = {
+    "xin chào": "Chào bạn! Mình là trợ lý hỗ trợ của TRQshop. Bạn cần hỗ trợ gì hôm nay?",
+    "chào": "Chào bạn! ❤️",
+    "hello": "Chào bạn! ❤️",
+    "hi": "Chào bạn! ❤️",
+
+    // Đặt hàng
+    "đặt hàng": "Bạn chọn món → Thêm vào giỏ hàng → Điền thông tin giao hàng → Thanh toán. Rất đơn giản chỉ 3 phút!",
+    "làm sao để đặt hàng": "Bạn chọn món → Thêm vào giỏ hàng → Điền thông tin giao hàng → Thanh toán. Rất đơn giản!",
+    "cách đặt hàng": "Bạn chọn món → Thêm vào giỏ hàng → Điền thông tin giao hàng → Thanh toán.",
+    "order": "Bạn chọn món → Thêm vào giỏ hàng → Điền thông tin giao hàng → Thanh toán.",
+
+    // Phí ship & giao hàng
+    "phí ship": "Miễn phí ship cho đơn từ 200.000đ. Dưới mức đó phí là 10.000đ.",
+    "ship": "Miễn phí ship cho đơn từ 200.000đ. Dưới mức đó phí là 10.000đ.",
+    "giao hàng": "Thường giao trong 25-45 phút tùy khu vực. Miễn phí ship từ 200k.",
+    "thời gian giao": "Thường giao trong 25-45 phút tùy khu vực.",
+    "khu vực": "Hiện tại TRQshop giao hàng tại Hà Nội và một số khu vực lân cận.",
+
+    // Đổi trả & chính sách
+    "đổi trả": "Bạn có 7 ngày để đổi/trả nếu sản phẩm lỗi hoặc không đúng mô tả.",
+    "hủy đơn": "Bạn có thể hủy đơn nếu đơn hàng chưa được chuẩn bị. Liên hệ hotline để được hỗ trợ nhanh nhất.",
+    "chính sách": "Chính sách đổi trả trong 7 ngày. Đơn hàng trên 200k được miễn phí ship.",
+
+    // Tra cứu đơn hàng
+    "tra cứu đơn": "Bạn có thể tra cứu đơn hàng ngay tại trang này bằng mã đơn (ORDxxxx).",
+    "tình trạng đơn": "Bạn có thể tra cứu đơn hàng ngay tại trang này bằng mã đơn (ORDxxxx).",
+    "đơn hàng": "Bạn có thể tra cứu đơn hàng ngay tại trang này bằng mã đơn (ORDxxxx).",
+    "kiểm tra đơn": "Nhập mã đơn hàng (ORDxxxx) vào ô tra cứu bên trên nhé!",
+
+    // Thanh toán
+    "thanh toán": "Chúng mình hỗ trợ thanh toán tiền mặt, MoMo, VNPay và thẻ ngân hàng.",
+    "cod": "Hỗ trợ thanh toán khi nhận hàng (COD).",
+    "momo": "Hỗ trợ thanh toán qua MoMo rất tiện lợi.",
+
+    // Sản phẩm & Menu
+    "combo": "Hiện có rất nhiều combo hấp dẫn từ 65.000đ. Bạn có thể xem ở mục Thực đơn.",
+    "burger": "Burger của chúng mình rất ngon, đặc biệt là Burger bò và Burger gà phô mai!",
+    "gà rán": "Gà rán giòn tan, có sốt cay Hàn Quốc rất ngon.",
+
+    // Liên hệ
+    "hotline": "Hotline: 1900 1234 (8:00 - 21:00 hàng ngày)",
+    "số điện thoại": "Hotline: 1900 1234 (8:00 - 21:00)",
+    "email": "Email hỗ trợ: support@trqshop.com (phản hồi trong 24h)",
+
+    // Khác
+    "giờ mở cửa": "Chúng mình phục vụ từ 8:00 đến 21:00 hàng ngày.",
+    "khuyến mãi": "Hiện đang có Flash Sale giảm đến 20% một số món. Bạn check mục Khuyến mãi nhé!",
+    "default": "Mình chưa hiểu rõ lắm ạ 😅\nBạn thử hỏi về: đặt hàng, phí ship, đổi trả, tra cứu đơn hàng, combo, hoặc gọi hotline 1900 1234 nhé!"
+};
+
+// Hàm lấy câu trả lời hardcode
+function getBotResponse(message) {
+    message = message.toLowerCase().trim();
+    for (let key in botResponses) {
+        if (message.includes(key)) {
+            return botResponses[key];
+        }
+    }
+    return botResponses.default;
+}
+
+// Gửi tin nhắn đến chatbot (ưu tiên database)
+async function sendToBot(message) {
+    try {
+        const res = await fetch('chatbot.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message: message })
+        });
+        const data = await res.json();
+        addMessage(data.reply || "Mình chưa hiểu rõ lắm ạ.", false);
+    } catch (e) {
+        // Fallback nếu database lỗi
+        const reply = getBotResponse(message);
+        addMessage(reply, false);
+    }
+}
+
+function addMessage(text, isUser) {
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isUser ? 'user-msg' : 'bot-msg'}`;
+    div.style.cssText = isUser
+        ? 'background:#4f46e5; color:white; margin-left:auto;'
+        : 'background:#e5e7eb; color:#111827; margin-right:auto;';
+    div.textContent = text;
+    chatContent.appendChild(div);
+    chatContent.scrollTop = chatContent.scrollHeight;
+}
+
+// ==================== XỬ LÝ NHẬP TIN NHẮN ====================
+chatInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        const msg = this.value.trim();
+        if (!msg) return;
+
+        addMessage(msg, true);        // Tin nhắn người dùng
         this.value = '';
-        content.scrollTop = content.scrollHeight;
+
+        setTimeout(() => {
+            sendToBot(msg);           // ← Dùng hàm mới này
+        }, 600);
     }
 });
 
-// Tìm kiếm FAQ
+// ==================== TÌM KIẾM FAQ ====================
 document.getElementById('faq-search').addEventListener('input', function(){
     let term = this.value.toLowerCase();
     document.querySelectorAll('.faq-item').forEach(item => {
@@ -352,4 +423,15 @@ document.getElementById('faq-search').addEventListener('input', function(){
         item.style.display = q.includes(term) ? '' : 'none';
     });
 });
+
+// Khởi tạo
+document.getElementById('chat-toggle').onclick = toggleChat;
+
+// Style cho tin nhắn
+const style = document.createElement('style');
+style.textContent = `
+    .bot-msg { margin-right: auto; }
+    .user-msg { margin-left: auto; }
+`;
+document.head.appendChild(style);
 </script>

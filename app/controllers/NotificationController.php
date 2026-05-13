@@ -59,6 +59,7 @@ function markAllNotificationsAsRead($userId) {
 
 // Xử lý API cho phần notification (dùng cho header)
 function handleNotificationApi() {
+    header('Content-Type: application/json');
     if (!isset($_SESSION['user'])) {
         http_response_code(401);
         echo json_encode(['error' => 'Vui lòng đăng nhập']);

@@ -231,6 +231,96 @@ $avatar = !empty($_SESSION['user']['avatar'])
     font-weight: 500;
 }
 
+/* ================= NOTIFICATION DROPDOWN ================= */
+
+#noti-dropdown .act-dropdown__inner{
+    width: 520px;
+    max-height: 650px;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+/* list */
+.noti-list{
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* scrollbar đẹp */
+.noti-list::-webkit-scrollbar{
+    width: 6px;
+}
+
+.noti-list::-webkit-scrollbar-thumb{
+    background: #ccc;
+    border-radius: 999px;
+}
+
+/* item */
+.noti-item{
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+
+    background: var(--dropdown-bg-color);
+    border: 1px solid var(--separate-color);
+
+    transition: .2s;
+}
+
+.noti-item:hover{
+    background: var(--form-option-hover-bg);
+}
+
+/* unread */
+.noti-item.unread{
+    background: #fff8e8;
+    border-color: #ffd76a;
+}
+
+/* icon */
+.noti-item__icon{
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:#fff;
+    font-size:20px;
+}
+
+/* content */
+.noti-item__content{
+    flex:1;
+    min-width:0;
+}
+
+.noti-item__title{
+    font-size:1.6rem;
+    font-weight:600;
+    margin-bottom:6px;
+    color: var(--text-color);
+}
+
+.noti-item__desc{
+    font-size:1.4rem;
+    line-height:1.5;
+    color: var(--text-color);
+}
+
+.noti-item__time{
+    display:block;
+    margin-top:8px;
+    font-size:1.2rem;
+    color:#888;
+}
 </style>
 
 <header id="header" class="header">
@@ -735,6 +825,84 @@ clearBtn.onclick = () => {
 // function goProduct(id) {
 //     window.location.href = `index.php?url=product-detail&id=${id}`;
 // }
+
+// ================= NOTIFICATION =================
+
+async function loadNotifications() {
+
+    try {
+
+        const res = await fetch('index.php?url=api/notifications', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const data = await res.json();
+
+        console.log(data);
+
+        const list = document.getElementById('noti-list');
+        const count = document.getElementById('noti-count');
+
+        if (!list || !count) return;
+
+        // FIX COUNT
+        count.textContent = data.unread || 0;
+
+        // FIX KEY
+        if (!data.items || data.items.length === 0) {
+
+            list.innerHTML = `
+                <div class="noti-item">
+                    Không có thông báo
+                </div>
+            `;
+
+            return;
+        }
+
+        // render
+        list.innerHTML = data.items.map(item => `
+
+            <div class="noti-item ${item.is_read == 0 ? 'unread' : ''}">
+
+                <div class="noti-item__icon">🔔</div>
+
+                <div class="noti-item__content">
+
+                    <div class="noti-item__title">
+                        ${item.title}
+                    </div>
+
+                    <div class="noti-item__desc">
+                        ${item.content}
+                    </div>
+
+                    <span class="noti-item__time">
+                        ${item.created_at}
+                    </span>
+
+                </div>
+
+            </div>
+
+        `).join('');
+
+    } catch (err) {
+
+        console.error(err);
+
+        document.getElementById('noti-list').innerHTML = `
+            <div class="noti-item">
+                Lỗi tải thông báo
+            </div>
+        `;
+    }
+}
+
+// load ngay khi vào web
+document.addEventListener('DOMContentLoaded', loadNotifications);
 
 window.goProduct = function(id) {
     window.location.href = `index.php?url=product&id=${id}`;

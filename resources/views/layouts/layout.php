@@ -42,7 +42,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <div class="floating-contact">
 
         <!-- Facebook -->
-        <a href="https://facebook.com/yourpage" target="_blank" class="contact-btn fb">
+        <a href="https://www.facebook.com/" target="_blank" class="contact-btn fb">
             <i class="fab fa-facebook-f"></i>
         </a>
 

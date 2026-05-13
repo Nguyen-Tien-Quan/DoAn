@@ -386,34 +386,45 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ================= SUBMIT FORM - FIX DOUBLE SUBMIT =================
-    const addressForm = document.getElementById('add-address-form');
-    if (addressForm) {
-        addressForm.addEventListener('submit', function (e) {
-            e.preventDefault();                     // Ngăn double submit
-            const submitBtn = this.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
+    // ================= SUBMIT FORM (AJAX) =================
+const addressForm = document.getElementById('add-address-form');
+if (addressForm) {
+    addressForm.addEventListener('submit', function (e) {
+        e.preventDefault();
 
-            const formData = new FormData(this);
+        // Chặn click liên tiếp
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Đang lưu...';
 
-            fetch(this.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                showToast(data.message, data.success ? 'success' : 'error');
-                if (data.success) {
-                    setTimeout(() => location.reload(), 800);
-                } else {
-                    if (submitBtn) submitBtn.disabled = false;
-                }
-            })
-            .catch(() => {
-                showToast('Lỗi kết nối server', 'error');
-                if (submitBtn) submitBtn.disabled = false;
-            });
+        const formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => {
+                    window.location.href = 'index.php?url=payment';
+                }, 800);
+            } else {
+                showToast(data.message, 'error');
+                // Bật lại nút nếu thất bại
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Lưu địa chỉ';
+            }
+        })
+        .catch(() => {
+            showToast('Lỗi kết nối server', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Lưu địa chỉ';
         });
-    }
+    });
+}
 
     // ================= DELETE ADDRESS =================
     document.querySelectorAll('.delete-address-btn').forEach(btn => {

@@ -1,6 +1,6 @@
 <?php
 // app/Controllers/OrderController.php
-
+require_once __DIR__ . '/../helpers/notification_helper.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Hàm kết nối DB
@@ -54,6 +54,7 @@ function addShippingAddress() {
     $city       = trim($_POST['city'] ?? '');
     $is_default = isset($_POST['is_default']) ? 1 : 0;
 
+    // Validate bắt buộc
     if (!$full_name || !$phone || !$address || !$city) {
         echo json_encode(['success' => false, 'message' => 'Vui lòng nhập đầy đủ thông tin']);
         exit;
@@ -61,10 +62,30 @@ function addShippingAddress() {
 
     // Fix phone
     $phone = preg_replace('/\D/', '', $phone);
-    if (substr($phone, 0, 2) === '84') $phone = '0' . substr($phone, 2);
+    if (substr($phone, 0, 2) === '84') {
+        $phone = '0' . substr($phone, 2);
+    }
     if (!preg_match('/^0[0-9]{9}$/', $phone)) {
         echo json_encode(['success' => false, 'message' => 'Số điện thoại không hợp lệ']);
         exit;
+    }
+
+    // ===== CHỐNG TRÙNG LẶP: kiểm tra trước khi thêm mới =====
+    if (!$address_id) {
+        $dupCheck = $conn->prepare("
+            SELECT id FROM shipping_addresses
+            WHERE user_id = ?
+              AND full_name = ?
+              AND phone = ?
+              AND address = ?
+              AND city = ?
+            LIMIT 1
+        ");
+        $dupCheck->execute([$user_id, $full_name, $phone, $address, $city]);
+        if ($dupCheck->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'Địa chỉ này đã tồn tại, vui lòng kiểm tra lại']);
+            exit;
+        }
     }
 
     try {
@@ -77,26 +98,26 @@ function addShippingAddress() {
         }
 
         if ($address_id) {
-            // UPDATE
+            // Cập nhật
             $stmt = $conn->prepare("
                 UPDATE shipping_addresses
                 SET full_name = ?, phone = ?, address = ?, city = ?, is_default = ?
                 WHERE id = ? AND user_id = ?
             ");
-            $ok = $stmt->execute([$full_name, $phone, $address, $city, $is_default, $address_id, $user_id]);
+            $stmt->execute([$full_name, $phone, $address, $city, $is_default, $address_id, $user_id]);
             $msg = 'Cập nhật địa chỉ thành công';
         } else {
-            // INSERT - Cho phép nhiều địa chỉ
+            // Thêm mới
             $stmt = $conn->prepare("
                 INSERT INTO shipping_addresses
                 (user_id, full_name, phone, address, city, is_default, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, NOW())
             ");
-            $ok = $stmt->execute([$user_id, $full_name, $phone, $address, $city, $is_default]);
+            $stmt->execute([$user_id, $full_name, $phone, $address, $city, $is_default]);
             $msg = 'Thêm địa chỉ thành công';
         }
 
-        // Đồng bộ customers
+        // Đồng bộ sang bảng customers (nếu có)
         $conn->prepare("
             UPDATE customers
             SET full_name = ?, phone = ?, address = ?
@@ -197,9 +218,20 @@ function placeOrder() {
             ]);
         }
 
+
+
         unset($_SESSION['cart']);
 
         $conn->commit();
+
+        // ================= THÔNG BÁO ĐẶT HÀNG =================
+        createNotification(
+            $user_id,
+            'Đặt hàng thành công',
+            'Đơn hàng #' . $order_id . ' của bạn đã được tạo thành công.',
+            'order',
+            'index.php?url=order-detail&id=' . $order_id
+        );
 
         header("Location: index.php?url=thank-you&order_id=$order_id");
         exit;
@@ -484,7 +516,18 @@ function createOrderAPI() {
             $total
         ]);
 
+
+
         $conn->commit();
+
+         // ================= THÔNG BÁO ĐẶT HÀNG =================
+        createNotification(
+            $user_id,
+            'Đặt hàng thành công',
+            'Đơn hàng ' . $order_code . ' đã được tạo thành công.',
+            'order',
+            'index.php?url=order-detail&id=' . $order_id
+        );
 
         // ==================== SEND MAIL ====================
         if (file_exists(__DIR__ . '/../services/MailService.php')) {
@@ -616,40 +659,203 @@ function orderDetail() {
 
 // Hủy đơn hàng
 function cancelOrder() {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    header('Content-Type: application/json');
+
+    // ================= LOGIN =================
     if (!isset($_SESSION['user'])) {
-        echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Chưa đăng nhập'
+        ]);
+
         exit;
     }
-    $user_id = $_SESSION['user']['id'];
-    $order_id = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
-    if (!$order_id) {
-        echo json_encode(['success' => false, 'message' => 'Thiếu mã đơn hàng']);
+
+    $user_id  = (int)$_SESSION['user']['id'];
+    $order_id = (int)($_POST['order_id'] ?? 0);
+
+    if ($order_id <= 0) {
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Thiếu mã đơn hàng'
+        ]);
+
         exit;
     }
 
     $conn = getDB();
-    $stmt = $conn->prepare("SELECT status FROM orders WHERE id = ? AND user_id = ?");
-    $stmt->execute([$order_id, $user_id]);
-    $order = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$order) {
-        echo json_encode(['success' => false, 'message' => 'Đơn hàng không tồn tại']);
-        exit;
-    }
-    if (!in_array($order['status'], ['pending', 'confirmed'])) {
-        echo json_encode(['success' => false, 'message' => 'Không thể hủy đơn hàng ở trạng thái hiện tại']);
-        exit;
-    }
-
-    $update = $conn->prepare("UPDATE orders SET status = 'cancelled', cancelled_at = NOW() WHERE id = ?");
-    $update->execute([$order_id]);
 
     try {
-        $log = $conn->prepare("INSERT INTO order_statuses (order_id, status, note) VALUES (?, 'cancelled', ?)");
-        $log->execute([$order_id, 'Người dùng hủy đơn hàng']);
-    } catch (Exception $e) {}
 
-    echo json_encode(['success' => true, 'message' => 'Đã hủy đơn hàng']);
+        $conn->beginTransaction();
+
+        // ================= CHECK ORDER =================
+        $stmt = $conn->prepare("
+            SELECT *
+            FROM orders
+            WHERE id = ?
+            AND user_id = ?
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            $order_id,
+            $user_id
+        ]);
+
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+
+            throw new Exception(
+                'Đơn hàng không tồn tại'
+            );
+        }
+
+        // ================= CHECK STATUS =================
+        $allowCancel = [
+            'pending',
+            'confirmed'
+        ];
+
+        if (!in_array($order['status'], $allowCancel)) {
+
+            throw new Exception(
+                'Không thể hủy đơn hàng ở trạng thái hiện tại'
+            );
+        }
+
+        // ================= HOÀN KHO =================
+        $itemStmt = $conn->prepare("
+            SELECT
+                variant_id,
+                quantity
+            FROM order_items
+            WHERE order_id = ?
+        ");
+
+        $itemStmt->execute([$order_id]);
+
+        $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stockStmt = $conn->prepare("
+            UPDATE product_variants
+            SET stock_quantity = stock_quantity + ?
+            WHERE id = ?
+        ");
+
+        foreach ($items as $item) {
+
+            $variant_id = (int)($item['variant_id'] ?? 0);
+            $quantity   = (int)($item['quantity'] ?? 0);
+
+            if ($variant_id > 0 && $quantity > 0) {
+
+                $stockStmt->execute([
+                    $quantity,
+                    $variant_id
+                ]);
+            }
+        }
+
+        // ================= UPDATE ORDER =================
+        $updateStmt = $conn->prepare("
+            UPDATE orders
+            SET
+                status = 'cancelled',
+                cancelled_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $updateStmt->execute([$order_id]);
+
+        // ================= UPDATE PAYMENT =================
+        try {
+
+            $paymentStmt = $conn->prepare("
+                UPDATE payments
+                SET
+                    payment_status = 'cancelled',
+                    updated_at = NOW()
+                WHERE order_id = ?
+                AND payment_status = 'pending'
+            ");
+
+            $paymentStmt->execute([$order_id]);
+
+        } catch (Exception $e) {
+            // bỏ qua nếu bảng payments khác structure
+        }
+
+        // ================= LOG STATUS =================
+        try {
+
+            $logStmt = $conn->prepare("
+                INSERT INTO order_statuses (
+                    order_id,
+                    status,
+                    note,
+                    created_at
+                )
+                VALUES (
+                    ?,
+                    'cancelled',
+                    ?,
+                    NOW()
+                )
+            ");
+
+            $logStmt->execute([
+                $order_id,
+                'Người dùng hủy đơn hàng'
+            ]);
+
+        } catch (Exception $e) {
+            // bỏ qua nếu chưa có bảng log
+        }
+
+        $conn->commit();
+
+        // ================= THÔNG BÁO =================
+        try {
+
+            createNotification(
+                $user_id,
+                'Đã hủy đơn hàng',
+                'Đơn hàng #' . ($order['order_code'] ?? $order_id) . ' đã được hủy.',
+                'order',
+                'index.php?url=orders'
+            );
+
+        } catch (Exception $e) {
+            // notification lỗi không ảnh hưởng order
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Đã hủy đơn hàng thành công'
+        ]);
+
+    } catch (Exception $e) {
+
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+
     exit;
 }
 

@@ -664,7 +664,7 @@ if (!function_exists('vnd')) {
                     return;
                 }
                 const method = document.querySelector('input[name="alt_payment_method"]:checked')?.value;
-                const selectedShipping = document.querySelector('input[name="delivery-method-alt"]:checked');
+                const selectedShipping = document.querySelector('input[name="delivery_method"]:checked');
                 const shippingFee = selectedShipping ? parseInt(selectedShipping.dataset.fee) || 0 : 0;
                 const shippingMethod = selectedShipping?.value || 'standard';
 
